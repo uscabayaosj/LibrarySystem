@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Book{% endblock %}
+
+{% block content %}
+<h2>Edit Book</h2>
+<form method="POST" action="{{ url_for('admin.edit_book', id=book.id) }}" class="edit-book-form">
+    <div class="mb-3">
+        <label for="title" class="form-label">Title</label>
+        <input type="text" class="form-control" id="title" name="title" value="{{ book.title }}" required>
+    </div>
+    <div class="mb-3">
+        <label for="author" class="form-label">Author</label>
+        <input type="text" class="form-control" id="author" name="author" value="{{ book.author }}" required>
+    </div>
+    <div class="mb-3">
+        <label for="isbn" class="form-label">ISBN</label>
+        <input type="text" class="form-control" id="isbn" name="isbn" value="{{ book.isbn }}" required>
+    </div>
+    <div class="mb-3">
+        <label for="category" class="form-label">Category</label>
+        <input type="text" class="form-control" id="category" name="category" value="{{ book.category }}" required>
+    </div>
+    <div class="mb-3">
+        <label for="quantity" class="form-label">Quantity</label>
+        <input type="number" class="form-control" id="quantity" name="quantity" value="{{ book.quantity }}" required min="0">
+    </div>
+    <button type="submit" class="btn btn-primary">Update Book</button>
+    <a href="{{ url_for('admin.books') }}" class="btn btn-secondary">Cancel</a>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+{% endblock %}

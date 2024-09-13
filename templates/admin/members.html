@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Members{% endblock %}
+
+{% block content %}
+<h2>Manage Members</h2>
+<table id="member-table" class="table table-striped">
+    <thead>
+        <tr>
+            <th>Username</th>
+            <th>Email</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for member in members %}
+        <tr>
+            <td>{{ member.username }}</td>
+            <td>{{ member.email }}</td>
+            <td>
+                <button class="btn btn-sm btn-danger delete-member-button" data-id="{{ member.id }}">Delete</button>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Books{% endblock %}
+
+{% block content %}
+<h2>Manage Books</h2>
+<form id="add-book-form" method="POST" action="{{ url_for('admin.books') }}" class="mb-4">
+    <h3>Add New Book</h3>
+    <div class="row">
+        <div class="col-md-3 mb-3">
+            <input type="text" class="form-control" name="title" placeholder="Title" required>
+        </div>
+        <div class="col-md-3 mb-3">
+            <input type="text" class="form-control" name="author" placeholder="Author" required>
+        </div>
+        <div class="col-md-2 mb-3">
+            <input type="text" class="form-control" name="isbn" placeholder="ISBN" required>
+        </div>
+        <div class="col-md-2 mb-3">
+            <input type="text" class="form-control" name="category" placeholder="Category" required>
+        </div>
+        <div class="col-md-1 mb-3">
+            <input type="number" class="form-control" name="quantity" placeholder="Qty" required min="1">
+        </div>
+        <div class="col-md-1 mb-3">
+            <button type="submit" class="btn btn-primary">Add</button>
+        </div>
+    </div>
+</form>
+
+<h3>Book List</h3>
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Title</th>
+            <th>Author</th>
+            <th>ISBN</th>
+            <th>Category</th>
+            <th>Quantity</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for book in books %}
+        <tr>
+            <td>{{ book.title }}</td>
+            <td>{{ book.author }}</td>
+            <td>{{ book.isbn }}</td>
+            <td>{{ book.category }}</td>
+            <td>{{ book.quantity }}</td>
+            <td>
+                <a href="{{ url_for('admin.edit_book', id=book.id) }}" class="btn btn-sm btn-warning">Edit</a>
+                <form action="{{ url_for('admin.delete_book', id=book.id) }}" method="POST" class="d-inline">
+                    <button type="submit" class="btn btn-sm btn-danger delete-book-button">Delete</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+{% endblock %}

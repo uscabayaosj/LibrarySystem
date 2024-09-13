@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block title %}Welcome to Library Borrowing System{% endblock %}
+
+{% block content %}
+<div class="jumbotron">
+    <h1 class="display-4">Welcome to the Library Borrowing System</h1>
+    <p class="lead">Manage your book borrowings with ease.</p>
+    <hr class="my-4">
+    <p>Please login or register to start using the system.</p>
+    <a class="btn btn-primary btn-lg" href="{{ url_for('auth.login') }}" role="button">Login</a>
+    <a class="btn btn-secondary btn-lg" href="{{ url_for('auth.register') }}" role="button">Register</a>
+</div>
+{% endblock %}
