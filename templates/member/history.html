@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block title %}My Borrowing History{% endblock %}
+
+{% block content %}
+<h2>My Borrowing History</h2>
+<table class="table">
+    <thead>
+        <tr>
+            <th>Book Title</th>
+            <th>Author</th>
+            <th>Borrow Date</th>
+            <th>Due Date</th>
+            <th>Return Date</th>
+            <th>Status</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for borrowing in borrowings %}
+        <tr>
+            <td>{{ borrowing.book.title }}</td>
+            <td>{{ borrowing.book.author }}</td>
+            <td>{{ borrowing.borrow_date.strftime('%Y-%m-%d') }}</td>
+            <td>{{ borrowing.due_date.strftime('%Y-%m-%d') }}</td>
+            <td>{{ borrowing.return_date.strftime('%Y-%m-%d') if borrowing.return_date else 'Not returned' }}</td>
+            <td>
+                {% if not borrowing.return_date %}
+                    {% if borrowing.due_date < now %}
+                        <span class="text-danger">Overdue</span>
+                    {% else %}
+                        <span class="text-success">Active</span>
+                    {% endif %}
+                {% else %}
+                    <span class="text-secondary">Returned</span>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

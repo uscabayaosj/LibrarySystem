@@ -1,8 +1,13 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
 from models import db, Book, User, Borrowing
+from datetime import datetime
+import logging
 
 bp = Blueprint('admin', __name__, url_prefix='/admin')
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 @bp.before_request
 @login_required
@@ -18,17 +23,28 @@ def dashboard():
 @bp.route('/books', methods=['GET', 'POST'])
 def books():
     if request.method == 'POST':
-        title = request.form['title']
-        author = request.form['author']
-        isbn = request.form['isbn']
-        category = request.form['category']
-        quantity = int(request.form['quantity'])
-        
-        book = Book(title=title, author=author, isbn=isbn, category=category, quantity=quantity)
-        db.session.add(book)
-        db.session.commit()
-        flash('Book added successfully.')
-        return redirect(url_for('admin.books'))
+        try:
+            title = request.form['title']
+            author = request.form['author']
+            isbn = request.form['isbn']
+            category = request.form['category']
+            quantity = int(request.form['quantity'])
+            
+            if not all([title, author, isbn, category, quantity]):
+                raise ValueError("All fields are required")
+            
+            book = Book(title=title, author=author, isbn=isbn, category=category, quantity=quantity, available_quantity=quantity)
+            db.session.add(book)
+            db.session.commit()
+            flash('Book added successfully.')
+            logger.info(f"Book added: {title} by {author}")
+            return redirect(url_for('admin.books'))
+        except ValueError as e:
+            flash(str(e))
+            logger.error(f"Error adding book: {str(e)}")
+        except Exception as e:
+            flash('An error occurred while adding the book.')
+            logger.error(f"Unexpected error adding book: {str(e)}")
     
     books = Book.query.all()
     return render_template('admin/books.html', books=books)

@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}Search Books{% endblock %}
+
+{% block content %}
+<h2>Search Books</h2>
+<form method="POST" action="{{ url_for('member.search') }}">
+    <div class="input-group mb-3">
+        <input type="text" class="form-control" name="search_term" placeholder="Search term" required>
+        <select class="form-select" name="search_type">
+            <option value="title">Title</option>
+            <option value="author">Author</option>
+            <option value="isbn">ISBN</option>
+            <option value="category">Category</option>
+        </select>
+        <button class="btn btn-primary" type="submit">Search</button>
+    </div>
+</form>
+
+{% if books %}
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Author</th>
+                <th>ISBN</th>
+                <th>Category</th>
+                <th>Available</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for book in books %}
+            <tr>
+                <td>{{ book.title }}</td>
+                <td>{{ book.author }}</td>
+                <td>{{ book.isbn }}</td>
+                <td>{{ book.category }}</td>
+                <td>{{ book.available_quantity }}/{{ book.quantity }}</td>
+                <td>
+                    {% if book.is_available() %}
+                        <form action="{{ url_for('member.borrow_book', book_id=book.id) }}" method="POST">
+                            <button type="submit" class="btn btn-sm btn-primary">Borrow</button>
+                        </form>
+                    {% elif book.can_reserve() %}
+                        <form action="{{ url_for('member.reserve_book', book_id=book.id) }}" method="POST">
+                            <button type="submit" class="btn btn-sm btn-secondary">Reserve</button>
+                        </form>
+                    {% else %}
+                        <button class="btn btn-sm btn-secondary" disabled>Unavailable</button>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% elif request.method == 'POST' %}
+    <p>No books found matching your search criteria.</p>
+{% endif %}
+{% endblock %}

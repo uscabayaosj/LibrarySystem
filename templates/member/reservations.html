@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block title %}My Reservations{% endblock %}
+
+{% block content %}
+<h2>My Reservations</h2>
+{% if reservations %}
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Book Title</th>
+                <th>Author</th>
+                <th>Reservation Date</th>
+                <th>Expiration Date</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for reservation in reservations %}
+            <tr>
+                <td>{{ reservation.book.title }}</td>
+                <td>{{ reservation.book.author }}</td>
+                <td>{{ reservation.reservation_date.strftime('%Y-%m-%d %H:%M') }}</td>
+                <td>{{ reservation.expiration_date.strftime('%Y-%m-%d %H:%M') }}</td>
+                <td>
+                    <form action="{{ url_for('member.cancel_reservation', reservation_id=reservation.id) }}" method="POST">
+                        <button type="submit" class="btn btn-sm btn-danger">Cancel Reservation</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% else %}
+    <p>You have no active reservations.</p>
+{% endif %}
+{% endblock %}

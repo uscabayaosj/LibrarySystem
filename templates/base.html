@@ -10,7 +10,7 @@
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container">
-            <a class="navbar-brand" href="{{ url_for('member.dashboard') }}">Library System</a>
+            <a class="navbar-brand" href="{{ url_for('member.dashboard') }}">Anthropology Department Library System</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
@@ -26,6 +26,7 @@
                             <li class="nav-item"><a class="nav-link" href="{{ url_for('member.dashboard') }}">Dashboard</a></li>
                             <li class="nav-item"><a class="nav-link" href="{{ url_for('member.search') }}">Search Books</a></li>
                             <li class="nav-item"><a class="nav-link" href="{{ url_for('member.borrowing_history') }}">My Borrowings</a></li>
+                            <li class="nav-item"><a class="nav-link" href="{{ url_for('member.reservations') }}">My Reservations</a></li>
                         {% endif %}
                         <li class="nav-item"><a class="nav-link" href="{{ url_for('auth.logout') }}">Logout</a></li>
                     {% else %}

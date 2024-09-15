@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block title %}Add New Book{% endblock %}
+
+{% block content %}
+<h2>Add New Book</h2>
+<form method="POST" action="{{ url_for('admin.add_book') }}">
+    <div class="mb-3">
+        <label for="title" class="form-label">Title</label>
+        <input type="text" class="form-control" id="title" name="title" required>
+    </div>
+    <div class="mb-3">
+        <label for="author" class="form-label">Author</label>
+        <input type="text" class="form-control" id="author" name="author" required>
+    </div>
+    <div class="mb-3">
+        <label for="isbn" class="form-label">ISBN</label>
+        <input type="text" class="form-control" id="isbn" name="isbn" required>
+    </div>
+    <div class="mb-3">
+        <label for="category" class="form-label">Category</label>
+        <input type="text" class="form-control" id="category" name="category" required>
+    </div>
+    <div class="mb-3">
+        <label for="quantity" class="form-label">Quantity</label>
+        <input type="number" class="form-control" id="quantity" name="quantity" required min="1">
+    </div>
+    <button type="submit" class="btn btn-primary">Add Book</button>
+</form>
+{% endblock %}
