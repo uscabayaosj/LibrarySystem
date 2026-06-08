@@ -3,31 +3,70 @@
 {% block title %}Edit Book{% endblock %}
 
 {% block content %}
-<h2>Edit Book</h2>
-<form method="POST" action="{{ url_for('admin.edit_book', id=book.id) }}" class="edit-book-form">
-    <div class="mb-3">
-        <label for="title" class="form-label">Title</label>
-        <input type="text" class="form-control" id="title" name="title" value="{{ book.title }}" required>
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('admin.books') }}">Books</a></li>
+                <li class="breadcrumb-item active">Edit: {{ book.title }}</li>
+            </ol>
+        </nav>
+
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0"><i class="bi bi-pencil-square"></i> Edit Book</h4>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('admin.edit_book', id=book.id) }}">
+                    <div class="row g-3">
+                        <div class="col-md-8">
+                            <label class="form-label">Title <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" name="title" value="{{ book.title }}" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Category</label>
+                            <input type="text" class="form-control" name="category" value="{{ book.category or '' }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Author <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" name="author" value="{{ book.author }}" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">ISBN</label>
+                            <input type="text" class="form-control" name="isbn" value="{{ book.isbn }}" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Quantity</label>
+                            <input type="number" class="form-control" name="quantity" value="{{ book.quantity }}" min="0">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Publisher</label>
+                            <input type="text" class="form-control" name="publisher" value="{{ book.publisher or '' }}">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Publication Year</label>
+                            <input type="number" class="form-control" name="publication_year" value="{{ book.publication_year or '' }}" min="1000" max="2100">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Available</label>
+                            <input type="text" class="form-control" value="{{ book.available_quantity }}" readonly disabled>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Description</label>
+                            <textarea class="form-control" name="description" rows="3">{{ book.description or '' }}</textarea>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-lg"></i> Update Book
+                        </button>
+                        <a href="{{ url_for('admin.books') }}" class="btn btn-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
-    <div class="mb-3">
-        <label for="author" class="form-label">Author</label>
-        <input type="text" class="form-control" id="author" name="author" value="{{ book.author }}" required>
-    </div>
-    <div class="mb-3">
-        <label for="isbn" class="form-label">ISBN</label>
-        <input type="text" class="form-control" id="isbn" name="isbn" value="{{ book.isbn }}" required>
-    </div>
-    <div class="mb-3">
-        <label for="category" class="form-label">Category</label>
-        <input type="text" class="form-control" id="category" name="category" value="{{ book.category }}" required>
-    </div>
-    <div class="mb-3">
-        <label for="quantity" class="form-label">Quantity</label>
-        <input type="number" class="form-control" id="quantity" name="quantity" value="{{ book.quantity }}" required min="0">
-    </div>
-    <button type="submit" class="btn btn-primary">Update Book</button>
-    <a href="{{ url_for('admin.books') }}" class="btn btn-secondary">Cancel</a>
-</form>
+</div>
 {% endblock %}
 
 {% block scripts %}

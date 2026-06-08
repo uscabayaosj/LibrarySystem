@@ -1,102 +1,152 @@
-/* Add your custom styles here */
+/* Library Management System - Custom Styles */
+
 body {
-    font-family: Arial, sans-serif;
-    line-height: 1.6;
-    margin: 0;
-    padding: 0;
+    background-color: #f8f9fa;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
 }
 
-.container {
-    width: 80%;
-    margin: auto;
-    overflow: hidden;
-    padding: 20px;
+.footer {
+    margin-top: auto;
 }
 
+/* Card enhancements */
+.card {
+    border-radius: 0.5rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    transition: box-shadow 0.2s ease;
+}
+
+.card:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+}
+
+.card-header {
+    font-weight: 500;
+    background-color: rgba(0,0,0,0.02);
+}
+
+/* Table styling */
+.table th {
+    font-weight: 600;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+    color: #6c757d;
+    border-bottom-width: 2px;
+}
+
+.table-hover tbody tr {
+    transition: background-color 0.15s ease;
+}
+
+/* Badge styling */
+.badge {
+    font-weight: 500;
+    padding: 0.35em 0.65em;
+}
+
+/* Button enhancements */
+.btn {
+    border-radius: 0.375rem;
+    font-weight: 500;
+}
+
+.btn-group-sm > .btn, .btn-sm {
+    border-radius: 0.25rem;
+}
+
+/* Navbar */
 .navbar {
-    background-color: #333;
-    color: #fff;
-    padding: 10px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
-.navbar ul {
-    padding: 0;
-    list-style: none;
+.navbar-brand {
+    font-weight: 700;
+    letter-spacing: -0.01em;
 }
 
-.navbar li {
-    display: inline;
-    padding: 5px;
-}
-
-.navbar a {
-    color: #fff;
-    text-decoration: none;
-}
-
-.flash-messages {
-    background-color: #f4f4f4;
-    padding: 10px;
-    margin-bottom: 20px;
-}
-
-.flash-message {
-    padding: 10px;
-    margin-bottom: 10px;
-    border-radius: 5px;
-}
-
-.flash-message.success {
-    background-color: #d4edda;
-    border-color: #c3e6cb;
-    color: #155724;
-}
-
-.flash-message.error {
-    background-color: #f8d7da;
-    border-color: #f5c6cb;
-    color: #721c24;
-}
-
-form {
-    background-color: #f4f4f4;
-    border: 1px solid #ddd;
-    padding: 20px;
-    margin-bottom: 20px;
-}
-
-input[type="text"],
-input[type="email"],
-input[type="password"],
-select {
-    width: 100%;
-    padding: 10px;
-    margin-bottom: 10px;
-}
-
-button {
-    background-color: #333;
-    color: #fff;
-    padding: 10px 20px;
+/* Alert enhancements */
+.alert {
     border: none;
-    cursor: pointer;
+    border-left: 4px solid;
+    border-radius: 0.375rem;
 }
 
-button:hover {
-    background-color: #555;
+.alert-success {
+    border-left-color: #198754;
 }
 
-table {
-    width: 100%;
-    border-collapse: collapse;
+.alert-danger {
+    border-left-color: #dc3545;
 }
 
-table, th, td {
-    border: 1px solid #ddd;
-    padding: 10px;
-    text-align: left;
+.alert-warning {
+    border-left-color: #ffc107;
 }
 
-th {
-    background-color: #f4f4f4;
+.alert-info {
+    border-left-color: #0dcaf0;
+}
+
+/* Pagination */
+.pagination {
+    margin-bottom: 0;
+}
+
+.page-link {
+    border-radius: 0.25rem;
+    margin: 0 2px;
+}
+
+/* Stat cards on dashboard */
+.display-6 {
+    font-weight: 700;
+}
+
+/* List group for current loans */
+.list-group-item {
+    transition: background-color 0.15s ease;
+}
+
+/* Footer */
+.footer {
+    border-top: 1px solid #dee2e6;
+}
+
+/* Search cards */
+.card.border-success {
+    border-width: 2px;
+}
+
+.card.border-warning {
+    border-width: 2px;
+}
+
+.card.border-secondary {
+    border-width: 2px;
+}
+
+/* Animated flash dismiss */
+.alert-dismissible .btn-close {
+    padding: 0.75rem 1rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .display-6 {
+        font-size: 1.75rem;
+    }
+}
+
+/* Print-friendly borrowing history */
+@media print {
+    .navbar, .footer, .btn, form {
+        display: none !important;
+    }
+    .card {
+        box-shadow: none !important;
+        border: 1px solid #ddd;
+    }
 }

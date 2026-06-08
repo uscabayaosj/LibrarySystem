@@ -1,27 +1,20 @@
+// Member JavaScript — borrow and cancel confirmation
 document.addEventListener('DOMContentLoaded', function() {
-    // Search functionality
-    const searchForm = document.getElementById('search-form');
-    if (searchForm) {
-        searchForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            // Add form validation here
-            this.submit();
-        });
-    }
-
-    // Borrow book functionality
-    const borrowButtons = document.querySelectorAll('.borrow-button');
-    borrowButtons.forEach(button => {
-        button.addEventListener('click', function(e) {
-            if (!confirm('Are you sure you want to borrow this book?')) {
+    // Borrow confirmation
+    document.querySelectorAll('.borrow-btn').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            if (!confirm('Borrow this book? It will be due in 14 days.')) {
                 e.preventDefault();
             }
         });
     });
 
-    // Borrowing history
-    const borrowingHistoryTable = document.getElementById('borrowing-history-table');
-    if (borrowingHistoryTable) {
-        // Add sorting functionality if needed
-    }
+    // Cancel reservation confirmation
+    document.querySelectorAll('.cancel-btn').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            if (!confirm('Cancel this reservation?')) {
+                e.preventDefault();
+            }
+        });
+    });
 });

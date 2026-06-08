@@ -6,50 +6,64 @@ from extensions import db
 
 bp = Blueprint('auth', __name__)
 
+
 @bp.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
+        if current_user.is_admin:
+            return redirect(url_for('admin.dashboard'))
         return redirect(url_for('member.dashboard'))
     if request.method == 'POST':
-        username = request.form['username']
-        password = request.form['password']
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '')
+        if not username or not password:
+            flash('Please enter both username and password.', 'warning')
+            return render_template('login.html')
         user = User.query.filter_by(username=username).first()
         if user is None or not user.check_password(password):
-            flash('Invalid username or password')
-            return redirect(url_for('auth.login'))
+            flash('Invalid username or password.', 'danger')
+            return render_template('login.html')
         login_user(user)
         next_page = request.args.get('next')
         if not next_page or urlparse(next_page).netloc != '':
-            next_page = url_for('member.dashboard')
+            if user.is_admin:
+                next_page = url_for('admin.dashboard')
+            else:
+                next_page = url_for('member.dashboard')
+        flash(f'Welcome back, {user.username}!', 'success')
         return redirect(next_page)
     return render_template('login.html')
+
 
 @bp.route('/logout')
 @login_required
 def logout():
     logout_user()
+    flash('You have been logged out.', 'info')
     return redirect(url_for('auth.login'))
+
 
 @bp.route('/register', methods=['GET', 'POST'])
 def register():
     if current_user.is_authenticated:
         return redirect(url_for('member.dashboard'))
     if request.method == 'POST':
-        username = request.form['username']
-        email = request.form['email']
-        password = request.form['password']
-        user = User.query.filter_by(username=username).first()
-        if user is not None:
-            flash('Please use a different username.')
-            return redirect(url_for('auth.register'))
-        user = User.query.filter_by(email=email).first()
-        if user is not None:
-            flash('Please use a different email address.')
-            return redirect(url_for('auth.register'))
+        username = request.form.get('username', '').strip()
+        email = request.form.get('email', '').strip()
+        password = request.form.get('password', '')
+        if not all([username, email, password]):
+            flash('All fields are required.', 'warning')
+            return render_template('register.html')
+        if User.query.filter_by(username=username).first():
+            flash('That username is already taken. Please choose another.', 'warning')
+            return render_template('register.html')
+        if User.query.filter_by(email=email).first():
+            flash('That email address is already registered.', 'warning')
+            return render_template('register.html')
         user = User(username=username, email=email)
         user.set_password(password)
         db.session.add(user)
         db.session.commit()
-        flash('Congratulations, you are now a registered user!')
+        flash('Registration successful! You can now log in.', 'success')
         return redirect(url_for('auth.login'))
     return render_template('register.html')

@@ -1,18 +1,17 @@
+// Common JavaScript — auto-dismiss alerts, tooltips, etc.
 document.addEventListener('DOMContentLoaded', function() {
-    // Flash messages
-    const flashMessages = document.querySelectorAll('.flash-message');
-    flashMessages.forEach(message => {
-        setTimeout(() => {
-            message.style.display = 'none';
-        }, 5000);
+    // Auto-dismiss flash alerts after 6 seconds
+    const alerts = document.querySelectorAll('.alert-dismissible');
+    alerts.forEach(function(alert) {
+        setTimeout(function() {
+            var bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+        }, 6000);
     });
 
-    // Responsive navigation
-    const navToggle = document.querySelector('.nav-toggle');
-    const navMenu = document.querySelector('.nav-menu');
-    if (navToggle && navMenu) {
-        navToggle.addEventListener('click', function() {
-            navMenu.classList.toggle('is-active');
-        });
-    }
+    // Enable Bootstrap tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.forEach(function(el) {
+        new bootstrap.Tooltip(el);
+    });
 });

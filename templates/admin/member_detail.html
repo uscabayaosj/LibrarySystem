@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+
+{% block title %}Member: {{ member.username }}{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{{ url_for('admin.members') }}">Members</a></li>
+        <li class="breadcrumb-item active">{{ member.username }}</li>
+    </ol>
+</nav>
+
+<div class="row g-4">
+    <!-- Member Info -->
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body text-center">
+                <i class="bi bi-person-circle" style="font-size: 4rem;"></i>
+                <h4 class="mt-2">{{ member.username }}</h4>
+                <p class="text-muted">{{ member.email }}</p>
+                {% if member.phone %}
+                    <p class="text-muted"><i class="bi bi-telephone"></i> {{ member.phone }}</p>
+                {% endif %}
+                <p class="text-muted"><i class="bi bi-calendar"></i> Member since {{ member.member_since.strftime('%b %Y') }}</p>
+                <hr>
+                <div class="row">
+                    <div class="col-4">
+                        <h5 class="text-info">{{ member.active_borrowings }}</h5>
+                        <small class="text-muted">Active</small>
+                    </div>
+                    <div class="col-4">
+                        <h5 class="text-warning">{{ member.overdue_borrowings }}</h5>
+                        <small class="text-muted">Overdue</small>
+                    </div>
+                    <div class="col-4">
+                        <h5 class="text-secondary">{{ member.active_reservations_count }}</h5>
+                        <small class="text-muted">Reserved</small>
+                    </div>
+                </div>
+                <hr>
+                <form action="{{ url_for('admin.delete_member', id=member.id) }}" method="POST" class="d-inline delete-form">
+                    <button type="submit" class="btn btn-outline-danger btn-sm delete-btn">
+                        <i class="bi bi-trash"></i> Delete Member
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-8">
+        <!-- Borrowing History -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-clock-history"></i> Borrowing History ({{ borrowings|length }})</h5>
+            </div>
+            <div class="card-body p-0">
+                {% if borrowings %}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Book</th>
+                                <th>Borrowed</th>
+                                <th>Due</th>
+                                <th>Returned</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for b in borrowings %}
+                            <tr>
+                                <td>{{ b.book.title }}</td>
+                                <td>{{ b.borrow_date.strftime('%b %d, %Y') }}</td>
+                                <td>{{ b.due_date.strftime('%b %d, %Y') }}</td>
+                                <td>{{ b.return_date.strftime('%b %d, %Y') if b.return_date else '-' }}</td>
+                                <td>
+                                    {% if b.status == 'returned' %}
+                                        <span class="badge bg-success">Returned</span>
+                                    {% elif b.due_date < now %}
+                                        <span class="badge bg-danger">Overdue</span>
+                                    {% else %}
+                                        <span class="badge bg-primary">Active</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="p-3 text-center text-muted">No borrowing history.</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Reservations -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-calendar-check"></i> Reservations ({{ reservations|length }})</h5>
+            </div>
+            <div class="card-body p-0">
+                {% if reservations %}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Book</th>
+                                <th>Reserved</th>
+                                <th>Expires</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for r in reservations %}
+                            <tr>
+                                <td>{{ r.book.title }}</td>
+                                <td>{{ r.reservation_date.strftime('%b %d, %Y') }}</td>
+                                <td>{{ r.expiration_date.strftime('%b %d, %Y') }}</td>
+                                <td>
+                                    <span class="badge bg-{% if r.status == 'active' %}primary{% elif r.status == 'fulfilled' %}success{% elif r.status == 'expired' %}danger{% else %}secondary{% endif %}">
+                                        {{ r.status }}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="p-3 text-center text-muted">No reservations.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+{% endblock %}

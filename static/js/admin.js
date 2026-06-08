@@ -1,47 +1,20 @@
+// Admin JavaScript — confirmation dialogs and interactive elements
 document.addEventListener('DOMContentLoaded', function() {
-    // Book management
-    const addBookForm = document.getElementById('add-book-form');
-    if (addBookForm) {
-        addBookForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            // Add form validation here
-            this.submit();
-        });
-    }
-
-    const editBookForms = document.querySelectorAll('.edit-book-form');
-    editBookForms.forEach(form => {
-        form.addEventListener('submit', function(e) {
-            e.preventDefault();
-            // Add form validation here
-            this.submit();
-        });
-    });
-
-    const deleteBookButtons = document.querySelectorAll('.delete-book-button');
-    deleteBookButtons.forEach(button => {
-        button.addEventListener('click', function(e) {
-            if (!confirm('Are you sure you want to delete this book?')) {
+    // Delete confirmation for books
+    document.querySelectorAll('.delete-btn').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            if (!confirm('Are you sure you want to delete this item? This action cannot be undone.')) {
                 e.preventDefault();
             }
         });
     });
 
-    // Member management
-    const memberTable = document.getElementById('member-table');
-    if (memberTable) {
-        memberTable.addEventListener('click', function(e) {
-            if (e.target.classList.contains('delete-member-button')) {
-                if (!confirm('Are you sure you want to delete this member?')) {
-                    e.preventDefault();
-                }
+    // Return book confirmation
+    document.querySelectorAll('.return-btn').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            if (!confirm('Confirm return? The book will be marked as returned.')) {
+                e.preventDefault();
             }
         });
-    }
-
-    // Borrowing history
-    const borrowingHistoryTable = document.getElementById('borrowing-history-table');
-    if (borrowingHistoryTable) {
-        // Add sorting functionality if needed
-    }
+    });
 });
