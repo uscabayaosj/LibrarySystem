@@ -1,0 +1,21 @@
+{% from "_icons.html" import icon %}
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        <div class="flashes">
+            {% for category, message in messages %}
+                {% set kind = category if category in ['success', 'danger', 'warning', 'info'] else 'info' %}
+                <div class="alert alert-{{ kind }}"
+                     role="{% if kind in ['danger', 'warning'] %}alert{% else %}status{% endif %}">
+                    {% if kind == 'success' %}{{ icon('check-circle', class='icon lead') }}
+                    {% elif kind == 'danger' %}{{ icon('x-circle', class='icon lead') }}
+                    {% elif kind == 'warning' %}{{ icon('warning', class='icon lead') }}
+                    {% else %}{{ icon('info', class='icon lead') }}{% endif %}
+                    <div class="alert-body">{{ message }}</div>
+                    <button class="alert-close" type="button" aria-label="Dismiss message">
+                        {{ icon('x', class='icon-sm') }}
+                    </button>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+{% endwith %}

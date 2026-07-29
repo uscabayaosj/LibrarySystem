@@ -1,152 +1,125 @@
 {% extends "base.html" %}
+{% from "_icons.html" import icon %}
 
-{% block title %}My Dashboard{% endblock %}
+{% block title %}Overview{% endblock %}
+{% block heading %}Welcome back, {{ current_user.username }}{% endblock %}
+{% block subheading %}
+    <p class="toolbar-sub">
+        {% if overdue_count %}
+            {{ overdue_count }} item{{ 's' if overdue_count != 1 }} need{{ '' if overdue_count != 1 else 's' }} your attention
+        {% else %}
+            Everything is on track
+        {% endif %}
+    </p>
+{% endblock %}
+
+{% block toolbar %}
+    <a href="{{ url_for('member.search') }}" class="btn btn-primary">{{ icon('search') }} Browse Books</a>
+{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h2><i class="bi bi-speedometer2"></i> Welcome, {{ current_user.username }}!</h2>
-</div>
-
-<!-- Overdue Alert -->
 {% if overdue_items %}
-<div class="alert alert-danger alert-dismissible fade show" role="alert">
-    <h5 class="alert-heading"><i class="bi bi-exclamation-triangle-fill"></i> Overdue Books!</h5>
-    <p class="mb-0">You have <strong>{{ overdue_items|length }} overdue book(s)</strong>. Please return them to avoid penalties.</p>
-    {% for item in overdue_items %}
-        <small class="d-block">
-            &bull; <strong>{{ item.book.title }}</strong> — due {{ item.due_date.strftime('%b %d, %Y') }}
-            ({{ (now - item.due_date).days }} day(s) overdue)
-        </small>
-    {% endfor %}
-    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+<div class="alert alert-danger" role="alert" style="margin-bottom:16px">
+    {{ icon('warning', class='icon lead') }}
+    <div class="alert-body">
+        <div class="alert-title">
+            {{ overdue_items|length }} overdue book{{ 's' if overdue_items|length != 1 }}
+        </div>
+        <p class="small" style="margin-bottom:6px">Please return these to avoid penalties.</p>
+        {% for item in overdue_items %}
+            <div class="small">
+                <span class="strong">{{ item.book.title }}</span>
+                <span class="text-secondary">— was due {{ item.due_date.strftime('%b %d, %Y') }}
+                ({{ item.due_label }})</span>
+            </div>
+        {% endfor %}
+    </div>
 </div>
 {% endif %}
 
-<!-- Stats Cards -->
-<div class="row g-3 mb-4">
-    <div class="col-md-4">
-        <div class="card border-primary h-100">
-            <div class="card-body text-center">
-                <h1 class="display-6 text-primary">{{ active_borrowings|length }}</h1>
-                <p class="card-text text-muted mb-0">Currently Borrowed</p>
-            </div>
-        </div>
+<div class="grid grid-stats" style="margin-bottom:16px">
+    <div class="stat stat-accent">
+        <div class="stat-top">{{ icon('book', class='icon-sm') }} Borrowed</div>
+        <div class="stat-value">{{ active_borrowings|length }}</div>
+        <div class="stat-note">of {{ config.MAX_ACTIVE_LOANS }} allowed</div>
     </div>
-    <div class="col-md-4">
-        <div class="card border-warning h-100">
-            <div class="card-body text-center">
-                <h1 class="display-6 text-warning">{{ overdue_count }}</h1>
-                <p class="card-text text-muted mb-0">Overdue</p>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card border-info h-100">
-            <div class="card-body text-center">
-                <h1 class="display-6 text-info">{{ active_reservations }}</h1>
-                <p class="card-text text-muted mb-0">Active Reservations</p>
-            </div>
-        </div>
-    </div>
+    <a class="stat {{ 'stat-red' if overdue_count else '' }}" href="{{ url_for('member.borrowing_history') }}">
+        <div class="stat-top">{{ icon('warning', class='icon-sm') }} Overdue</div>
+        <div class="stat-value">{{ overdue_count }}</div>
+        <div class="stat-note">{% if overdue_count %}Return as soon as possible{% else %}Nothing overdue{% endif %}</div>
+    </a>
+    <a class="stat stat-teal" href="{{ url_for('member.reservations') }}">
+        <div class="stat-top">{{ icon('calendar-check', class='icon-sm') }} Reservations</div>
+        <div class="stat-value">{{ active_reservations }}</div>
+        <div class="stat-note">Waiting in the queue</div>
+    </a>
 </div>
 
-<div class="row g-4">
-    <!-- Current Loans -->
-    <div class="col-md-7">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0"><i class="bi bi-book"></i> Currently Borrowed</h5>
-                <a href="{{ url_for('member.search') }}" class="btn btn-sm btn-primary">
-                    <i class="bi bi-search"></i> Search Books
-                </a>
-            </div>
-            <div class="card-body p-0">
-                {% if active_borrowings %}
-                <div class="list-group list-group-flush">
+<div class="split">
+    <section class="panel">
+        <div class="panel-head">
+            <h2>Currently Borrowed</h2>
+            <span class="spacer"></span>
+            <span class="badge badge-count">{{ active_borrowings|length }}</span>
+        </div>
+        <div class="panel-body flush">
+            {% if active_borrowings %}
+                <div class="rows">
                     {% for b in active_borrowings %}
-                    <div class="list-group-item {% if b.due_date < now %}list-group-item-danger{% endif %}">
-                        <div class="d-flex w-100 justify-content-between">
-                            <h6 class="mb-1">{{ b.book.title }}</h6>
-                            <small>
-                                {% set days = (b.due_date - now).days %}
-                                {% if days < 0 %}
-                                    <span class="text-danger fw-bold">{{ days|abs }} day(s) overdue</span>
-                                {% elif days == 0 %}
-                                    <span class="text-warning fw-bold">Due today</span>
-                                {% elif days <= 3 %}
-                                    <span class="text-warning">{{ days }} day(s) left</span>
-                                {% else %}
-                                    <span class="text-success">{{ days }} day(s) left</span>
-                                {% endif %}
-                            </small>
+                    <div class="row-item {{ 'is-alert' if b.due_state == 'overdue' }}">
+                        <div class="row-main">
+                            <div class="row-title">{{ b.book.title }}</div>
+                            <div class="row-sub">
+                                {{ b.book.author }} · Due {{ b.due_date.strftime('%b %d, %Y') }}
+                            </div>
                         </div>
-                        <small class="text-muted">
-                            {{ b.book.author }} &middot;
-                            Due: {{ b.due_date.strftime('%b %d, %Y') }}
-                        </small>
-                    </div>
-                    {% endfor %}
-                </div>
-                {% else %}
-                <div class="p-4 text-center text-muted">
-                    <i class="bi bi-book" style="font-size: 2rem;"></i>
-                    <p class="mt-2">You have no books currently borrowed.</p>
-                    <a href="{{ url_for('member.search') }}" class="btn btn-primary">Browse Books</a>
-                </div>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-
-    <!-- Quick Links -->
-    <div class="col-md-5">
-        <div class="card mb-3">
-            <div class="card-header">
-                <h5 class="mb-0"><i class="bi bi-lightning-fill"></i> Quick Links</h5>
-            </div>
-            <div class="card-body">
-                <div class="d-grid gap-2">
-                    <a href="{{ url_for('member.search') }}" class="btn btn-outline-primary text-start">
-                        <i class="bi bi-search"></i> Search &amp; Borrow Books
-                    </a>
-                    <a href="{{ url_for('member.borrowing_history') }}" class="btn btn-outline-info text-start">
-                        <i class="bi bi-clock-history"></i> My Borrowing History
-                    </a>
-                    <a href="{{ url_for('member.reservations') }}" class="btn btn-outline-secondary text-start">
-                        <i class="bi bi-calendar-check"></i> My Reservations
-                    </a>
-                </div>
-            </div>
-        </div>
-
-        <!-- Recent History -->
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0"><i class="bi bi-clock"></i> Recent Activity</h5>
-            </div>
-            <div class="card-body p-0">
-                {% if recent_history %}
-                <div class="list-group list-group-flush">
-                    {% for b in recent_history[:3] %}
-                    <div class="list-group-item">
-                        <h6 class="mb-1">{{ b.book.title }}</h6>
-                        <small class="text-muted">
-                            {% if b.return_date %}
-                                Returned {{ b.return_date.strftime('%b %d') }}
+                        <div class="row-side">
+                            {% if b.due_state == 'overdue' %}
+                                <span class="badge badge-red">{{ b.due_label }}</span>
+                            {% elif b.due_state == 'today' %}
+                                <span class="badge badge-orange">{{ b.due_label }}</span>
+                            {% elif b.due_state == 'soon' %}
+                                <span class="badge badge-orange">{{ b.due_label }}</span>
                             {% else %}
-                                Borrowed {{ b.borrow_date.strftime('%b %d') }}
+                                <span class="badge badge-green">{{ b.due_label }}</span>
                             {% endif %}
-                        </small>
+                        </div>
                     </div>
                     {% endfor %}
                 </div>
-                {% else %}
-                <div class="p-3 text-center text-muted">
-                    <small>No activity yet.</small>
+            {% else %}
+                <div class="empty">
+                    {{ icon('book', class='icon-xl') }}
+                    <h3>No books on loan</h3>
+                    <p>Browse the collection to find your next read.</p>
+                    <a href="{{ url_for('member.search') }}" class="btn btn-primary">{{ icon('search') }} Browse Books</a>
                 </div>
-                {% endif %}
-            </div>
+            {% endif %}
         </div>
-    </div>
+    </section>
+
+    <section class="panel">
+        <div class="panel-head"><h2>Recent Returns</h2></div>
+        <div class="panel-body flush">
+            {% if recent_returns %}
+                <div class="rows">
+                    {% for b in recent_returns %}
+                    <div class="row-item">
+                        <div class="row-main">
+                            <div class="row-title">{{ b.book.title }}</div>
+                            <div class="row-sub">Returned {{ b.return_date.strftime('%b %d, %Y') }}</div>
+                        </div>
+                        {{ icon('check-circle', class='icon-sm text-green') }}
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="empty" style="padding:28px 16px">
+                    {{ icon('archive', class='icon-lg') }}
+                    <p class="small">Books you return will appear here.</p>
+                </div>
+            {% endif %}
+        </div>
+    </section>
 </div>
 {% endblock %}

@@ -1,74 +1,49 @@
 {% extends "base.html" %}
+{% from "_icons.html" import icon %}
 
 {% block title %}Library Management System{% endblock %}
 
 {% block content %}
-<div class="px-4 py-5 my-5 text-center">
-    <i class="bi bi-book display-1 text-primary"></i>
-    <h1 class="display-5 fw-bold">Library Management System</h1>
-    <div class="col-lg-6 mx-auto">
-        <p class="lead mb-4">
-            Anthropology Department Library — manage book cataloguing, borrowing, 
-            and reservations with ease. Librarians can oversee the collection, 
-            while members can browse, borrow, and reserve books.
-        </p>
-        <div class="d-grid gap-2 d-sm-flex justify-content-sm-center">
-            {% if current_user.is_authenticated %}
-                <a href="{{ url_for('member.dashboard') }}" class="btn btn-primary btn-lg px-4 gap-3">
-                    <i class="bi bi-speedometer2"></i> Go to Dashboard
-                </a>
-            {% else %}
-                <a href="{{ url_for('auth.login') }}" class="btn btn-primary btn-lg px-4 gap-3">
-                    <i class="bi bi-box-arrow-in-right"></i> Login
-                </a>
-                <a href="{{ url_for('auth.register') }}" class="btn btn-outline-secondary btn-lg px-4">
-                    <i class="bi bi-person-plus"></i> Register
-                </a>
-            {% endif %}
-        </div>
+<div class="hero">
+    <div class="hero-mark">{{ icon('book', class='icon-xl') }}</div>
+    <h1>Library Management System</h1>
+    <p>
+        Anthropology Department Library. Browse and borrow from the collection,
+        reserve titles that are out, and keep track of what's due — with a
+        full cataloguing and circulation desk for librarians.
+    </p>
+    <div class="hero-actions">
+        {% if current_user.is_authenticated %}
+            <a href="{{ url_for('member.dashboard') if not current_user.is_admin else url_for('admin.dashboard') }}"
+               class="btn btn-primary btn-lg">{{ icon('gauge') }} Open Library</a>
+        {% else %}
+            <a href="{{ url_for('auth.login') }}" class="btn btn-primary btn-lg">{{ icon('login') }} Sign In</a>
+            <a href="{{ url_for('auth.register') }}" class="btn btn-lg">{{ icon('person-plus') }} Create Account</a>
+        {% endif %}
     </div>
 </div>
 
-<hr class="my-5">
-
-<div class="row g-4">
-    <div class="col-md-4">
-        <div class="card h-100 border-primary">
-            <div class="card-body text-center">
-                <i class="bi bi-journal-check display-6 text-primary"></i>
-                <h5 class="card-title mt-3">Catalogue Management</h5>
-                <p class="card-text text-muted">
-                    Librarians can add, edit, search, and organize books with detailed 
-                    metadata including publisher, year, and descriptions.
-                </p>
-            </div>
+<div class="grid grid-cards" style="max-width:1000px;margin:0 auto 40px">
+    <div class="feature">
+        <div class="feature-icon" style="background:var(--accent-soft);color:var(--accent)">
+            {{ icon('books', class='icon-lg') }}
         </div>
+        <h3>Catalogue</h3>
+        <p>Search by title, author, ISBN, or category. Librarians manage the collection with full metadata — publisher, year, and description.</p>
     </div>
-    <div class="col-md-4">
-        <div class="card h-100 border-success">
-            <div class="card-body text-center">
-                <i class="bi bi-arrow-left-right display-6 text-success"></i>
-                <h5 class="card-title mt-3">Borrowing &amp; Returns</h5>
-                <p class="card-text text-muted">
-                    Members borrow books for 14 days with automatic due-date tracking. 
-                    Librarians process returns with a single click. Overdue items are 
-                    clearly flagged.
-                </p>
-            </div>
+    <div class="feature">
+        <div class="feature-icon" style="background:var(--green-soft);color:var(--green)">
+            {{ icon('swap', class='icon-lg') }}
         </div>
+        <h3>Borrowing &amp; Returns</h3>
+        <p>Fourteen-day loans with clear due-date tracking. Overdue items are flagged, and returns are processed in a single click.</p>
     </div>
-    <div class="col-md-4">
-        <div class="card h-100 border-warning">
-            <div class="card-body text-center">
-                <i class="bi bi-calendar-plus display-6 text-warning"></i>
-                <h5 class="card-title mt-3">Reservations</h5>
-                <p class="card-text text-muted">
-                    When all copies are out, members can reserve books. Librarians 
-                    process the queue: reservations are auto-fulfilled when copies 
-                    become available.
-                </p>
-            </div>
+    <div class="feature">
+        <div class="feature-icon" style="background:var(--orange-soft);color:var(--orange)">
+            {{ icon('calendar-plus', class='icon-lg') }}
         </div>
+        <h3>Reservations</h3>
+        <p>When every copy is out, join the queue. Reservations are fulfilled automatically as copies come back to the shelf.</p>
     </div>
 </div>
 {% endblock %}

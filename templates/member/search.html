@@ -1,139 +1,146 @@
 {% extends "base.html" %}
+{% from "_icons.html" import icon %}
 
-{% block title %}Search Books{% endblock %}
+{% block title %}Browse{% endblock %}
+{% block heading %}Browse the Collection{% endblock %}
+{% block subheading %}
+    <p class="toolbar-sub">
+        {% if search_term %}
+            {{ pagination.total }} result{{ 's' if pagination.total != 1 }} for "{{ search_term }}"
+        {% else %}
+            {{ pagination.total }} title{{ 's' if pagination.total != 1 }} in the library
+        {% endif %}
+    </p>
+{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h2><i class="bi bi-search"></i> Search Books</h2>
-</div>
-
-<!-- Search Form -->
-<div class="card mb-4">
-    <div class="card-body">
-        <form method="GET" action="{{ url_for('member.search') }}" id="search-form">
-            <div class="row g-2">
-                <div class="col-md-2">
-                    <select class="form-select" name="type">
-                        <option value="title" {% if search_type == 'title' %}selected{% endif %}>Title</option>
-                        <option value="author" {% if search_type == 'author' %}selected{% endif %}>Author</option>
-                        <option value="isbn" {% if search_type == 'isbn' %}selected{% endif %}>ISBN</option>
-                        <option value="category" {% if search_type == 'category' %}selected{% endif %}>Category</option>
-                    </select>
-                </div>
-                <div class="col-md-8">
-                    <input type="text" class="form-control" name="q" placeholder="Search by title, author, ISBN, or category..." value="{{ search_term }}">
-                </div>
-                <div class="col-md-2">
-                    <button class="btn btn-primary w-100" type="submit">
-                        <i class="bi bi-search"></i> Search
-                    </button>
-                </div>
+<form method="GET" action="{{ url_for('member.search') }}" class="panel" style="margin-bottom:16px">
+    <div class="panel-body">
+        <div class="searchbar">
+            <div class="field" style="flex:none;width:150px">
+                <label class="visually-hidden" for="type">Search in</label>
+                <select id="type" name="type">
+                    <option value="all" {% if search_type == 'all' %}selected{% endif %}>All fields</option>
+                    <option value="title" {% if search_type == 'title' %}selected{% endif %}>Title</option>
+                    <option value="author" {% if search_type == 'author' %}selected{% endif %}>Author</option>
+                    <option value="isbn" {% if search_type == 'isbn' %}selected{% endif %}>ISBN</option>
+                    <option value="category" {% if search_type == 'category' %}selected{% endif %}>Category</option>
+                </select>
             </div>
-        </form>
-    </div>
-</div>
-
-<!-- Results -->
-{% if books %}
-    <div class="row row-cols-1 row-cols-md-2 g-3">
-        {% for book in books %}
-        <div class="col">
-            <div class="card h-100 {% if not book.is_available() and book.can_reserve() %}border-warning{% elif book.is_available() %}border-success{% else %}border-secondary{% endif %}">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <h5 class="card-title mb-1">{{ book.title }}</h5>
-                        {% if book.publication_year %}
-                            <small class="text-muted">({{ book.publication_year }})</small>
-                        {% endif %}
-                    </div>
-                    <h6 class="card-subtitle mb-2 text-muted">{{ book.author }}</h6>
-                    <p class="card-text small">
-                        <span class="badge bg-secondary">{{ book.category or 'Uncategorized' }}</span>
-                        <span class="badge bg-info">ISBN: {{ book.isbn }}</span>
-                    </p>
-                    {% if book.description %}
-                        <p class="card-text small text-muted">{{ book.description[:150] }}{% if book.description|length > 150 %}...{% endif %}</p>
-                    {% endif %}
-                    <p class="card-text">
-                        {% if book.available_quantity > 0 %}
-                            <span class="text-success fw-bold">
-                                <i class="bi bi-check-circle-fill"></i> {{ book.available_quantity }}/{{ book.quantity }} available
-                            </span>
-                        {% elif book.can_reserve() %}
-                            <span class="text-warning fw-bold">
-                                <i class="bi bi-clock"></i> All borrowed — reserve to queue
-                            </span>
-                        {% else %}
-                            <span class="text-danger fw-bold">
-                                <i class="bi bi-x-circle-fill"></i> Unavailable
-                            </span>
-                        {% endif %}
-                    </p>
-                </div>
-                <div class="card-footer bg-transparent">
-                    {% if book.is_available() %}
-                        <form action="{{ url_for('member.borrow_book', book_id=book.id) }}" method="POST" class="d-inline">
-                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <button type="submit" class="btn btn-sm btn-success borrow-btn">
-                                <i class="bi bi-bookmark-check"></i> Borrow
-                            </button>
-                        </form>
-                        <small class="text-muted ms-2">Due in 14 days</small>
-                    {% elif book.can_reserve() %}
-                        <form action="{{ url_for('member.reserve_book', book_id=book.id) }}" method="POST" class="d-inline">
-                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <button type="submit" class="btn btn-sm btn-warning">
-                                <i class="bi bi-calendar-plus"></i> Reserve
-                            </button>
-                        </form>
-                        <small class="text-muted ms-2">3-day hold once claimed</small>
-                    {% else %}
-                        <button class="btn btn-sm btn-secondary" disabled>
-                            <i class="bi bi-lock"></i> Unavailable
-                        </button>
-                    {% endif %}
-                </div>
+            <div class="searchbar-field">
+                <label class="visually-hidden" for="q">Search the collection</label>
+                {{ icon('search', class='icon-sm') }}
+                <input type="search" id="q" name="q" value="{{ search_term }}" data-search-input
+                       placeholder="Search the collection…">
             </div>
+            <button class="btn btn-primary" type="submit">Search</button>
+            {% if search_term %}
+                <a href="{{ url_for('member.search') }}" class="btn">Clear</a>
+            {% endif %}
         </div>
+    </div>
+</form>
+
+{% if books %}
+    <div class="grid grid-cards">
+        {% for book in books %}
+        {% set my_loan = my_loans.get(book.id) %}
+        {% set my_res = my_reservations.get(book.id) %}
+        <article class="book">
+            <div class="book-body">
+                <h2 class="book-title">{{ book.title }}</h2>
+                <p class="book-author">
+                    {{ book.author }}{% if book.publication_year %} · {{ book.publication_year }}{% endif %}
+                </p>
+                <div class="book-meta">
+                    <span class="badge">{{ book.category or 'Uncategorised' }}</span>
+                    <span class="badge mono">{{ book.isbn }}</span>
+                </div>
+                {% if book.description %}
+                    <p class="book-desc">{{ book.description }}</p>
+                {% endif %}
+
+                <div class="book-status">
+                    {% if my_loan %}
+                        {{ icon('bookmark', class='icon-sm text-accent') }}
+                        <span class="text-accent">You have this — due {{ my_loan.due_date.strftime('%b %d') }}</span>
+                    {% elif book.available_quantity > 0 %}
+                        {{ icon('check-circle', class='icon-sm text-green') }}
+                        <span class="text-green">{{ book.available_quantity }} of {{ book.quantity }} available</span>
+                    {% elif my_res %}
+                        {{ icon('calendar-check', class='icon-sm text-orange') }}
+                        <span class="text-orange">Reserved — {{ my_res.expiry_label|lower }}</span>
+                    {% elif book.can_reserve() %}
+                        {{ icon('clock', class='icon-sm text-orange') }}
+                        <span class="text-orange">All copies out</span>
+                    {% else %}
+                        {{ icon('x-circle', class='icon-sm text-secondary') }}
+                        <span class="text-secondary">Unavailable</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="book-foot">
+                {% if my_loan %}
+                    <span class="badge badge-accent">{{ icon('check', class='icon-sm') }} On loan to you</span>
+                {% elif book.available_quantity > 0 %}
+                    <form action="{{ url_for('member.borrow_book', book_id=book.id) }}" method="POST"
+                          data-confirm="This book will be due back in {{ config.LOAN_PERIOD_DAYS }} days."
+                          data-confirm-title="Borrow “{{ book.title }}”?"
+                          data-confirm-label="Borrow">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-primary btn-sm">{{ icon('bookmark', class='icon-sm') }} Borrow</button>
+                    </form>
+                    <span class="hint">Due in {{ config.LOAN_PERIOD_DAYS }} days</span>
+                {% elif my_res %}
+                    <span class="badge badge-orange">{{ icon('calendar-check', class='icon-sm') }} In your queue</span>
+                    <span class="hint">{{ my_res.expiry_label }}</span>
+                {% elif book.can_reserve() %}
+                    <form action="{{ url_for('member.reserve_book', book_id=book.id) }}" method="POST">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-sm">{{ icon('calendar-plus', class='icon-sm') }} Reserve</button>
+                    </form>
+                    <span class="hint">{{ config.RESERVATION_HOLD_DAYS }}-day hold once ready</span>
+                {% else %}
+                    <button class="btn btn-sm" disabled>Unavailable</button>
+                {% endif %}
+            </div>
+        </article>
         {% endfor %}
     </div>
 
-    {% if pagination and pagination.pages > 1 %}
-    <nav class="mt-4">
-        <ul class="pagination justify-content-center">
-            <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
-                <a class="page-link" href="{{ url_for('member.search', page=pagination.prev_num, q=search_term, type=search_type) if pagination.has_prev else '#' }}">Previous</a>
-            </li>
-            {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
-                {% if page_num %}
-                    <li class="page-item {% if page_num == pagination.page %}active{% endif %}">
-                        <a class="page-link" href="{{ url_for('member.search', page=page_num, q=search_term, type=search_type) }}">{{ page_num }}</a>
-                    </li>
+    {% if pagination.pages > 1 %}
+    <nav class="pagination" aria-label="Search results pages">
+        {% if pagination.has_prev %}
+            <a href="{{ url_for('member.search', page=pagination.prev_num, q=search_term, type=search_type) }}">Previous</a>
+        {% else %}<span class="is-disabled">Previous</span>{% endif %}
+        {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+            {% if p %}
+                {% if p == pagination.page %}
+                    <span class="is-current" aria-current="page">{{ p }}</span>
                 {% else %}
-                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                    <a href="{{ url_for('member.search', page=p, q=search_term, type=search_type) }}">{{ p }}</a>
                 {% endif %}
-            {% endfor %}
-            <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
-                <a class="page-link" href="{{ url_for('member.search', page=pagination.next_num, q=search_term, type=search_type) if pagination.has_next else '#' }}">Next</a>
-            </li>
-        </ul>
+            {% else %}<span class="is-disabled">…</span>{% endif %}
+        {% endfor %}
+        {% if pagination.has_next %}
+            <a href="{{ url_for('member.search', page=pagination.next_num, q=search_term, type=search_type) }}">Next</a>
+        {% else %}<span class="is-disabled">Next</span>{% endif %}
     </nav>
     {% endif %}
-{% elif search_term %}
-    <div class="alert alert-info">
-        <i class="bi bi-info-circle-fill"></i>
-        No books found matching "{{ search_term }}" by {{ search_type }}.
-        <a href="{{ url_for('member.search') }}" class="alert-link">Clear search</a>
-    </div>
-{% else %}
-    <div class="text-center text-muted py-5">
-        <i class="bi bi-book" style="font-size: 3rem;"></i>
-        <h5 class="mt-3">Browse the Library Collection</h5>
-        <p>Use the search bar above to find books by title, author, ISBN, or category.</p>
-    </div>
-{% endif %}
-{% endblock %}
 
-{% block scripts %}
-<script src="{{ url_for('static', filename='js/member.js') }}"></script>
+{% elif search_term %}
+    <div class="panel"><div class="empty">
+        {{ icon('search', class='icon-xl') }}
+        <h3>No matches for "{{ search_term }}"</h3>
+        <p>Try a different term, or search across all fields.</p>
+        <a href="{{ url_for('member.search') }}" class="btn">Clear search</a>
+    </div></div>
+{% else %}
+    <div class="panel"><div class="empty">
+        {{ icon('books', class='icon-xl') }}
+        <h3>The collection is empty</h3>
+        <p>No books have been catalogued yet. Check back soon.</p>
+    </div></div>
+{% endif %}
 {% endblock %}

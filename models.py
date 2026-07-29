@@ -82,10 +82,58 @@ class Borrowing(db.Model):
 
     @property
     def days_until_due(self):
-        if self.status != 'active':
+        """Whole days until the due date: positive = time remains, 0 = due
+        today, negative = overdue.
+
+        Compared on calendar dates rather than timestamps. Due dates are
+        day-granular to a borrower, so the time-of-day component must not
+        influence the count -- and subtracting timestamps in the two possible
+        orders gives answers that differ by one, because timedelta.days floors
+        toward negative infinity. Deriving every label from this one property
+        keeps those numbers consistent everywhere they are shown.
+        """
+        if self.due_date is None:
             return None
-        delta = (self.due_date - datetime.utcnow()).days
-        return delta
+        return (self.due_date.date() - datetime.utcnow().date()).days
+
+    @property
+    def days_overdue(self):
+        """Whole days past the due date; 0 when not overdue."""
+        days = self.days_until_due
+        if days is None or days >= 0:
+            return 0
+        return -days
+
+    @property
+    def due_state(self):
+        """Single label driving colour and copy: returned | overdue | today |
+        soon | ok."""
+        if self.status == 'returned':
+            return 'returned'
+        days = self.days_until_due
+        if days is None:
+            return 'ok'
+        if days < 0:
+            return 'overdue'
+        if days == 0:
+            return 'today'
+        if days <= 3:
+            return 'soon'
+        return 'ok'
+
+    @property
+    def due_label(self):
+        """Human phrasing of due_state, e.g. '3 days left', 'Due today'."""
+        state = self.due_state
+        if state == 'returned':
+            return 'Returned'
+        days = self.days_until_due
+        if state == 'overdue':
+            n = -days
+            return f"{n} day{'s' if n != 1 else ''} overdue"
+        if state == 'today':
+            return 'Due today'
+        return f"{days} day{'s' if days != 1 else ''} left"
 
     def mark_returned(self):
         self.status = 'returned'
@@ -108,6 +156,25 @@ class Reservation(db.Model):
         'reservations', lazy='dynamic', cascade='all, delete-orphan'))
     book = db.relationship('Book', backref=db.backref(
         'reservations', lazy='dynamic', cascade='all, delete-orphan'))
+
+    @property
+    def days_until_expiry(self):
+        """Whole days until this reservation expires (calendar-date based,
+        matching Borrowing.days_until_due)."""
+        if self.expiration_date is None:
+            return None
+        return (self.expiration_date.date() - datetime.utcnow().date()).days
+
+    @property
+    def expiry_label(self):
+        days = self.days_until_expiry
+        if days is None:
+            return ''
+        if days < 0:
+            return 'Expired'
+        if days == 0:
+            return 'Expires today'
+        return f"{days} day{'s' if days != 1 else ''} left"
 
     @classmethod
     def get_active_reservation(cls, book_id):

@@ -18,7 +18,8 @@ def test_reservations_page_renders_with_active_reservation(client, db, member, b
     login(client, 'member', 'memberpass')
     resp = client.get('/reservations')
     assert resp.status_code == 200
-    assert b'day(s) left' in resp.data
+    assert book.title.encode() in resp.data
+    assert b'3 days left' in resp.data  # from Reservation.expiry_label
 
 
 # ---- §1.2 / §1.3: deleting records with history no longer 500s ---------------
@@ -75,6 +76,79 @@ def test_edit_book_duplicate_isbn(client, db, admin):
                        follow_redirects=True)
     assert resp.status_code == 200
     assert Book.query.get(b2.id).isbn == '222'  # unchanged
+
+
+# ---- UI/UX §1: due-date arithmetic is self-consistent ------------------------
+
+def test_due_labels_agree_in_both_directions(db, member, book):
+    """The old code subtracted timestamps in opposite orders in different
+    templates, so one loan rendered as both '7 days overdue' and '8 days
+    overdue'. Every label now derives from one calendar-date property."""
+    now = datetime.utcnow()
+    b = Borrowing(user_id=member.id, book_id=book.id,
+                  due_date=now - timedelta(days=7, hours=6), status='active')
+    db.session.add(b)
+    db.session.commit()
+
+    assert b.days_until_due == -7
+    assert b.days_overdue == 7
+    assert b.due_state == 'overdue'
+    assert b.due_label == '7 days overdue'
+
+
+def test_due_today_is_not_reported_as_overdue_zero(db, member, book):
+    """A book due earlier today used to render '0 day(s) overdue'."""
+    now = datetime.utcnow()
+    b = Borrowing(user_id=member.id, book_id=book.id,
+                  due_date=now - timedelta(hours=2), status='active')
+    db.session.add(b)
+    db.session.commit()
+
+    assert b.days_until_due == 0
+    assert b.due_state == 'today'
+    assert b.due_label == 'Due today'
+
+
+def test_days_left_is_not_short_by_one(db, member, book):
+    """A book due in 1d18h used to read '1 day(s) left'; by calendar date it
+    is due the day after tomorrow, i.e. 2 days."""
+    now = datetime.utcnow()
+    b = Borrowing(user_id=member.id, book_id=book.id,
+                  due_date=now + timedelta(days=1, hours=18), status='active')
+    db.session.add(b)
+    db.session.commit()
+
+    assert b.days_until_due == 2
+    assert b.due_label == '2 days left'
+
+
+def test_singular_day_is_not_pluralised(db, member, book):
+    b = Borrowing(user_id=member.id, book_id=book.id,
+                  due_date=datetime.utcnow() + timedelta(days=1, hours=2),
+                  status='active')
+    db.session.add(b)
+    db.session.commit()
+    assert b.due_label == '1 day left'
+
+
+# ---- UI/UX §5: the overdue filter actually filters to overdue ---------------
+
+def test_overdue_filter_excludes_on_time_loans(client, db, admin, member, book):
+    now = datetime.utcnow()
+    other = Book(title='On Time', author='A', isbn='555', quantity=1, available_quantity=1)
+    db.session.add(other)
+    db.session.commit()
+    db.session.add(Borrowing(user_id=member.id, book_id=book.id,
+                             due_date=now - timedelta(days=3), status='active'))
+    db.session.add(Borrowing(user_id=member.id, book_id=other.id,
+                             due_date=now + timedelta(days=10), status='active'))
+    db.session.commit()
+
+    login(client, 'admin', 'adminpass')
+    resp = client.get('/admin/borrowing-history?status=overdue')
+    assert resp.status_code == 200
+    assert book.title.encode() in resp.data
+    assert b'On Time' not in resp.data
 
 
 # ---- §2.2: no duplicate active borrowing of the same title -------------------
