@@ -1,93 +1,85 @@
 {% extends "base.html" %}
+{% from "_icons.html" import icon %}
 
-{% block title %}Borrowing History{% endblock %}
+{% block title %}Circulation{% endblock %}
+{% block heading %}Circulation{% endblock %}
+{% block subheading %}
+    <p class="toolbar-sub">{{ pagination.total }} record{{ 's' if pagination.total != 1 }}</p>
+{% endblock %}
+
+{% block toolbar %}
+<div class="segmented" role="group" aria-label="Filter by status">
+    <a href="{{ url_for('admin.borrowing_history') }}"
+       {% if not filter_status %}aria-current="true"{% endif %}>All</a>
+    <a href="{{ url_for('admin.borrowing_history', status='active') }}"
+       {% if filter_status == 'active' %}aria-current="true"{% endif %}>On loan</a>
+    <a href="{{ url_for('admin.borrowing_history', status='overdue') }}"
+       {% if filter_status == 'overdue' %}aria-current="true"{% endif %}>Overdue</a>
+    <a href="{{ url_for('admin.borrowing_history', status='returned') }}"
+       {% if filter_status == 'returned' %}aria-current="true"{% endif %}>Returned</a>
+</div>
+{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h2><i class="bi bi-clock-history"></i> Borrowing History</h2>
-    <span class="badge bg-primary">{{ pagination.total }} records</span>
-</div>
-
-<!-- Status Filter -->
-<div class="mb-3">
-    <div class="btn-group" role="group">
-        <a href="{{ url_for('admin.borrowing_history') }}"
-           class="btn btn-sm {% if not filter_status %}btn-dark{% else %}btn-outline-secondary{% endif %}">
-            All
-        </a>
-        <a href="{{ url_for('admin.borrowing_history', status='active') }}"
-           class="btn btn-sm {% if filter_status == 'active' %}btn-primary{% else %}btn-outline-primary{% endif %}">
-            Active
-        </a>
-        <a href="{{ url_for('admin.borrowing_history', status='returned') }}"
-           class="btn btn-sm {% if filter_status == 'returned' %}btn-success{% else %}btn-outline-success{% endif %}">
-            Returned
-        </a>
-    </div>
-</div>
-
-<!-- Borrowing Table -->
-<div class="card">
-    <div class="card-body p-0">
+<section class="panel">
+    <div class="panel-body flush">
         {% if pagination.items %}
-        <div class="table-responsive">
-            <table class="table table-hover mb-0">
-                <thead class="table-light">
+        <div class="table-wrap">
+            <table class="data stacked">
+                <caption class="visually-hidden">Loan records, most recent first</caption>
+                <thead>
                     <tr>
-                        <th>Book</th>
-                        <th>Member</th>
-                        <th>Borrowed</th>
-                        <th>Due Date</th>
-                        <th>Returned</th>
-                        <th>Status</th>
-                        <th>Action</th>
+                        <th scope="col">Book</th>
+                        <th scope="col">Member</th>
+                        <th scope="col">Borrowed</th>
+                        <th scope="col">Due</th>
+                        <th scope="col">Returned</th>
+                        <th scope="col">Status</th>
+                        <th scope="col"><span class="visually-hidden">Actions</span></th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for borrowing in pagination.items %}
-                    <tr class="{% if not borrowing.return_date and borrowing.due_date < now %}table-danger{% endif %}">
-                        <td>
-                            <a href="{{ url_for('admin.edit_book', id=borrowing.book.id) }}" class="text-decoration-none">
-                                {{ borrowing.book.title }}
-                            </a>
+                    {% for b in pagination.items %}
+                    <tr class="{{ 'row-alert' if b.due_state == 'overdue' }}">
+                        <td class="cell-primary" data-label="Book">{{ b.book.title }}</td>
+                        <td data-label="Member">
+                            <a href="{{ url_for('admin.member_detail', id=b.user.id) }}">{{ b.user.username }}</a>
                         </td>
-                        <td>{{ borrowing.user.username }}</td>
-                        <td>{{ borrowing.borrow_date.strftime('%b %d, %Y') }}</td>
-                        <td>
-                            {{ borrowing.due_date.strftime('%b %d, %Y') }}
-                            {% if borrowing.status == 'active' %}
-                                <br><small class="text-muted">
-                                    {% set days = (borrowing.due_date - now).days %}
-                                    {% if days < 0 %}
-                                        <span class="text-danger fw-bold">{{ days|abs }} day(s) overdue</span>
-                                    {% elif days == 0 %}
-                                        <span class="text-warning fw-bold">Due today</span>
-                                    {% else %}
-                                        <span class="text-success">{{ days }} day(s) left</span>
-                                    {% endif %}
-                                </small>
+                        <td data-label="Borrowed">{{ b.borrow_date.strftime('%b %d, %Y') }}</td>
+                        <td data-label="Due">
+                            {{ b.due_date.strftime('%b %d, %Y') }}
+                            {% if b.status == 'active' %}
+                                <div class="xs {{ 'text-red' if b.due_state == 'overdue' else ('text-orange' if b.due_state in ['today','soon'] else 'text-secondary') }}">
+                                    {{ b.due_label }}
+                                </div>
                             {% endif %}
                         </td>
-                        <td>{{ borrowing.return_date.strftime('%b %d, %Y') if borrowing.return_date else '-' }}</td>
-                        <td>
-                            {% if borrowing.status == 'returned' %}
-                                <span class="badge bg-success">Returned</span>
-                            {% elif borrowing.due_date < now %}
-                                <span class="badge bg-danger">Overdue</span>
+                        <td data-label="Returned">
+                            {% if b.return_date %}{{ b.return_date.strftime('%b %d, %Y') }}
+                            {% else %}<span class="text-tertiary">—</span>{% endif %}
+                        </td>
+                        <td data-label="Status">
+                            {% if b.status == 'returned' %}
+                                <span class="badge badge-green">{{ icon('check', class='icon-sm') }} Returned</span>
+                            {% elif b.due_state == 'overdue' %}
+                                <span class="badge badge-red">Overdue</span>
                             {% else %}
-                                <span class="badge bg-primary">Active</span>
+                                <span class="badge badge-accent">On loan</span>
                             {% endif %}
                         </td>
-                        <td>
-                            {% if borrowing.status == 'active' %}
-                                <form action="{{ url_for('admin.return_book', id=borrowing.id) }}" method="POST" class="d-inline">
+                        <td class="cell-actions" data-label="">
+                            {% if b.status == 'active' %}
+                                <form action="{{ url_for('admin.return_book', id=b.id) }}" method="POST"
+                                      data-confirm="“{{ b.book.title }}” will be marked returned and a copy put back on the shelf."
+                                      data-confirm-title="Check this book in?"
+                                      data-confirm-label="Check In">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <button type="submit" class="btn btn-sm btn-success return-btn">
-                                        <i class="bi bi-arrow-return-left"></i> Return
+                                    <button type="submit" class="btn btn-sm btn-success">
+                                        {{ icon('arrow-return', class='icon-sm') }} Check In
                                     </button>
                                 </form>
                             {% else %}
-                                <span class="text-muted">-</span>
+                                <span class="text-tertiary">—</span>
                             {% endif %}
                         </td>
                     </tr>
@@ -96,38 +88,36 @@
             </table>
         </div>
         {% else %}
-        <div class="p-4 text-center text-muted">
-            <i class="bi bi-inbox" style="font-size: 2rem;"></i>
-            <p class="mt-2">No borrowing records found.</p>
+        <div class="empty">
+            {{ icon('inbox', class='icon-xl') }}
+            <h3>Nothing to show</h3>
+            <p>
+                {% if filter_status == 'overdue' %}No books are overdue — everything is on time.
+                {% elif filter_status %}No {{ filter_status }} records.
+                {% else %}No loans have been recorded yet.{% endif %}
+            </p>
+            {% if filter_status %}
+                <a href="{{ url_for('admin.borrowing_history') }}" class="btn">Show all records</a>
+            {% endif %}
         </div>
         {% endif %}
     </div>
-</div>
+</section>
 
-<!-- Pagination -->
 {% if pagination.pages > 1 %}
-<nav class="mt-3">
-    <ul class="pagination justify-content-center">
-        <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
-            <a class="page-link" href="{{ url_for('admin.borrowing_history', page=pagination.prev_num, status=filter_status) if pagination.has_prev else '#' }}">Previous</a>
-        </li>
-        {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
-            {% if page_num %}
-                <li class="page-item {% if page_num == pagination.page %}active{% endif %}">
-                    <a class="page-link" href="{{ url_for('admin.borrowing_history', page=page_num, status=filter_status) }}">{{ page_num }}</a>
-                </li>
-            {% else %}
-                <li class="page-item disabled"><span class="page-link">...</span></li>
-            {% endif %}
-        {% endfor %}
-        <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
-            <a class="page-link" href="{{ url_for('admin.borrowing_history', page=pagination.next_num, status=filter_status) if pagination.has_next else '#' }}">Next</a>
-        </li>
-    </ul>
+<nav class="pagination" aria-label="Circulation pages">
+    {% if pagination.has_prev %}
+        <a href="{{ url_for('admin.borrowing_history', page=pagination.prev_num, status=filter_status) }}">Previous</a>
+    {% else %}<span class="is-disabled">Previous</span>{% endif %}
+    {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+        {% if p %}
+            {% if p == pagination.page %}<span class="is-current" aria-current="page">{{ p }}</span>
+            {% else %}<a href="{{ url_for('admin.borrowing_history', page=p, status=filter_status) }}">{{ p }}</a>{% endif %}
+        {% else %}<span class="is-disabled">…</span>{% endif %}
+    {% endfor %}
+    {% if pagination.has_next %}
+        <a href="{{ url_for('admin.borrowing_history', page=pagination.next_num, status=filter_status) }}">Next</a>
+    {% else %}<span class="is-disabled">Next</span>{% endif %}
 </nav>
 {% endif %}
-{% endblock %}
-
-{% block scripts %}
-<script src="{{ url_for('static', filename='js/admin.js') }}"></script>
 {% endblock %}

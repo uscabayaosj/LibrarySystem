@@ -1,127 +1,169 @@
+{% from "_icons.html" import icon %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Library Borrowing System{% endblock %}</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <meta name="color-scheme" content="light dark">
+    <meta name="theme-color" content="#F6F6F8" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#242427" media="(prefers-color-scheme: dark)">
+    <title>{% block title %}Library{% endblock %} — Library System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+    <script>
+        // Applied before first paint so the correct appearance is never flashed.
+        (function () {
+            try {
+                var v = localStorage.getItem('ls-appearance');
+                if (v === 'light' || v === 'dark') {
+                    document.documentElement.setAttribute('data-appearance', v);
+                }
+            } catch (e) {}
+        })();
+    </script>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container">
-            <a class="navbar-brand" href="{{ url_for('index') }}">
-                <i class="bi bi-book"></i> Library System
-            </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
-                    {% if current_user.is_authenticated %}
-                        {% if current_user.is_admin %}
-                            <li class="nav-item">
-                                <a class="nav-link" href="{{ url_for('admin.dashboard') }}">
-                                    <i class="bi bi-speedometer2"></i> Dashboard
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" href="{{ url_for('admin.books') }}">
-                                    <i class="bi bi-journal"></i> Books
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" href="{{ url_for('admin.members') }}">
-                                    <i class="bi bi-people"></i> Members
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" href="{{ url_for('admin.borrowing_history') }}">
-                                    <i class="bi bi-clock-history"></i> History
-                                </a>
-                            </li>
-                        {% else %}
-                            <li class="nav-item">
-                                <a class="nav-link" href="{{ url_for('member.dashboard') }}">
-                                    <i class="bi bi-speedometer2"></i> Dashboard
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" href="{{ url_for('member.search') }}">
-                                    <i class="bi bi-search"></i> Search
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" href="{{ url_for('member.borrowing_history') }}">
-                                    <i class="bi bi-clock-history"></i> My Books
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" href="{{ url_for('member.reservations') }}">
-                                    <i class="bi bi-calendar-check"></i> Reservations
-                                </a>
-                            </li>
+<a class="skip-link" href="#main">Skip to content</a>
+
+{% if current_user.is_authenticated %}
+{% set is_admin = current_user.is_admin %}
+<div class="app">
+    <div class="scrim" id="scrim"></div>
+
+    <aside class="sidebar" id="sidebar" data-open="false">
+        <div class="sidebar-head">
+            <span class="traffic-lights" aria-hidden="true"><span></span><span></span><span></span></span>
+        </div>
+
+        <a class="sidebar-brand" href="{{ url_for('index') }}">
+            {{ icon('book', class='icon-lg') }} Library
+        </a>
+
+        <nav aria-label="Main">
+            <p class="sidebar-section">{% if is_admin %}Library{% else %}My Library{% endif %}</p>
+            <ul class="sidebar-nav">
+                {% if is_admin %}
+                    <li><a class="sidebar-link" href="{{ url_for('admin.dashboard') }}"
+                           {% if request.endpoint == 'admin.dashboard' %}aria-current="page"{% endif %}>
+                        {{ icon('gauge') }} Dashboard</a></li>
+                    <li><a class="sidebar-link" href="{{ url_for('admin.books') }}"
+                           {% if request.endpoint in ['admin.books', 'admin.edit_book'] %}aria-current="page"{% endif %}>
+                        {{ icon('books') }} Books</a></li>
+                    <li><a class="sidebar-link" href="{{ url_for('admin.members') }}"
+                           {% if request.endpoint in ['admin.members', 'admin.member_detail'] %}aria-current="page"{% endif %}>
+                        {{ icon('people') }} Members</a></li>
+                    <li><a class="sidebar-link" href="{{ url_for('admin.borrowing_history') }}"
+                           {% if request.endpoint == 'admin.borrowing_history' %}aria-current="page"{% endif %}>
+                        {{ icon('clock') }} Circulation</a></li>
+                {% else %}
+                    <li><a class="sidebar-link" href="{{ url_for('member.dashboard') }}"
+                           {% if request.endpoint == 'member.dashboard' %}aria-current="page"{% endif %}>
+                        {{ icon('gauge') }} Overview</a></li>
+                    <li><a class="sidebar-link" href="{{ url_for('member.search') }}"
+                           {% if request.endpoint == 'member.search' %}aria-current="page"{% endif %}>
+                        {{ icon('search') }} Browse</a></li>
+                    <li><a class="sidebar-link" href="{{ url_for('member.borrowing_history') }}"
+                           {% if request.endpoint == 'member.borrowing_history' %}aria-current="page"{% endif %}>
+                        {{ icon('archive') }} My Loans
+                        {% if current_user.active_borrowings %}
+                            <span class="count">{{ current_user.active_borrowings }}</span>
                         {% endif %}
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
-                                <i class="bi bi-person-circle"></i> {{ current_user.username }}
-                            </a>
-                            <ul class="dropdown-menu dropdown-menu-end">
-                                <li><span class="dropdown-item-text text-muted">
-                                    {% if current_user.is_admin %}Librarian{% else %}Member{% endif %}
-                                </span></li>
-                                <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item" href="{{ url_for('auth.logout') }}">
-                                    <i class="bi bi-box-arrow-right"></i> Logout
-                                </a></li>
-                            </ul>
-                        </li>
-                    {% else %}
-                        <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('auth.login') }}"><i class="bi bi-box-arrow-in-right"></i> Login</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('auth.register') }}"><i class="bi bi-person-plus"></i> Register</a>
-                        </li>
-                    {% endif %}
-                </ul>
+                    </a></li>
+                    <li><a class="sidebar-link" href="{{ url_for('member.reservations') }}"
+                           {% if request.endpoint == 'member.reservations' %}aria-current="page"{% endif %}>
+                        {{ icon('calendar-check') }} Reservations
+                        {% if current_user.active_reservations_count %}
+                            <span class="count">{{ current_user.active_reservations_count }}</span>
+                        {% endif %}
+                    </a></li>
+                {% endif %}
+            </ul>
+        </nav>
+
+        <div class="sidebar-foot">
+            <div class="account">
+                <button class="account-btn" id="account-btn" type="button"
+                        aria-expanded="false" aria-haspopup="true" aria-controls="account-menu">
+                    <span class="avatar" aria-hidden="true">{{ current_user.username[0]|upper }}</span>
+                    <span class="account-meta">
+                        <span class="account-name">{{ current_user.username }}</span>
+                        <span class="account-role">{% if is_admin %}Librarian{% else %}Member{% endif %}</span>
+                    </span>
+                    {{ icon('chevron-updown', class='icon-sm chev') }}
+                </button>
+
+                <div class="menu" id="account-menu" data-open="false" role="menu">
+                    <p class="menu-label">Appearance</p>
+                    <button class="menu-item" type="button" role="menuitemradio"
+                            data-appearance-option="auto" aria-checked="true">
+                        {{ icon('auto', class='icon-sm') }} Automatic
+                        <span data-check style="margin-left:auto">{{ icon('check', class='icon-sm') }}</span>
+                    </button>
+                    <button class="menu-item" type="button" role="menuitemradio"
+                            data-appearance-option="light" aria-checked="false">
+                        {{ icon('sun', class='icon-sm') }} Light
+                        <span data-check style="margin-left:auto;visibility:hidden">{{ icon('check', class='icon-sm') }}</span>
+                    </button>
+                    <button class="menu-item" type="button" role="menuitemradio"
+                            data-appearance-option="dark" aria-checked="false">
+                        {{ icon('moon', class='icon-sm') }} Dark
+                        <span data-check style="margin-left:auto;visibility:hidden">{{ icon('check', class='icon-sm') }}</span>
+                    </button>
+                    <div class="menu-sep" role="separator"></div>
+                    <a class="menu-item" href="{{ url_for('auth.logout') }}" role="menuitem">
+                        {{ icon('logout', class='icon-sm') }} Sign Out
+                    </a>
+                </div>
             </div>
         </div>
-    </nav>
+    </aside>
 
-    <div class="container mt-4">
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-                        {% if category == 'success' %}
-                            <i class="bi bi-check-circle-fill"></i>
-                        {% elif category == 'danger' %}
-                            <i class="bi bi-exclamation-triangle-fill"></i>
-                        {% elif category == 'warning' %}
-                            <i class="bi bi-exclamation-circle-fill"></i>
-                        {% elif category == 'info' %}
-                            <i class="bi bi-info-circle-fill"></i>
-                        {% endif %}
-                        {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    </div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
+    <div class="main-col">
+        <header class="toolbar">
+            <button class="btn btn-plain btn-icon sidebar-toggle" id="sidebar-toggle" type="button"
+                    aria-expanded="false" aria-controls="sidebar" aria-label="Show navigation">
+                {{ icon('menu') }}
+            </button>
+            <div>
+                <h1>{% block heading %}{{ self.title() }}{% endblock %}</h1>
+                {% block subheading %}{% endblock %}
+            </div>
+            <div class="toolbar-actions">{% block toolbar %}{% endblock %}</div>
+        </header>
 
-        {% block content %}{% endblock %}
+        <main class="content" id="main">
+            {% include "_flashes.html" %}
+            {% block content %}{% endblock %}
+        </main>
     </div>
+</div>
 
-    <footer class="footer mt-5 py-3 bg-light">
-        <div class="container text-center text-muted">
-            <small>Library Management System &mdash; Anthropology Department</small>
+{% else %}
+<div class="app app-plain">
+    <div class="main-col">
+        <main class="content" id="main">
+            {% include "_flashes.html" %}
+            {% block content_public %}{{ self.content() }}{% endblock %}
+        </main>
+        <footer class="footer">Library Management System — Anthropology Department</footer>
+    </div>
+</div>
+{% endif %}
+
+{# Confirmation sheet — replaces window.confirm() #}
+<div class="sheet-backdrop" id="confirm-sheet" data-open="false"
+     role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+    <div class="sheet">
+        <div class="sheet-icon">{{ icon('warning', class='icon-lg') }}</div>
+        <h2 id="sheet-title" data-sheet-title>Are you sure?</h2>
+        <p data-sheet-body></p>
+        <div class="sheet-actions">
+            <button class="btn" type="button" data-sheet-cancel>Cancel</button>
+            <button class="btn btn-danger" type="button" data-sheet-confirm>Confirm</button>
         </div>
-    </footer>
+    </div>
+</div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="{{ url_for('static', filename='js/common.js') }}"></script>
-    {% block scripts %}{% endblock %}
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+{% block scripts %}{% endblock %}
 </body>
 </html>

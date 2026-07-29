@@ -1,78 +1,79 @@
 {% extends "base.html" %}
+{% from "_icons.html" import icon %}
 
-{% block title %}Manage Members{% endblock %}
+{% block title %}Members{% endblock %}
+{% block heading %}Members{% endblock %}
+{% block subheading %}
+    <p class="toolbar-sub">
+        {% if search %}{{ pagination.total }} match{{ 'es' if pagination.total != 1 }} for "{{ search }}"
+        {% else %}{{ pagination.total }} registered member{{ 's' if pagination.total != 1 }}{% endif %}
+    </p>
+{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h2><i class="bi bi-people"></i> Manage Members</h2>
-    <span class="badge bg-primary">{{ pagination.total }} members</span>
-</div>
-
-<!-- Search -->
-<div class="row mb-3">
-    <div class="col-md-6">
-        <form method="GET" action="{{ url_for('admin.members') }}">
-            <div class="input-group">
-                <input type="text" class="form-control" name="search" placeholder="Search by username or email..." value="{{ search }}">
-                <button class="btn btn-primary" type="submit"><i class="bi bi-search"></i> Search</button>
-                {% if search %}
-                    <a href="{{ url_for('admin.members') }}" class="btn btn-outline-secondary">Clear</a>
-                {% endif %}
-            </div>
-        </form>
+<form method="GET" action="{{ url_for('admin.members') }}" style="margin-bottom:16px;max-width:460px">
+    <div class="searchbar">
+        <div class="searchbar-field">
+            <label class="visually-hidden" for="search">Search members</label>
+            {{ icon('search', class='icon-sm') }}
+            <input type="search" id="search" name="search" value="{{ search }}" data-search-input
+                   placeholder="Search by username or email…">
+        </div>
+        <button class="btn btn-primary" type="submit">Search</button>
+        {% if search %}<a href="{{ url_for('admin.members') }}" class="btn">Clear</a>{% endif %}
     </div>
-</div>
+</form>
 
-<!-- Members Table -->
-<div class="card">
-    <div class="card-body p-0">
+<section class="panel">
+    <div class="panel-body flush">
         {% if pagination.items %}
-        <div class="table-responsive">
-            <table class="table table-hover mb-0">
-                <thead class="table-light">
+        <div class="table-wrap">
+            <table class="data stacked">
+                <caption class="visually-hidden">Registered members</caption>
+                <thead>
                     <tr>
-                        <th>Username</th>
-                        <th>Email</th>
-                        <th>Member Since</th>
-                        <th>Active Loans</th>
-                        <th>Overdue</th>
-                        <th>Actions</th>
+                        <th scope="col">Member</th>
+                        <th scope="col">Email</th>
+                        <th scope="col">Joined</th>
+                        <th scope="col">On loan</th>
+                        <th scope="col">Overdue</th>
+                        <th scope="col"><span class="visually-hidden">Actions</span></th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for member in pagination.items %}
+                    {% set active = active_counts.get(member.id, 0) %}
+                    {% set overdue = overdue_counts.get(member.id, 0) %}
                     <tr>
-                        <td><strong>{{ member.username }}</strong></td>
-                        <td>{{ member.email }}</td>
-                        <td>{{ member.member_since.strftime('%b %d, %Y') if member.member_since else 'N/A' }}</td>
-                        <td>
-                            {% set active = active_counts.get(member.id, 0) %}
-                            {% if active > 0 %}
-                                <span class="badge bg-info">{{ active }}</span>
-                            {% else %}
-                                <span class="text-muted">0</span>
-                            {% endif %}
+                        <td class="cell-primary" data-label="Member">
+                            <a href="{{ url_for('admin.member_detail', id=member.id) }}">{{ member.username }}</a>
                         </td>
-                        <td>
-                            {% set overdue = overdue_counts.get(member.id, 0) %}
-                            {% if overdue > 0 %}
-                                <span class="badge bg-danger">{{ overdue }}</span>
-                            {% else %}
-                                <span class="text-muted">0</span>
-                            {% endif %}
+                        <td data-label="Email"><span class="text-secondary">{{ member.email }}</span></td>
+                        <td data-label="Joined">
+                            {{ member.member_since.strftime('%b %d, %Y') if member.member_since else '—' }}
                         </td>
-                        <td>
-                            <div class="btn-group btn-group-sm">
-                                <a href="{{ url_for('admin.member_detail', id=member.id) }}" class="btn btn-outline-info" aria-label="View {{ member.username }}">
-                                    <i class="bi bi-eye"></i> View
-                                </a>
-                                <form action="{{ url_for('admin.delete_member', id=member.id) }}" method="POST" class="d-inline delete-form">
-                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <button type="submit" class="btn btn-outline-danger delete-btn" aria-label="Delete {{ member.username }}" title="Delete">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                </form>
-                            </div>
+                        <td data-label="On loan" class="num">
+                            {% if active %}<span class="badge badge-accent">{{ active }}</span>
+                            {% else %}<span class="text-tertiary">0</span>{% endif %}
+                        </td>
+                        <td data-label="Overdue" class="num">
+                            {% if overdue %}<span class="badge badge-red">{{ overdue }}</span>
+                            {% else %}<span class="text-tertiary">0</span>{% endif %}
+                        </td>
+                        <td class="cell-actions" data-label="">
+                            <a href="{{ url_for('admin.member_detail', id=member.id) }}"
+                               class="btn btn-sm">{{ icon('eye', class='icon-sm') }} View</a>
+                            <form action="{{ url_for('admin.delete_member', id=member.id) }}" method="POST"
+                                  data-confirm="{{ member.username }} and their borrowing history will be permanently removed."
+                                  data-confirm-title="Delete this member?"
+                                  data-confirm-label="Delete"
+                                  data-confirm-kind="danger">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="btn btn-sm btn-icon btn-danger"
+                                        aria-label="Delete {{ member.username }}" title="Delete">
+                                    {{ icon('trash', class='icon-sm') }}
+                                </button>
+                            </form>
                         </td>
                     </tr>
                     {% endfor %}
@@ -80,40 +81,30 @@
             </table>
         </div>
         {% else %}
-        <div class="p-4 text-center text-muted">
-            <i class="bi bi-people" style="font-size: 2rem;"></i>
-            <p class="mt-2">
-                {% if search %}No members found matching "{{ search }}".{% else %}No members registered yet.{% endif %}
-            </p>
+        <div class="empty">
+            {{ icon('people', class='icon-xl') }}
+            <h3>{% if search %}No members match "{{ search }}"{% else %}No members yet{% endif %}</h3>
+            <p>{% if search %}Try a different search term.{% else %}Members appear here once they register.{% endif %}</p>
+            {% if search %}<a href="{{ url_for('admin.members') }}" class="btn">Clear search</a>{% endif %}
         </div>
         {% endif %}
     </div>
-</div>
+</section>
 
-<!-- Pagination -->
 {% if pagination.pages > 1 %}
-<nav class="mt-3">
-    <ul class="pagination justify-content-center">
-        <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
-            <a class="page-link" href="{{ url_for('admin.members', page=pagination.prev_num, search=search) if pagination.has_prev else '#' }}">Previous</a>
-        </li>
-        {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
-            {% if page_num %}
-                <li class="page-item {% if page_num == pagination.page %}active{% endif %}">
-                    <a class="page-link" href="{{ url_for('admin.members', page=page_num, search=search) }}">{{ page_num }}</a>
-                </li>
-            {% else %}
-                <li class="page-item disabled"><span class="page-link">...</span></li>
-            {% endif %}
-        {% endfor %}
-        <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
-            <a class="page-link" href="{{ url_for('admin.members', page=pagination.next_num, search=search) if pagination.has_next else '#' }}">Next</a>
-        </li>
-    </ul>
+<nav class="pagination" aria-label="Member list pages">
+    {% if pagination.has_prev %}
+        <a href="{{ url_for('admin.members', page=pagination.prev_num, search=search) }}">Previous</a>
+    {% else %}<span class="is-disabled">Previous</span>{% endif %}
+    {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+        {% if p %}
+            {% if p == pagination.page %}<span class="is-current" aria-current="page">{{ p }}</span>
+            {% else %}<a href="{{ url_for('admin.members', page=p, search=search) }}">{{ p }}</a>{% endif %}
+        {% else %}<span class="is-disabled">…</span>{% endif %}
+    {% endfor %}
+    {% if pagination.has_next %}
+        <a href="{{ url_for('admin.members', page=pagination.next_num, search=search) }}">Next</a>
+    {% else %}<span class="is-disabled">Next</span>{% endif %}
 </nav>
 {% endif %}
-{% endblock %}
-
-{% block scripts %}
-<script src="{{ url_for('static', filename='js/admin.js') }}"></script>
 {% endblock %}

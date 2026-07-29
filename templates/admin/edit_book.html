@@ -1,75 +1,65 @@
 {% extends "base.html" %}
+{% from "_icons.html" import icon %}
 
 {% block title %}Edit Book{% endblock %}
+{% block heading %}Edit Book{% endblock %}
+{% block subheading %}<p class="toolbar-sub">{{ book.title }}</p>{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-8">
-        <nav aria-label="breadcrumb">
-            <ol class="breadcrumb">
-                <li class="breadcrumb-item"><a href="{{ url_for('admin.books') }}">Books</a></li>
-                <li class="breadcrumb-item active">Edit: {{ book.title }}</li>
-            </ol>
-        </nav>
+<nav class="crumbs" aria-label="Breadcrumb">
+    <a href="{{ url_for('admin.books') }}">Books</a>
+    {{ icon('chevron-right', class='icon-sm') }}
+    <span aria-current="page">{{ book.title }}</span>
+</nav>
 
-        <div class="card">
-            <div class="card-header">
-                <h4 class="mb-0"><i class="bi bi-pencil-square"></i> Edit Book</h4>
+<section class="panel" style="max-width:820px">
+    <div class="panel-body">
+        <form method="POST" action="{{ url_for('admin.edit_book', id=book.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="form-grid">
+                <div class="field col-8">
+                    <label for="title">Title <span class="req" aria-hidden="true">*</span></label>
+                    <input type="text" id="title" name="title" value="{{ book.title }}" required>
+                </div>
+                <div class="field col-4">
+                    <label for="category">Category</label>
+                    <input type="text" id="category" name="category" value="{{ book.category or '' }}">
+                </div>
+                <div class="field col-6">
+                    <label for="author">Author <span class="req" aria-hidden="true">*</span></label>
+                    <input type="text" id="author" name="author" value="{{ book.author }}" required>
+                </div>
+                <div class="field col-3">
+                    <label for="isbn">ISBN <span class="req" aria-hidden="true">*</span></label>
+                    <input type="text" id="isbn" name="isbn" value="{{ book.isbn }}" required>
+                </div>
+                <div class="field col-3">
+                    <label for="quantity">Total copies</label>
+                    <input type="number" id="quantity" name="quantity" value="{{ book.quantity }}" min="0"
+                           aria-describedby="qty-hint">
+                    <span class="xs text-secondary" id="qty-hint">
+                        {{ book.available_quantity }} on the shelf now
+                    </span>
+                </div>
+                <div class="field col-6">
+                    <label for="publisher">Publisher</label>
+                    <input type="text" id="publisher" name="publisher" value="{{ book.publisher or '' }}">
+                </div>
+                <div class="field col-3">
+                    <label for="publication_year">Year</label>
+                    <input type="number" id="publication_year" name="publication_year"
+                           value="{{ book.publication_year or '' }}" min="1000" max="2100">
+                </div>
+                <div class="field col-12">
+                    <label for="description">Description</label>
+                    <textarea id="description" name="description" rows="3">{{ book.description or '' }}</textarea>
+                </div>
             </div>
-            <div class="card-body">
-                <form method="POST" action="{{ url_for('admin.edit_book', id=book.id) }}">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <div class="row g-3">
-                        <div class="col-md-8">
-                            <label class="form-label">Title <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" name="title" value="{{ book.title }}" required>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Category</label>
-                            <input type="text" class="form-control" name="category" value="{{ book.category or '' }}">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Author <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" name="author" value="{{ book.author }}" required>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label">ISBN</label>
-                            <input type="text" class="form-control" name="isbn" value="{{ book.isbn }}" required>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label">Quantity</label>
-                            <input type="number" class="form-control" name="quantity" value="{{ book.quantity }}" min="0">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Publisher</label>
-                            <input type="text" class="form-control" name="publisher" value="{{ book.publisher or '' }}">
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label">Publication Year</label>
-                            <input type="number" class="form-control" name="publication_year" value="{{ book.publication_year or '' }}" min="1000" max="2100">
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label">Available</label>
-                            <input type="text" class="form-control" value="{{ book.available_quantity }}" readonly disabled>
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label">Description</label>
-                            <textarea class="form-control" name="description" rows="3">{{ book.description or '' }}</textarea>
-                        </div>
-                    </div>
-                    <div class="mt-4">
-                        <button type="submit" class="btn btn-primary">
-                            <i class="bi bi-check-lg"></i> Update Book
-                        </button>
-                        <a href="{{ url_for('admin.books') }}" class="btn btn-secondary">Cancel</a>
-                    </div>
-                </form>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">{{ icon('check') }} Save Changes</button>
+                <a href="{{ url_for('admin.books') }}" class="btn">Cancel</a>
             </div>
-        </div>
+        </form>
     </div>
-</div>
-{% endblock %}
-
-{% block scripts %}
-<script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+</section>
 {% endblock %}

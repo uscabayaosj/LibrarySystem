@@ -96,10 +96,54 @@ pytest
 
 ## Tech Stack
 
-- **Backend:** Flask 3.x, Flask-SQLAlchemy, Flask-Login
-- **Frontend:** Bootstrap 5, Bootstrap Icons
+- **Backend:** Flask 3.x, Flask-SQLAlchemy, Flask-Login, Flask-WTF (CSRF)
+- **Frontend:** a self-contained macOS-style design system — hand-written CSS
+  and vanilla JS, inline SVG icons. **No CSS/JS frameworks and no CDN**, so the
+  UI renders identically offline and on restricted networks.
 - **Database:** SQLite (default) / PostgreSQL
 - **Auth:** Werkzeug password hashing
+
+## Interface
+
+The UI follows macOS conventions: a source-list sidebar, a translucent sticky
+toolbar, SF system typography, hairline separators, and macOS-style sheets for
+confirmations. It ships with **light and dark appearance** — following the OS
+by default, with a manual override in the account menu (remembered per browser).
+
+| | |
+|---|---|
+| ![Member dashboard](docs/ui/member-dashboard-light.png) | ![Circulation, dark](docs/ui/admin-circulation-dark.png) |
+| Member overview (light) | Circulation desk (dark) |
+
+Design notes:
+
+- **Colour** — text colours use Apple's accessible palette variants. Every
+  foreground/background pair in the app meets WCAG AA, verified from rendered
+  pixels in both appearances.
+- **Layout** — tables become stacked cards below 860px so row actions stay
+  reachable on a phone; touch targets are 44px on coarse pointers.
+- **Motion** — all transitions collapse under `prefers-reduced-motion`.
+- **Keyboard** — skip link, visible focus rings, Escape closes menus and
+  sheets, and ⌘K / Ctrl-K jumps to the search field.
+
+## What Changed (v3.0 — macOS-style interface)
+
+- **New design system.** Bootstrap and its CDN are gone, replaced by a
+  self-contained macOS-flavoured stylesheet, vanilla JS, and inline SVG icons.
+  Sidebar navigation, translucent toolbar, and native-feeling controls.
+- **Light and dark appearance**, following the OS with a manual override.
+- **Due dates are now consistent.** All due/overdue copy derives from one
+  calendar-date property, fixing the case where a single loan displayed as both
+  "7 days overdue" and "8 days overdue", the meaningless "0 days overdue", and
+  the off-by-one in "days left".
+- **Accessibility**: every form control is properly labelled, one `<h1>` per
+  page, `<main>` landmark and skip link, scoped table headers, named icon
+  buttons, and AA-compliant contrast throughout both appearances.
+- **Mobile**: tables become stacked cards, so Edit / Delete / Check In are
+  reachable on a phone instead of scrolling off-screen.
+- **Interaction**: `confirm()` replaced by a macOS-style sheet naming the exact
+  record; the overdue dashboard tile now filters to overdue; browse results
+  show what you already have on loan instead of offering a doomed Borrow button.
 
 ## What Changed (v2.1 — audit fixes)
 

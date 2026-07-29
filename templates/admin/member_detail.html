@@ -1,86 +1,56 @@
 {% extends "base.html" %}
+{% from "_icons.html" import icon %}
 
-{% block title %}Member: {{ member.username }}{% endblock %}
+{% block title %}{{ member.username }}{% endblock %}
+{% block heading %}{{ member.username }}{% endblock %}
+{% block subheading %}<p class="toolbar-sub">{{ member.email }}</p>{% endblock %}
 
 {% block content %}
-<nav aria-label="breadcrumb">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="{{ url_for('admin.members') }}">Members</a></li>
-        <li class="breadcrumb-item active">{{ member.username }}</li>
-    </ol>
+<nav class="crumbs" aria-label="Breadcrumb">
+    <a href="{{ url_for('admin.members') }}">Members</a>
+    {{ icon('chevron-right', class='icon-sm') }}
+    <span aria-current="page">{{ member.username }}</span>
 </nav>
 
-<div class="row g-4">
-    <!-- Member Info -->
-    <div class="col-md-4">
-        <div class="card">
-            <div class="card-body text-center">
-                <i class="bi bi-person-circle" style="font-size: 4rem;"></i>
-                <h4 class="mt-2">{{ member.username }}</h4>
-                <p class="text-muted">{{ member.email }}</p>
-                {% if member.phone %}
-                    <p class="text-muted"><i class="bi bi-telephone"></i> {{ member.phone }}</p>
-                {% endif %}
-                <p class="text-muted"><i class="bi bi-calendar"></i> Member since {{ member.member_since.strftime('%b %Y') }}</p>
-                <hr>
-                <div class="row">
-                    <div class="col-4">
-                        <h5 class="text-info">{{ member.active_borrowings }}</h5>
-                        <small class="text-muted">Active</small>
-                    </div>
-                    <div class="col-4">
-                        <h5 class="text-warning">{{ member.overdue_borrowings }}</h5>
-                        <small class="text-muted">Overdue</small>
-                    </div>
-                    <div class="col-4">
-                        <h5 class="text-secondary">{{ member.active_reservations_count }}</h5>
-                        <small class="text-muted">Reserved</small>
-                    </div>
-                </div>
-                <hr>
-                <form action="{{ url_for('admin.delete_member', id=member.id) }}" method="POST" class="d-inline delete-form">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <button type="submit" class="btn btn-outline-danger btn-sm delete-btn">
-                        <i class="bi bi-trash"></i> Delete Member
-                    </button>
-                </form>
+<div class="split">
+    <div>
+        <section class="panel">
+            <div class="panel-head">
+                <h2>Loans</h2>
+                <span class="spacer"></span>
+                <span class="badge badge-count">{{ borrowings|length }}</span>
             </div>
-        </div>
-    </div>
-
-    <div class="col-md-8">
-        <!-- Borrowing History -->
-        <div class="card mb-3">
-            <div class="card-header">
-                <h5 class="mb-0"><i class="bi bi-clock-history"></i> Borrowing History ({{ borrowings|length }})</h5>
-            </div>
-            <div class="card-body p-0">
+            <div class="panel-body flush">
                 {% if borrowings %}
-                <div class="table-responsive">
-                    <table class="table table-hover mb-0">
-                        <thead class="table-light">
+                <div class="table-wrap">
+                    <table class="data stacked">
+                        <caption class="visually-hidden">Loan history for {{ member.username }}</caption>
+                        <thead>
                             <tr>
-                                <th>Book</th>
-                                <th>Borrowed</th>
-                                <th>Due</th>
-                                <th>Returned</th>
-                                <th>Status</th>
+                                <th scope="col">Book</th>
+                                <th scope="col">Borrowed</th>
+                                <th scope="col">Due</th>
+                                <th scope="col">Returned</th>
+                                <th scope="col">Status</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for b in borrowings %}
-                            <tr>
-                                <td>{{ b.book.title }}</td>
-                                <td>{{ b.borrow_date.strftime('%b %d, %Y') }}</td>
-                                <td>{{ b.due_date.strftime('%b %d, %Y') }}</td>
-                                <td>{{ b.return_date.strftime('%b %d, %Y') if b.return_date else '-' }}</td>
-                                <td>
+                            <tr class="{{ 'row-alert' if b.due_state == 'overdue' }}">
+                                <td class="cell-primary" data-label="Book">{{ b.book.title }}</td>
+                                <td data-label="Borrowed">{{ b.borrow_date.strftime('%b %d, %Y') }}</td>
+                                <td data-label="Due">{{ b.due_date.strftime('%b %d, %Y') }}</td>
+                                <td data-label="Returned">
+                                    {% if b.return_date %}{{ b.return_date.strftime('%b %d, %Y') }}
+                                    {% else %}<span class="text-tertiary">—</span>{% endif %}
+                                </td>
+                                <td data-label="Status">
                                     {% if b.status == 'returned' %}
-                                        <span class="badge bg-success">Returned</span>
-                                    {% elif b.due_date < now %}
-                                        <span class="badge bg-danger">Overdue</span>
+                                        <span class="badge badge-green">Returned</span>
+                                    {% elif b.due_state == 'overdue' %}
+                                        <span class="badge badge-red">{{ b.due_label }}</span>
                                     {% else %}
-                                        <span class="badge bg-primary">Active</span>
+                                        <span class="badge badge-accent">{{ b.due_label }}</span>
                                     {% endif %}
                                 </td>
                             </tr>
@@ -89,38 +59,44 @@
                     </table>
                 </div>
                 {% else %}
-                <div class="p-3 text-center text-muted">No borrowing history.</div>
+                <div class="empty" style="padding:32px 16px">
+                    {{ icon('archive', class='icon-lg') }}
+                    <p class="small">This member hasn't borrowed anything yet.</p>
+                </div>
                 {% endif %}
             </div>
-        </div>
+        </section>
 
-        <!-- Reservations -->
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0"><i class="bi bi-calendar-check"></i> Reservations ({{ reservations|length }})</h5>
+        <section class="panel">
+            <div class="panel-head">
+                <h2>Reservations</h2>
+                <span class="spacer"></span>
+                <span class="badge badge-count">{{ reservations|length }}</span>
             </div>
-            <div class="card-body p-0">
+            <div class="panel-body flush">
                 {% if reservations %}
-                <div class="table-responsive">
-                    <table class="table table-hover mb-0">
-                        <thead class="table-light">
+                <div class="table-wrap">
+                    <table class="data stacked">
+                        <caption class="visually-hidden">Reservations for {{ member.username }}</caption>
+                        <thead>
                             <tr>
-                                <th>Book</th>
-                                <th>Reserved</th>
-                                <th>Expires</th>
-                                <th>Status</th>
+                                <th scope="col">Book</th>
+                                <th scope="col">Reserved</th>
+                                <th scope="col">Expires</th>
+                                <th scope="col">Status</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for r in reservations %}
                             <tr>
-                                <td>{{ r.book.title }}</td>
-                                <td>{{ r.reservation_date.strftime('%b %d, %Y') }}</td>
-                                <td>{{ r.expiration_date.strftime('%b %d, %Y') }}</td>
-                                <td>
-                                    <span class="badge bg-{% if r.status == 'active' %}primary{% elif r.status == 'fulfilled' %}success{% elif r.status == 'expired' %}danger{% else %}secondary{% endif %}">
-                                        {{ r.status }}
-                                    </span>
+                                <td class="cell-primary" data-label="Book">{{ r.book.title }}</td>
+                                <td data-label="Reserved">{{ r.reservation_date.strftime('%b %d, %Y') }}</td>
+                                <td data-label="Expires">{{ r.expiration_date.strftime('%b %d, %Y') }}</td>
+                                <td data-label="Status">
+                                    {% if r.status == 'active' %}<span class="badge badge-accent">Active</span>
+                                    {% elif r.status == 'fulfilled' %}<span class="badge badge-green">Fulfilled</span>
+                                    {% elif r.status == 'expired' %}<span class="badge badge-red">Expired</span>
+                                    {% else %}<span class="badge">{{ r.status|capitalize }}</span>{% endif %}
                                 </td>
                             </tr>
                             {% endfor %}
@@ -128,14 +104,61 @@
                     </table>
                 </div>
                 {% else %}
-                <div class="p-3 text-center text-muted">No reservations.</div>
+                <div class="empty" style="padding:32px 16px">
+                    {{ icon('calendar', class='icon-lg') }}
+                    <p class="small">No reservations on record.</p>
+                </div>
                 {% endif %}
             </div>
-        </div>
+        </section>
     </div>
-</div>
-{% endblock %}
 
-{% block scripts %}
-<script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+    <aside>
+        <section class="panel">
+            <div class="panel-body" style="text-align:center">
+                <span class="avatar" style="width:56px;height:56px;font-size:22px;margin:0 auto 12px">
+                    {{ member.username[0]|upper }}
+                </span>
+                <h2 style="font-size:var(--text-md)">{{ member.username }}</h2>
+                <p class="small text-secondary">{{ member.email }}</p>
+                {% if member.phone %}
+                    <p class="small text-secondary">{{ member.phone }}</p>
+                {% endif %}
+                <p class="small text-secondary" style="margin-top:6px">
+                    Member since {{ member.member_since.strftime('%B %Y') if member.member_since else 'unknown' }}
+                </p>
+            </div>
+
+            <div class="panel-body" style="border-top:1px solid var(--separator);display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center">
+                <div>
+                    <div class="strong" style="font-size:var(--text-lg)">{{ member.active_borrowings }}</div>
+                    <div class="xs text-secondary">On loan</div>
+                </div>
+                <div>
+                    <div class="strong {{ 'text-red' if member.overdue_borrowings }}" style="font-size:var(--text-lg)">
+                        {{ member.overdue_borrowings }}
+                    </div>
+                    <div class="xs text-secondary">Overdue</div>
+                </div>
+                <div>
+                    <div class="strong" style="font-size:var(--text-lg)">{{ member.active_reservations_count }}</div>
+                    <div class="xs text-secondary">Reserved</div>
+                </div>
+            </div>
+
+            <div class="panel-body" style="border-top:1px solid var(--separator)">
+                <form action="{{ url_for('admin.delete_member', id=member.id) }}" method="POST"
+                      data-confirm="{{ member.username }} and their borrowing history will be permanently removed."
+                      data-confirm-title="Delete this member?"
+                      data-confirm-label="Delete"
+                      data-confirm-kind="danger">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-danger btn-block btn-sm">
+                        {{ icon('trash', class='icon-sm') }} Delete Member
+                    </button>
+                </form>
+            </div>
+        </section>
+    </aside>
+</div>
 {% endblock %}

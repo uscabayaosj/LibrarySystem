@@ -265,16 +265,21 @@ def borrowing_history():
     per_page = 30
     filter_status = request.args.get('status', '').strip()
 
+    now = datetime.utcnow()
     query = Borrowing.query.options(
         db.joinedload(Borrowing.user),
         db.joinedload(Borrowing.book)
     )
-    if filter_status:
+    if filter_status == 'overdue':
+        # Overdue isn't a stored status -- it's active plus a past due date.
+        query = query.filter(Borrowing.status == 'active', Borrowing.due_date < now)
+    elif filter_status in ('active', 'returned'):
         query = query.filter(Borrowing.status == filter_status)
+    else:
+        filter_status = ''
     history_pagination = query.order_by(Borrowing.borrow_date.desc()).paginate(
         page=page, per_page=per_page, error_out=False
     )
-    now = datetime.utcnow()
     return render_template(
         'admin/borrowing_history.html',
         pagination=history_pagination,

@@ -1,14 +1,14 @@
 {% extends "base.html" %}
+{% from "_icons.html" import icon %}
 
 {% block title %}Page Not Found{% endblock %}
+{% block heading %}Not Found{% endblock %}
 
 {% block content %}
-<div class="text-center py-5">
-    <i class="bi bi-compass display-1 text-secondary"></i>
-    <h1 class="display-6 mt-3">404 — Page Not Found</h1>
-    <p class="lead text-muted">The page you're looking for doesn't exist or has moved.</p>
-    <a href="{{ url_for('index') }}" class="btn btn-primary mt-2">
-        <i class="bi bi-house"></i> Back to Home
-    </a>
-</div>
+<div class="panel"><div class="empty">
+    {{ icon('compass', class='icon-xl') }}
+    <h3>We couldn't find that page</h3>
+    <p>The page may have moved, or the link may be out of date.</p>
+    <a href="{{ url_for('index') }}" class="btn btn-primary">Back to Library</a>
+</div></div>
 {% endblock %}

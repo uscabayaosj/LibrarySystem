@@ -17,18 +17,20 @@ def dashboard():
     active_reservations = Reservation.query.options(
         db.joinedload(Reservation.book)
     ).filter_by(user_id=current_user.id, status='active').count()
-    recent_history = Borrowing.query.options(
+    # Completed events only -- showing open loans here would just repeat the
+    # "Currently Borrowed" panel beside it.
+    recent_returns = Borrowing.query.options(
         db.joinedload(Borrowing.book)
-    ).filter_by(user_id=current_user.id).order_by(
-        Borrowing.borrow_date.desc()
-    ).limit(5).all()
+    ).filter_by(user_id=current_user.id, status='returned').order_by(
+        Borrowing.return_date.desc()
+    ).limit(4).all()
     return render_template(
         'member/dashboard.html',
         active_borrowings=active_borrowings,
         overdue_count=len(overdue_items),
         overdue_items=overdue_items,
         active_reservations=active_reservations,
-        recent_history=recent_history,
+        recent_returns=recent_returns,
         now=now,
     )
 
@@ -37,28 +39,45 @@ def dashboard():
 @login_required
 def search():
     search_term = request.args.get('q', '').strip()
-    search_type = request.args.get('type', 'title')
+    search_type = request.args.get('type', 'all')
     page = request.args.get('page', 1, type=int)
     per_page = 20
 
     query = Book.query
     if search_term:
+        like = f'%{search_term}%'
         filters = {
-            'title': Book.title.ilike(f'%{search_term}%'),
-            'author': Book.author.ilike(f'%{search_term}%'),
-            'isbn': Book.isbn.ilike(f'%{search_term}%'),
-            'category': Book.category.ilike(f'%{search_term}%'),
+            'all': db.or_(
+                Book.title.ilike(like), Book.author.ilike(like),
+                Book.isbn.ilike(like), Book.category.ilike(like),
+            ),
+            'title': Book.title.ilike(like),
+            'author': Book.author.ilike(like),
+            'isbn': Book.isbn.ilike(like),
+            'category': Book.category.ilike(like),
         }
         book_filter = filters.get(search_type)
         if book_filter is None:
-            flash('Invalid search type.', 'warning')
-            book_filter = Book.title.ilike(f'%{search_term}%')
-            search_type = 'title'
+            search_type = 'all'
+            book_filter = filters['all']
         query = query.filter(book_filter)
 
     pagination = query.order_by(Book.title).paginate(
         page=page, per_page=per_page, error_out=False
     )
+
+    # What the viewer already holds, so the cards don't offer an action that
+    # the server is guaranteed to reject.
+    my_loans = {
+        b.book_id: b for b in Borrowing.query.filter_by(
+            user_id=current_user.id, status='active'
+        ).all()
+    }
+    my_reservations = {
+        r.book_id: r for r in Reservation.query.filter_by(
+            user_id=current_user.id, status='active'
+        ).all()
+    }
 
     return render_template(
         'member/search.html',
@@ -66,6 +85,8 @@ def search():
         books=pagination.items,
         search_term=search_term,
         search_type=search_type,
+        my_loans=my_loans,
+        my_reservations=my_reservations,
     )
 
 

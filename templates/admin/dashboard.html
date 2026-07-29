@@ -1,133 +1,97 @@
 {% extends "base.html" %}
+{% from "_icons.html" import icon %}
 
-{% block title %}Librarian Dashboard{% endblock %}
+{% block title %}Dashboard{% endblock %}
+{% block heading %}Dashboard{% endblock %}
+{% block subheading %}
+    <p class="toolbar-sub">Anthropology Department Library</p>
+{% endblock %}
+
+{% block toolbar %}
+<form action="{{ url_for('admin.check_reservations') }}" method="POST"
+      data-confirm="Expired reservations will be closed and waiting members will be issued any copies that are now free."
+      data-confirm-title="Process the reservation queue?"
+      data-confirm-label="Process">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button type="submit" class="btn btn-primary">{{ icon('refresh') }} Process Reservations</button>
+</form>
+{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h2><i class="bi bi-speedometer2"></i> Librarian Dashboard</h2>
-    <form action="{{ url_for('admin.check_reservations') }}" method="POST" class="d-inline">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button type="submit" class="btn btn-outline-primary">
-            <i class="bi bi-arrow-repeat"></i> Process Reservations
-        </button>
-    </form>
+<div class="grid grid-stats" style="margin-bottom:16px">
+    <a class="stat stat-accent" href="{{ url_for('admin.books') }}">
+        <div class="stat-top">{{ icon('books', class='icon-sm') }} Titles</div>
+        <div class="stat-value">{{ total_books }}</div>
+        <div class="stat-note">{{ available_books }} with copies available</div>
+    </a>
+    <a class="stat stat-teal" href="{{ url_for('admin.borrowing_history', status='active') }}">
+        <div class="stat-top">{{ icon('swap', class='icon-sm') }} On Loan</div>
+        <div class="stat-value">{{ active_borrowings }}</div>
+        <div class="stat-note">Currently checked out</div>
+    </a>
+    <a class="stat {{ 'stat-red' if overdue_count else '' }}"
+       href="{{ url_for('admin.borrowing_history', status='overdue') }}">
+        <div class="stat-top">{{ icon('warning', class='icon-sm') }} Overdue</div>
+        <div class="stat-value">{{ overdue_count }}</div>
+        <div class="stat-note">{% if overdue_count %}Needs follow-up{% else %}All on time{% endif %}</div>
+    </a>
+    <a class="stat" href="{{ url_for('admin.members') }}">
+        <div class="stat-top">{{ icon('people', class='icon-sm') }} Members</div>
+        <div class="stat-value">{{ total_members }}</div>
+        <div class="stat-note">{{ active_reservations }} pending reservation{{ 's' if active_reservations != 1 }}</div>
+    </a>
 </div>
 
-<!-- Stats Cards -->
-<div class="row g-3 mb-4">
-    <div class="col-md-3">
-        <div class="card border-primary h-100">
-            <div class="card-body text-center">
-                <h1 class="display-6 text-primary">{{ total_books }}</h1>
-                <p class="card-text text-muted mb-0">Total Books</p>
-                <small class="text-success">{{ available_books }} available</small>
-            </div>
-        </div>
+<section class="panel">
+    <div class="panel-head">
+        <h2>Recent Activity</h2>
+        <span class="spacer"></span>
+        <a href="{{ url_for('admin.borrowing_history') }}" class="btn btn-sm">View all</a>
     </div>
-    <div class="col-md-3">
-        <div class="card border-info h-100">
-            <div class="card-body text-center">
-                <h1 class="display-6 text-info">{{ active_borrowings }}</h1>
-                <p class="card-text text-muted mb-0">Active Loans</p>
-                <small>
-                    <a href="{{ url_for('admin.borrowing_history', status='active') }}" class="text-decoration-none">View all</a>
-                </small>
-            </div>
+    <div class="panel-body flush">
+        {% if recent_borrowings %}
+        <div class="table-wrap">
+            <table class="data stacked">
+                <caption class="visually-hidden">The five most recent loans</caption>
+                <thead>
+                    <tr>
+                        <th scope="col">Book</th>
+                        <th scope="col">Member</th>
+                        <th scope="col">Borrowed</th>
+                        <th scope="col">Due</th>
+                        <th scope="col">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for b in recent_borrowings %}
+                    <tr>
+                        <td class="cell-primary" data-label="Book">{{ b.book.title }}</td>
+                        <td data-label="Member">
+                            <a href="{{ url_for('admin.member_detail', id=b.user.id) }}">{{ b.user.username }}</a>
+                        </td>
+                        <td data-label="Borrowed">{{ b.borrow_date.strftime('%b %d') }}</td>
+                        <td data-label="Due">{{ b.due_date.strftime('%b %d') }}</td>
+                        <td data-label="Status">
+                            {% if b.status == 'returned' %}
+                                <span class="badge badge-green">Returned</span>
+                            {% elif b.due_state == 'overdue' %}
+                                <span class="badge badge-red">{{ b.due_label }}</span>
+                            {% else %}
+                                <span class="badge badge-accent">On loan</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card border-warning h-100">
-            <div class="card-body text-center">
-                <h1 class="display-6 text-warning">{{ overdue_count }}</h1>
-                <p class="card-text text-muted mb-0">Overdue Items</p>
-                <small>
-                    <a href="{{ url_for('admin.borrowing_history', status='active') }}" class="text-decoration-none">View all</a>
-                </small>
-            </div>
+        {% else %}
+        <div class="empty">
+            {{ icon('inbox', class='icon-xl') }}
+            <h3>No circulation yet</h3>
+            <p>Loans will appear here as members start borrowing.</p>
         </div>
+        {% endif %}
     </div>
-    <div class="col-md-3">
-        <div class="card border-secondary h-100">
-            <div class="card-body text-center">
-                <h1 class="display-6 text-secondary">{{ total_members }}</h1>
-                <p class="card-text text-muted mb-0">Total Members</p>
-                <small>{{ active_reservations }} pending reservations</small>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="row g-4">
-    <!-- Quick Actions -->
-    <div class="col-md-4">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0"><i class="bi bi-lightning-fill"></i> Quick Actions</h5>
-            </div>
-            <div class="card-body">
-                <div class="d-grid gap-2">
-                    <a href="{{ url_for('admin.books') }}" class="btn btn-outline-primary text-start">
-                        <i class="bi bi-journal-plus"></i> Add / Manage Books
-                    </a>
-                    <a href="{{ url_for('admin.members') }}" class="btn btn-outline-info text-start">
-                        <i class="bi bi-people"></i> Manage Members
-                    </a>
-                    <a href="{{ url_for('admin.borrowing_history') }}" class="btn btn-outline-secondary text-start">
-                        <i class="bi bi-clock-history"></i> View Borrowing History
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Recent Activity -->
-    <div class="col-md-8">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0"><i class="bi bi-activity"></i> Recent Borrowings</h5>
-            </div>
-            <div class="card-body p-0">
-                {% if recent_borrowings %}
-                <div class="table-responsive">
-                    <table class="table table-hover mb-0">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Book</th>
-                                <th>Member</th>
-                                <th>Borrowed</th>
-                                <th>Due</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for b in recent_borrowings %}
-                            <tr>
-                                <td>{{ b.book.title }}</td>
-                                <td>{{ b.user.username }}</td>
-                                <td>{{ b.borrow_date.strftime('%b %d') }}</td>
-                                <td>{{ b.due_date.strftime('%b %d') }}</td>
-                                <td>
-                                    {% if b.status == 'returned' %}
-                                        <span class="badge bg-success">Returned</span>
-                                    {% elif b.due_date < now %}
-                                        <span class="badge bg-danger">Overdue</span>
-                                    {% else %}
-                                        <span class="badge bg-primary">Active</span>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-                {% else %}
-                <div class="p-4 text-center text-muted">
-                    <i class="bi bi-inbox" style="font-size: 2rem;"></i>
-                    <p class="mt-2">No borrowing activity yet.</p>
-                </div>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-</div>
+</section>
 {% endblock %}

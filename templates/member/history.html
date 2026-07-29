@@ -1,55 +1,54 @@
 {% extends "base.html" %}
+{% from "_icons.html" import icon %}
 
-{% block title %}My Borrowing History{% endblock %}
+{% block title %}My Loans{% endblock %}
+{% block heading %}My Loans{% endblock %}
+{% block subheading %}
+    <p class="toolbar-sub">{{ borrowings|length }} record{{ 's' if borrowings|length != 1 }}</p>
+{% endblock %}
+
+{% block toolbar %}
+    <a href="{{ url_for('member.search') }}" class="btn">{{ icon('search') }} Browse</a>
+{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h2><i class="bi bi-clock-history"></i> My Borrowing History</h2>
-</div>
-
-<div class="card">
-    <div class="card-body p-0">
+<section class="panel">
+    <div class="panel-body flush">
         {% if borrowings %}
-        <div class="table-responsive">
-            <table class="table table-hover mb-0">
-                <thead class="table-light">
+        <div class="table-wrap">
+            <table class="data stacked">
+                <caption class="visually-hidden">Your borrowing history, most recent first</caption>
+                <thead>
                     <tr>
-                        <th>Book Title</th>
-                        <th>Author</th>
-                        <th>Borrowed</th>
-                        <th>Due Date</th>
-                        <th>Returned</th>
-                        <th>Status</th>
+                        <th scope="col">Book</th>
+                        <th scope="col">Borrowed</th>
+                        <th scope="col">Due</th>
+                        <th scope="col">Returned</th>
+                        <th scope="col">Status</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for borrowing in borrowings %}
-                    <tr class="{% if not borrowing.return_date and borrowing.due_date < now %}table-danger{% endif %}">
-                        <td><strong>{{ borrowing.book.title }}</strong></td>
-                        <td>{{ borrowing.book.author }}</td>
-                        <td>{{ borrowing.borrow_date.strftime('%b %d, %Y') }}</td>
-                        <td>{{ borrowing.due_date.strftime('%b %d, %Y') }}</td>
-                        <td>
-                            {% if borrowing.return_date %}
-                                {{ borrowing.return_date.strftime('%b %d, %Y') }}
-                            {% else %}
-                                <span class="text-muted">Not yet</span>
-                            {% endif %}
+                    {% for b in borrowings %}
+                    <tr class="{{ 'row-alert' if b.due_state == 'overdue' }}">
+                        <td class="cell-primary" data-label="Book">
+                            {{ b.book.title }}
+                            <div class="small text-secondary" style="font-weight:400">{{ b.book.author }}</div>
                         </td>
-                        <td>
-                            {% if borrowing.status == 'returned' %}
-                                <span class="badge bg-success"><i class="bi bi-check"></i> Returned</span>
-                            {% elif borrowing.due_date < now %}
-                                <span class="badge bg-danger">
-                                    <i class="bi bi-exclamation-triangle"></i>
-                                    {{ (now - borrowing.due_date).days }} day(s) overdue
-                                </span>
+                        <td data-label="Borrowed">{{ b.borrow_date.strftime('%b %d, %Y') }}</td>
+                        <td data-label="Due">{{ b.due_date.strftime('%b %d, %Y') }}</td>
+                        <td data-label="Returned">
+                            {% if b.return_date %}{{ b.return_date.strftime('%b %d, %Y') }}
+                            {% else %}<span class="text-tertiary">—</span>{% endif %}
+                        </td>
+                        <td data-label="Status">
+                            {% if b.status == 'returned' %}
+                                <span class="badge badge-green">{{ icon('check', class='icon-sm') }} Returned</span>
+                            {% elif b.due_state == 'overdue' %}
+                                <span class="badge badge-red">{{ b.due_label }}</span>
+                            {% elif b.due_state in ['today', 'soon'] %}
+                                <span class="badge badge-orange">{{ b.due_label }}</span>
                             {% else %}
-                                <span class="badge bg-primary">
-                                    <i class="bi bi-bookmark"></i>
-                                    {% set days = (borrowing.due_date - now).days %}
-                                    {{ days }} day(s) left
-                                </span>
+                                <span class="badge badge-accent">{{ b.due_label }}</span>
                             {% endif %}
                         </td>
                     </tr>
@@ -58,14 +57,13 @@
             </table>
         </div>
         {% else %}
-        <div class="p-4 text-center text-muted">
-            <i class="bi bi-inbox" style="font-size: 2rem;"></i>
-            <p class="mt-2">You haven't borrowed any books yet.</p>
-            <a href="{{ url_for('member.search') }}" class="btn btn-primary">
-                <i class="bi bi-search"></i> Browse Books
-            </a>
+        <div class="empty">
+            {{ icon('archive', class='icon-xl') }}
+            <h3>Nothing borrowed yet</h3>
+            <p>Once you borrow a book it will show up here, along with its due date.</p>
+            <a href="{{ url_for('member.search') }}" class="btn btn-primary">{{ icon('search') }} Browse Books</a>
         </div>
         {% endif %}
     </div>
-</div>
+</section>
 {% endblock %}
