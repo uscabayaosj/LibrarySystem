@@ -71,8 +71,10 @@ class Borrowing(db.Model):
     due_date = db.Column(db.DateTime, nullable=False)
     status = db.Column(db.String(20), default='active')  # active, returned, overdue
 
-    user = db.relationship('User', backref=db.backref('borrowings', lazy='dynamic'))
-    book = db.relationship('Book', backref=db.backref('borrowings', lazy='dynamic'))
+    user = db.relationship('User', backref=db.backref(
+        'borrowings', lazy='dynamic', cascade='all, delete-orphan'))
+    book = db.relationship('Book', backref=db.backref(
+        'borrowings', lazy='dynamic', cascade='all, delete-orphan'))
 
     @property
     def is_overdue(self):
@@ -102,8 +104,10 @@ class Reservation(db.Model):
     expiration_date = db.Column(db.DateTime, nullable=False)
     status = db.Column(db.String(20), default='active', index=True)  # active, fulfilled, expired, cancelled
 
-    user = db.relationship('User', backref=db.backref('reservations', lazy='dynamic'))
-    book = db.relationship('Book', backref=db.backref('reservations', lazy='dynamic'))
+    user = db.relationship('User', backref=db.backref(
+        'reservations', lazy='dynamic', cascade='all, delete-orphan'))
+    book = db.relationship('Book', backref=db.backref(
+        'reservations', lazy='dynamic', cascade='all, delete-orphan'))
 
     @classmethod
     def get_active_reservation(cls, book_id):

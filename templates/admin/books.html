@@ -18,38 +18,39 @@
         </div>
         <div class="card-body">
             <form method="POST" action="{{ url_for('admin.add_book') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="row g-3">
                     <div class="col-md-4">
                         <label class="form-label">Title <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" name="title" required>
+                        <input type="text" class="form-control" name="title" value="{{ form_values.get('title', '') }}" required>
                     </div>
                     <div class="col-md-3">
                         <label class="form-label">Author <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" name="author" required>
+                        <input type="text" class="form-control" name="author" value="{{ form_values.get('author', '') }}" required>
                     </div>
                     <div class="col-md-2">
                         <label class="form-label">ISBN <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" name="isbn" required>
+                        <input type="text" class="form-control" name="isbn" value="{{ form_values.get('isbn', '') }}" required>
                     </div>
                     <div class="col-md-2">
                         <label class="form-label">Category</label>
-                        <input type="text" class="form-control" name="category">
+                        <input type="text" class="form-control" name="category" value="{{ form_values.get('category', '') }}">
                     </div>
                     <div class="col-md-1">
                         <label class="form-label">Qty</label>
-                        <input type="number" class="form-control" name="quantity" value="1" min="1">
+                        <input type="number" class="form-control" name="quantity" value="{{ form_values.get('quantity', '1') }}" min="1">
                     </div>
                     <div class="col-md-4">
                         <label class="form-label">Publisher</label>
-                        <input type="text" class="form-control" name="publisher">
+                        <input type="text" class="form-control" name="publisher" value="{{ form_values.get('publisher', '') }}">
                     </div>
                     <div class="col-md-2">
                         <label class="form-label">Year</label>
-                        <input type="number" class="form-control" name="publication_year" min="1000" max="2100">
+                        <input type="number" class="form-control" name="publication_year" value="{{ form_values.get('publication_year', '') }}" min="1000" max="2100">
                     </div>
                     <div class="col-md-12">
                         <label class="form-label">Description</label>
-                        <textarea class="form-control" name="description" rows="2"></textarea>
+                        <textarea class="form-control" name="description" rows="2">{{ form_values.get('description', '') }}</textarea>
                     </div>
                     <div class="col-12">
                         <button type="submit" class="btn btn-success">
@@ -127,11 +128,12 @@
                         </td>
                         <td>
                             <div class="btn-group btn-group-sm">
-                                <a href="{{ url_for('admin.edit_book', id=book.id) }}" class="btn btn-outline-warning">
+                                <a href="{{ url_for('admin.edit_book', id=book.id) }}" class="btn btn-outline-warning" aria-label="Edit {{ book.title }}" title="Edit">
                                     <i class="bi bi-pencil"></i>
                                 </a>
                                 <form action="{{ url_for('admin.delete_book', id=book.id) }}" method="POST" class="d-inline delete-form">
-                                    <button type="submit" class="btn btn-outline-danger delete-btn">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="btn btn-outline-danger delete-btn" aria-label="Delete {{ book.title }}" title="Delete">
                                         <i class="bi bi-trash"></i>
                                     </button>
                                 </form>

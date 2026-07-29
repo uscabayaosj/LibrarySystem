@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app
 from flask_login import login_required, current_user
 from models import db, Book, User, Borrowing, Reservation
 from datetime import datetime, timedelta
@@ -12,6 +12,29 @@ def restrict_to_admins():
     if not current_user.is_admin:
         flash('You do not have permission to access this page.', 'danger')
         return redirect(url_for('member.dashboard'))
+
+
+def _books_context(page=1, search='', form_values=None, form_errors=None):
+    per_page = 20
+    query = Book.query
+    if search:
+        query = query.filter(
+            db.or_(
+                Book.title.ilike(f'%{search}%'),
+                Book.author.ilike(f'%{search}%'),
+                Book.isbn.ilike(f'%{search}%'),
+                Book.category.ilike(f'%{search}%'),
+            )
+        )
+    pagination = query.order_by(Book.title).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+    return {
+        'pagination': pagination,
+        'search': search,
+        'form_values': form_values or {},
+        'form_errors': form_errors,
+    }
 
 
 @bp.route('/dashboard')
@@ -48,23 +71,8 @@ def dashboard():
 @bp.route('/books')
 def books():
     page = request.args.get('page', 1, type=int)
-    per_page = 20
     search = request.args.get('search', '').strip()
-
-    query = Book.query
-    if search:
-        query = query.filter(
-            db.or_(
-                Book.title.ilike(f'%{search}%'),
-                Book.author.ilike(f'%{search}%'),
-                Book.isbn.ilike(f'%{search}%'),
-                Book.category.ilike(f'%{search}%'),
-            )
-        )
-    books_pagination = query.order_by(Book.title).paginate(
-        page=page, per_page=per_page, error_out=False
-    )
-    return render_template('admin/books.html', pagination=books_pagination, search=search)
+    return render_template('admin/books.html', **_books_context(page, search))
 
 
 @bp.route('/books/add', methods=['POST'])
@@ -78,14 +86,23 @@ def add_book():
     description = request.form.get('description', '').strip()
     quantity = request.form.get('quantity', 1, type=int)
 
+    errors = []
     if not all([title, author, isbn]):
-        flash('Title, Author, and ISBN are required.', 'warning')
-        return redirect(url_for('admin.books'))
-
-    existing = Book.query.filter_by(isbn=isbn).first()
+        errors.append('Title, Author, and ISBN are required.')
+    if quantity is None or quantity < 1:
+        errors.append('Quantity must be at least 1.')
+        quantity = 1
+    existing = Book.query.filter_by(isbn=isbn).first() if isbn else None
     if existing:
-        flash(f'A book with ISBN {isbn} already exists ({existing.title}).', 'warning')
-        return redirect(url_for('admin.books'))
+        errors.append(f'A book with ISBN {isbn} already exists ({existing.title}).')
+
+    if errors:
+        for msg in errors:
+            flash(msg, 'warning')
+        return render_template(
+            'admin/books.html',
+            **_books_context(1, '', form_values=request.form, form_errors=errors)
+        )
 
     book = Book(
         title=title, author=author, isbn=isbn, category=category,
@@ -103,15 +120,34 @@ def add_book():
 def edit_book(id):
     book = Book.query.get_or_404(id)
     if request.method == 'POST':
-        book.title = request.form.get('title', '').strip()
-        book.author = request.form.get('author', '').strip()
-        book.isbn = request.form.get('isbn', '').strip()
+        title = request.form.get('title', '').strip()
+        author = request.form.get('author', '').strip()
+        isbn = request.form.get('isbn', '').strip()
+        new_quantity = request.form.get('quantity', book.quantity, type=int)
+
+        errors = []
+        if not all([title, author, isbn]):
+            errors.append('Title, Author, and ISBN are required.')
+        if new_quantity is None or new_quantity < 0:
+            errors.append('Quantity cannot be negative.')
+            new_quantity = book.quantity
+        duplicate = Book.query.filter(Book.isbn == isbn, Book.id != id).first() if isbn else None
+        if duplicate:
+            errors.append(f'Another book already uses ISBN {isbn} ({duplicate.title}).')
+
+        if errors:
+            for msg in errors:
+                flash(msg, 'warning')
+            return render_template('admin/edit_book.html', book=book)
+
+        book.title = title
+        book.author = author
+        book.isbn = isbn
         book.category = request.form.get('category', '').strip()
         book.publisher = request.form.get('publisher', '').strip()
         book.publication_year = request.form.get('publication_year', type=int)
         book.description = request.form.get('description', '').strip()
 
-        new_quantity = request.form.get('quantity', 1, type=int)
         diff = new_quantity - book.quantity
         book.quantity = new_quantity
         book.available_quantity = max(0, book.available_quantity + diff)
@@ -128,9 +164,10 @@ def delete_book(id):
     if active_borrowings > 0:
         flash(f'Cannot delete: {active_borrowings} copy(ies) are currently borrowed.', 'warning')
         return redirect(url_for('admin.books'))
-    db.session.delete(book)
+    title = book.title
+    db.session.delete(book)  # cascade removes historical borrowings/reservations
     db.session.commit()
-    flash(f'Book "{book.title}" deleted.', 'success')
+    flash(f'Book "{title}" deleted.', 'success')
     return redirect(url_for('admin.books'))
 
 
@@ -151,12 +188,35 @@ def members():
     members_pagination = query.order_by(User.username).paginate(
         page=page, per_page=per_page, error_out=False
     )
+
+    # Aggregate loan counts for the visible members in two queries instead of
+    # running a COUNT per row (avoids the N+1 on this page).
     now = datetime.utcnow()
+    member_ids = [m.id for m in members_pagination.items]
+    active_counts, overdue_counts = {}, {}
+    if member_ids:
+        rows = db.session.query(
+            Borrowing.user_id, db.func.count(Borrowing.id)
+        ).filter(
+            Borrowing.user_id.in_(member_ids), Borrowing.status == 'active'
+        ).group_by(Borrowing.user_id).all()
+        active_counts = dict(rows)
+        rows = db.session.query(
+            Borrowing.user_id, db.func.count(Borrowing.id)
+        ).filter(
+            Borrowing.user_id.in_(member_ids),
+            Borrowing.status == 'active',
+            Borrowing.due_date < now,
+        ).group_by(Borrowing.user_id).all()
+        overdue_counts = dict(rows)
+
     return render_template(
         'admin/members.html',
         pagination=members_pagination,
         search=search,
         now=now,
+        active_counts=active_counts,
+        overdue_counts=overdue_counts,
     )
 
 
@@ -192,11 +252,10 @@ def delete_member(id):
     if active_count > 0:
         flash(f'Cannot delete: member has {active_count} active borrowing(s).', 'warning')
         return redirect(url_for('admin.members'))
-    # Cancel active reservations
-    Reservation.query.filter_by(user_id=id, status='active').update({'status': 'cancelled'})
-    db.session.delete(member)
+    username = member.username
+    db.session.delete(member)  # cascade removes history and reservations
     db.session.commit()
-    flash(f'Member "{member.username}" deleted.', 'success')
+    flash(f'Member "{username}" deleted.', 'success')
     return redirect(url_for('admin.members'))
 
 
@@ -238,31 +297,34 @@ def return_book(id):
 @bp.route('/check-reservations', methods=['POST'])
 def check_reservations():
     now = datetime.utcnow()
-    # Expire overdue reservations
+    loan_days = current_app.config['LOAN_PERIOD_DAYS']
+
+    # Expire overdue reservations.
     expired = Reservation.query.filter(
         Reservation.expiration_date < now,
         Reservation.status == 'active'
     ).all()
     for r in expired:
-        r.expire()
+        r.status = 'expired'
 
-    # Fulfill reservations when books become available
-    available_books = Book.query.filter(Book.available_quantity > 0).all()
+    # Fulfil the reservation queue for every title that has copies free,
+    # draining as many reservations as there is availability.
     fulfilled_count = 0
+    available_books = Book.query.filter(Book.available_quantity > 0).all()
     for book in available_books:
-        active_reservation = Reservation.get_active_reservation(book.id)
-        if active_reservation:
-            active_reservation.fulfill()
+        while book.available_quantity > 0:
+            active_reservation = Reservation.get_active_reservation(book.id)
+            if not active_reservation:
+                break
+            active_reservation.status = 'fulfilled'
             book.available_quantity -= 1
-            borrowing = Borrowing(
+            db.session.add(Borrowing(
                 user_id=active_reservation.user_id,
                 book_id=book.id,
-                due_date=now + timedelta(days=14)
-            )
-            db.session.add(borrowing)
-            db.session.commit()
+                due_date=now + timedelta(days=loan_days)
+            ))
             fulfilled_count += 1
 
-    msg = f'Checked reservations: {len(expired)} expired, {fulfilled_count} fulfilled.'
-    flash(msg, 'info')
+    db.session.commit()
+    flash(f'Checked reservations: {len(expired)} expired, {fulfilled_count} fulfilled.', 'info')
     return redirect(url_for('admin.dashboard'))

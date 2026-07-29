@@ -81,6 +81,7 @@
                         <td>
                             {% if borrowing.status == 'active' %}
                                 <form action="{{ url_for('admin.return_book', id=borrowing.id) }}" method="POST" class="d-inline">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <button type="submit" class="btn btn-sm btn-success return-btn">
                                         <i class="bi bi-arrow-return-left"></i> Return
                                     </button>

@@ -11,25 +11,26 @@
             </div>
             <div class="card-body">
                 <form method="POST" action="{{ url_for('auth.register') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="mb-3">
                         <label for="username" class="form-label">Username</label>
                         <div class="input-group">
                             <span class="input-group-text"><i class="bi bi-person"></i></span>
-                            <input type="text" class="form-control" id="username" name="username" required autofocus>
+                            <input type="text" class="form-control" id="username" name="username" value="{{ username or '' }}" required autofocus>
                         </div>
                     </div>
                     <div class="mb-3">
                         <label for="email" class="form-label">Email</label>
                         <div class="input-group">
                             <span class="input-group-text"><i class="bi bi-envelope"></i></span>
-                            <input type="email" class="form-control" id="email" name="email" required>
+                            <input type="email" class="form-control" id="email" name="email" value="{{ email or '' }}" required>
                         </div>
                     </div>
                     <div class="mb-3">
                         <label for="password" class="form-label">Password</label>
                         <div class="input-group">
                             <span class="input-group-text"><i class="bi bi-lock"></i></span>
-                            <input type="password" class="form-control" id="password" name="password" required>
+                            <input type="password" class="form-control" id="password" name="password" minlength="6" required>
                         </div>
                     </div>
                     <button type="submit" class="btn btn-primary w-100">

@@ -46,7 +46,7 @@
                         <td>{{ member.email }}</td>
                         <td>{{ member.member_since.strftime('%b %d, %Y') if member.member_since else 'N/A' }}</td>
                         <td>
-                            {% set active = member.active_borrowings %}
+                            {% set active = active_counts.get(member.id, 0) %}
                             {% if active > 0 %}
                                 <span class="badge bg-info">{{ active }}</span>
                             {% else %}
@@ -54,7 +54,7 @@
                             {% endif %}
                         </td>
                         <td>
-                            {% set overdue = member.overdue_borrowings %}
+                            {% set overdue = overdue_counts.get(member.id, 0) %}
                             {% if overdue > 0 %}
                                 <span class="badge bg-danger">{{ overdue }}</span>
                             {% else %}
@@ -63,11 +63,12 @@
                         </td>
                         <td>
                             <div class="btn-group btn-group-sm">
-                                <a href="{{ url_for('admin.member_detail', id=member.id) }}" class="btn btn-outline-info">
+                                <a href="{{ url_for('admin.member_detail', id=member.id) }}" class="btn btn-outline-info" aria-label="View {{ member.username }}">
                                     <i class="bi bi-eye"></i> View
                                 </a>
                                 <form action="{{ url_for('admin.delete_member', id=member.id) }}" method="POST" class="d-inline delete-form">
-                                    <button type="submit" class="btn btn-outline-danger delete-btn">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="btn btn-outline-danger delete-btn" aria-label="Delete {{ member.username }}" title="Delete">
                                         <i class="bi bi-trash"></i>
                                     </button>
                                 </form>

@@ -39,6 +39,7 @@
                 </div>
                 <hr>
                 <form action="{{ url_for('admin.delete_member', id=member.id) }}" method="POST" class="d-inline delete-form">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" class="btn btn-outline-danger btn-sm delete-btn">
                         <i class="bi bi-trash"></i> Delete Member
                     </button>

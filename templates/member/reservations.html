@@ -25,13 +25,14 @@
                         <br>
                         <span class="text-warning">
                             <i class="bi bi-clock"></i> Expires: {{ reservation.expiration_date.strftime('%b %d, %Y') }}
-                            {% set days_left = (reservation.expiration_date - now()).days %}
+                            {% set days_left = (reservation.expiration_date - now).days %}
                             {% if days_left >= 0 %}
                                 <span class="text-muted">({{ days_left }} day(s) left)</span>
                             {% endif %}
                         </span>
                     </p>
                     <form action="{{ url_for('member.cancel_reservation', reservation_id=reservation.id) }}" method="POST">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button type="submit" class="btn btn-sm btn-outline-danger cancel-btn">
                             <i class="bi bi-x-circle"></i> Cancel Reservation
                         </button>

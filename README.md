@@ -69,10 +69,21 @@ Set environment variables:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `SECRET_KEY` | Generated (random) | Flask session signing key |
+| `SECRET_KEY` | dev fallback (required in prod) | Flask session signing key. **Required** when `FLASK_ENV=production` and debug is off — the app refuses to start without it. |
 | `DATABASE_URL` | `sqlite:///library.db` | Database connection string |
+| `FLASK_ENV` | `development` | Set to `production` to enforce `SECRET_KEY` and secure cookies |
+| `FLASK_DEBUG` | `0` | Set to `1` **only** in local development to enable the debugger |
+| `SESSION_COOKIE_SECURE` | `1` in production | Send session cookie over HTTPS only |
+| `ADMIN_PASSWORD` | `admin` | Password for the seeded admin account on first run |
 
-For production, set `SECRET_KEY` to a long, random string.
+For production: set a long random `SECRET_KEY`, keep `FLASK_DEBUG` unset/`0`, and change the seeded admin password.
+
+### Running tests
+
+```bash
+pip install pytest flask-wtf
+pytest
+```
 
 ## Database Schema
 
@@ -89,6 +100,16 @@ For production, set `SECRET_KEY` to a long, random string.
 - **Frontend:** Bootstrap 5, Bootstrap Icons
 - **Database:** SQLite (default) / PostgreSQL
 - **Auth:** Werkzeug password hashing
+
+## What Changed (v2.1 — audit fixes)
+
+- **Fixed 4 crashes:** the My Reservations page (`now` undefined), deleting books/members with borrowing history (FK cascade), and editing a book to a duplicate ISBN now validate/cascade instead of returning HTTP 500.
+- **Security:** `debug` is now env-gated (off by default), `SECRET_KEY` is required in production, CSRF protection (Flask-WTF) added to every form, the login `next` redirect is restricted to same-site paths, emails are normalized, and a minimum password length is enforced.
+- **Data integrity:** borrowing uses an atomic availability decrement (no over-lending race), members can't borrow duplicate copies of a title, there's a max-concurrent-loan cap, and the reservation queue now drains fully.
+- **UI/UX & a11y:** member search is paginated, the add-book form preserves input and re-opens on error, icon-only buttons have `aria-label`s, only success/info flashes auto-dismiss (errors persist), and there are styled 403/404/500 pages.
+- **Quality:** removed the N+1 on the members list, added a `pytest` regression suite, and writes roll back cleanly on error.
+
+See `AUDIT.md` for the full findings this release addresses.
 
 ## What Changed (v2.0)
 

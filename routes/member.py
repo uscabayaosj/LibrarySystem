@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app
 from flask_login import login_required, current_user
 from models import db, Book, Borrowing, Reservation
 from datetime import datetime, timedelta
@@ -38,8 +38,10 @@ def dashboard():
 def search():
     search_term = request.args.get('q', '').strip()
     search_type = request.args.get('type', 'title')
+    page = request.args.get('page', 1, type=int)
+    per_page = 20
 
-    books = []
+    query = Book.query
     if search_term:
         filters = {
             'title': Book.title.ilike(f'%{search_term}%'),
@@ -48,17 +50,20 @@ def search():
             'category': Book.category.ilike(f'%{search_term}%'),
         }
         book_filter = filters.get(search_type)
-        if book_filter is not None:
-            books = Book.query.filter(book_filter).order_by(Book.title).all()
-        else:
+        if book_filter is None:
             flash('Invalid search type.', 'warning')
-    else:
-        # Show all books when no search term
-        books = Book.query.order_by(Book.title).all()
+            book_filter = Book.title.ilike(f'%{search_term}%')
+            search_type = 'title'
+        query = query.filter(book_filter)
+
+    pagination = query.order_by(Book.title).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
 
     return render_template(
         'member/search.html',
-        books=books,
+        pagination=pagination,
+        books=pagination.items,
         search_term=search_term,
         search_type=search_type,
     )
@@ -68,28 +73,54 @@ def search():
 @login_required
 def borrow_book(book_id):
     book = Book.query.get_or_404(book_id)
-    if book.is_available():
-        # Check for overdue items
-        overdue = Borrowing.query.filter(
-            Borrowing.user_id == current_user.id,
-            Borrowing.status == 'active',
-            Borrowing.due_date < datetime.utcnow()
-        ).count()
-        if overdue >= 3:
-            flash('You have too many overdue books. Please return them first.', 'warning')
-            return redirect(url_for('member.search', q=book.title))
+    now = datetime.utcnow()
 
-        borrowing = Borrowing(
-            user_id=current_user.id,
-            book_id=book_id,
-            due_date=datetime.utcnow() + timedelta(days=14)
-        )
-        book.available_quantity -= 1
-        db.session.add(borrowing)
-        db.session.commit()
-        flash(f'"{book.title}" borrowed successfully! Due in 14 days.', 'success')
-    else:
+    # Prevent borrowing a second copy of a title the member already holds.
+    already = Borrowing.query.filter_by(
+        user_id=current_user.id, book_id=book_id, status='active'
+    ).first()
+    if already:
+        flash(f'You already have "{book.title}" borrowed.', 'info')
+        return redirect(url_for('member.search', q=book.title))
+
+    active_count = Borrowing.query.filter_by(
+        user_id=current_user.id, status='active'
+    ).count()
+    if active_count >= current_app.config['MAX_ACTIVE_LOANS']:
+        flash('You have reached the maximum number of borrowed books. '
+              'Please return some before borrowing more.', 'warning')
+        return redirect(url_for('member.search', q=book.title))
+
+    overdue = Borrowing.query.filter(
+        Borrowing.user_id == current_user.id,
+        Borrowing.status == 'active',
+        Borrowing.due_date < now
+    ).count()
+    if overdue >= current_app.config['MAX_OVERDUE_BEFORE_BLOCK']:
+        flash('You have too many overdue books. Please return them first.', 'warning')
+        return redirect(url_for('member.search', q=book.title))
+
+    # Atomic, race-safe decrement: only succeeds if a copy is still available.
+    loan_days = current_app.config['LOAN_PERIOD_DAYS']
+    updated = Book.query.filter(
+        Book.id == book_id, Book.available_quantity > 0
+    ).update(
+        {Book.available_quantity: Book.available_quantity - 1},
+        synchronize_session=False,
+    )
+    if not updated:
+        db.session.rollback()
         flash(f'"{book.title}" is not available for borrowing.', 'warning')
+        return redirect(url_for('member.search', q=book.title))
+
+    borrowing = Borrowing(
+        user_id=current_user.id,
+        book_id=book_id,
+        due_date=now + timedelta(days=loan_days),
+    )
+    db.session.add(borrowing)
+    db.session.commit()
+    flash(f'"{book.title}" borrowed successfully! Due in {loan_days} days.', 'success')
     return redirect(url_for('member.search', q=book.title))
 
 
@@ -97,6 +128,7 @@ def borrow_book(book_id):
 @login_required
 def reserve_book(book_id):
     book = Book.query.get_or_404(book_id)
+    hold_days = current_app.config['RESERVATION_HOLD_DAYS']
     existing = Reservation.query.filter_by(
         user_id=current_user.id, book_id=book_id, status='active'
     ).first()
@@ -106,11 +138,11 @@ def reserve_book(book_id):
         reservation = Reservation(
             user_id=current_user.id,
             book_id=book_id,
-            expiration_date=datetime.utcnow() + timedelta(days=3)
+            expiration_date=datetime.utcnow() + timedelta(days=hold_days)
         )
         db.session.add(reservation)
         db.session.commit()
-        flash(f'"{book.title}" reserved! You have 3 days to claim it.', 'success')
+        flash(f'"{book.title}" reserved! You have {hold_days} days to claim it.', 'success')
     else:
         flash('This book cannot be reserved at the moment.', 'warning')
     return redirect(url_for('member.search', q=book.title))
@@ -135,7 +167,11 @@ def reservations():
     ).filter_by(user_id=current_user.id, status='active').order_by(
         Reservation.reservation_date.desc()
     ).all()
-    return render_template('member/reservations.html', reservations=active_reservations)
+    return render_template(
+        'member/reservations.html',
+        reservations=active_reservations,
+        now=datetime.utcnow(),
+    )
 
 
 @bp.route('/cancel_reservation/<int:reservation_id>', methods=['POST'])
