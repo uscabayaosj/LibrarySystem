@@ -9,6 +9,19 @@ def _env_flag(name, default=False):
     return val.strip().lower() in ('1', 'true', 'yes', 'on')
 
 
+def _normalize_db_url(url):
+    """Accept the `postgres://` URLs most managed-database providers hand out.
+
+    SQLAlchemy dropped that alias and only recognises `postgresql://`, so
+    pasting a provider's connection string in verbatim otherwise fails at
+    startup with an unhelpful 'Can't load plugin' error. Rewriting it here
+    means DATABASE_URL can be copied straight from the provider dashboard.
+    """
+    if url.startswith('postgres://'):
+        return 'postgresql://' + url[len('postgres://'):]
+    return url
+
+
 class Config:
     # In production, SECRET_KEY MUST be provided so that sessions survive
     # restarts and stay consistent across multiple worker processes.
@@ -26,7 +39,9 @@ class Config:
             )
         SECRET_KEY = 'dev-insecure-key-change-me'
 
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL', 'sqlite:///library.db')
+    SQLALCHEMY_DATABASE_URI = _normalize_db_url(
+        os.environ.get('DATABASE_URL', 'sqlite:///library.db')
+    )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     # Session/cookie hardening

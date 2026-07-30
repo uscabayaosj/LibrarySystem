@@ -2,9 +2,10 @@ import hashlib
 import os
 from datetime import datetime
 
+import sqlalchemy as sa
 from flask import Flask, render_template, jsonify, url_for
 from config import Config
-from extensions import db, login_manager, csrf
+from extensions import db, login_manager, csrf, migrate
 from models import User, OrganizationSettings
 from theming import build_theme_css
 
@@ -27,6 +28,10 @@ def create_app(config_object=Config):
     login_manager.init_app(app)
     login_manager.login_view = 'auth.login'
     csrf.init_app(app)
+    # render_as_batch lets Alembic emit ALTER TABLE for SQLite, which doesn't
+    # support most ALTERs natively -- without it, any future column change
+    # would generate a migration that works on Postgres and fails on SQLite.
+    migrate.init_app(app, db, render_as_batch=True)
 
     app.add_template_filter(cover_hue)
 
@@ -111,10 +116,50 @@ def create_app(config_object=Config):
 app = create_app()
 
 
-def init_db():
-    """Create tables and seed admin user if needed. Safe to call repeatedly."""
+def _apply_migrations():
+    """Bring the database up to the latest migration.
+
+    Three cases have to work, because a deploy shouldn't need anyone to think
+    about which one they're in:
+
+    1. Brand-new database -> run every migration from scratch.
+    2. Database already managed by Alembic -> apply whatever is outstanding.
+    3. Database created by the pre-migrations `db.create_all()` (it has the
+       tables but no alembic_version row) -> stamp it at the initial revision
+       first, so Alembic doesn't try to CREATE TABLE over tables that already
+       exist, then apply anything newer.
+    """
+    from alembic.migration import MigrationContext
+    from flask_migrate import stamp, upgrade
+
     with app.app_context():
-        db.create_all()
+        connection = db.engine.connect()
+        try:
+            context = MigrationContext.configure(connection)
+            current_revision = context.get_current_revision()
+            inspector = sa.inspect(db.engine)
+            has_legacy_tables = inspector.has_table('user')
+        finally:
+            connection.close()
+
+        if current_revision is None and has_legacy_tables:
+            # Case 3: pre-existing schema from create_all(). _BASELINE_REVISION
+            # is the revision whose upgrade() produces exactly that schema.
+            stamp(revision=_BASELINE_REVISION)
+            print(f'Existing database stamped at {_BASELINE_REVISION}.')
+
+        upgrade()
+
+
+# The initial migration -- the schema an old create_all() database already has.
+_BASELINE_REVISION = 'a062ad0fb313'
+
+
+def init_db():
+    """Migrate to the latest schema and seed an admin user if there isn't one.
+    Safe to call repeatedly, and safe to call on every boot."""
+    _apply_migrations()
+    with app.app_context():
         admin = User.query.filter_by(is_admin=True).first()
         if not admin:
             seed_password = os.environ.get('ADMIN_PASSWORD', 'admin')
