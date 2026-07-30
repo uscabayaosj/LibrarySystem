@@ -174,6 +174,12 @@ first boot (see step 2). Everything else is already declared.
 | Start Command | `python -c "from app import init_db; init_db()" && gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 60` |
 | Health Check Path | `/login` |
 
+**Overwrite the Build Command Render pre-fills.** It detects `poetry.lock` and
+suggests `poetry install`, which pulls in dev dependencies the production image
+doesn't need. (It no longer *fails* — `package-mode = false` in
+`pyproject.toml` handles that — but `pip install -r requirements.txt` is the
+leaner build.)
+
 Then, before deploying:
 
 1. **New → Postgres.** Create the database, copy its **Internal Database URL**.
@@ -281,6 +287,8 @@ expire after 90 days. Fine for evaluation; move to a paid instance for real use.
 | Deploy fails: `RuntimeError: SECRET_KEY environment variable must be set` | `FLASK_ENV=production` with no `SECRET_KEY` | Set `SECRET_KEY` in the environment |
 | Deploy succeeds, host reports "no open ports detected" | gunicorn bound to `127.0.0.1` | Use the full start command, including `--bind 0.0.0.0:$PORT` |
 | `Can't load plugin: sqlalchemy.dialects:postgres` | Very old `DATABASE_URL` handling | Already handled — the app rewrites `postgres://`. Confirm you're on the current `main` |
+| Build fails: `The current project could not be installed: No file/folder found for package library-system` | The host autodetected `poetry.lock` and ran a bare `poetry install`, which tries to install the app as a package | Already handled — `package-mode = false` in `pyproject.toml`. Confirm you're on current `main`. Setting the Build Command to `pip install -r requirements.txt` also avoids it |
+| Build uses an unexpected Python version | No version pinned, so the host picks its default (Render currently defaults to 3.14) | Already handled — `.python-version` pins 3.12. `PYTHON_VERSION` in the environment overrides it |
 | `ModuleNotFoundError: No module named 'psycopg2'` | Build didn't install requirements | Check the Build Command is `pip install -r requirements.txt` |
 | Uploaded logo disappears after a deploy | No persistent disk | Mount a disk at `/opt/render/project/src/static/uploads` |
 | `no such table` / `column ... does not exist` at runtime | A migration wasn't committed, or the start command doesn't migrate | Confirm the start command includes the `init_db()` prefix; generate and commit the missing migration |
