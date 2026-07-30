@@ -145,11 +145,16 @@ The two commands a host needs:
 | | |
 |---|---|
 | **Build** | `pip install -r requirements.txt` |
-| **Start** | `python -c "from app import init_db; init_db()" && gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 60` |
+| **Start** | `python -c "from app import init_db; init_db()" && gunicorn app:app --bind 0.0.0.0:$PORT --timeout 60` |
 
 The start command migrates the database before gunicorn binds, so the schema is
 current before the first request is served. The explicit `--bind 0.0.0.0:$PORT`
 matters: gunicorn otherwise binds to `127.0.0.1`, which the host can't route to.
+
+Worker count is deliberately not set. Gunicorn reads `WEB_CONCURRENCY`, which
+hosts set from the instance's available CPU (Render does this automatically), so
+leaving it off means the app scales with the instance instead of overriding it
+with a hardcoded number that could exhaust memory on a small plan.
 
 Hosts that read a `Procfile` (Railway, Fly, Heroku) can use the one in the repo
 root instead — it splits the same work into a `release` and a `web` step.
@@ -171,7 +176,7 @@ first boot (see step 2). Everything else is already declared.
 |---|---|
 | Runtime | Python 3 |
 | Build Command | `pip install -r requirements.txt` |
-| Start Command | `python -c "from app import init_db; init_db()" && gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 60` |
+| Start Command | `python -c "from app import init_db; init_db()" && gunicorn app:app --bind 0.0.0.0:$PORT --timeout 60` |
 | Health Check Path | `/login` |
 
 **Overwrite the Build Command Render pre-fills.** It detects `poetry.lock` and
@@ -212,6 +217,15 @@ admin exists, so it will not silently re-create or reset the account later.
 curl -sf https://YOUR-APP.onrender.com/login   > /dev/null && echo "login OK"
 curl -sf https://YOUR-APP.onrender.com/manifest.json | head -c 200
 ```
+
+**Check the startup log for the database it actually connected to.** The
+migration line names the backend:
+
+- `Context impl PostgresqlImpl` — correct.
+- `Context impl SQLiteImpl` — `DATABASE_URL` didn't take effect. The app will
+  run perfectly and lose everything on the next deploy. Fix this before
+  entering real data. Startup also prints an unmissable warning banner in this
+  case.
 
 Then in a browser:
 
@@ -286,6 +300,7 @@ expire after 90 days. Fine for evaluation; move to a paid instance for real use.
 |---|---|---|
 | Deploy fails: `RuntimeError: SECRET_KEY environment variable must be set` | `FLASK_ENV=production` with no `SECRET_KEY` | Set `SECRET_KEY` in the environment |
 | Deploy succeeds, host reports "no open ports detected" | gunicorn bound to `127.0.0.1` | Use the full start command, including `--bind 0.0.0.0:$PORT` |
+| `Error: can't chdir to './app_dir'` (or any start command you don't recognise) | The Start Command field was left empty, so the host invented one | Paste the Start Command from the table above into the service's settings |
 | `Can't load plugin: sqlalchemy.dialects:postgres` | Very old `DATABASE_URL` handling | Already handled — the app rewrites `postgres://`. Confirm you're on the current `main` |
 | Build fails: `The current project could not be installed: No file/folder found for package library-system` | The host autodetected `poetry.lock` and ran a bare `poetry install`, which tries to install the app as a package | Already handled — `package-mode = false` in `pyproject.toml`. Confirm you're on current `main`. Setting the Build Command to `pip install -r requirements.txt` also avoids it |
 | Build uses an unexpected Python version | No version pinned, so the host picks its default (Render currently defaults to 3.14) | Already handled — `.python-version` pins 3.12. `PYTHON_VERSION` in the environment overrides it |
@@ -293,6 +308,8 @@ expire after 90 days. Fine for evaluation; move to a paid instance for real use.
 | Uploaded logo disappears after a deploy | No persistent disk | Mount a disk at `/opt/render/project/src/static/uploads` |
 | `no such table` / `column ... does not exist` at runtime | A migration wasn't committed, or the start command doesn't migrate | Confirm the start command includes the `init_db()` prefix; generate and commit the missing migration |
 | Sign-in appears to succeed but bounces back to `/login` | Cookie marked secure while served over plain HTTP | Serve over HTTPS (Render does this by default), or unset `SESSION_COOKIE_SECURE` for a non-TLS test host |
+| Startup logs a `WARNING: running in production on SQLite` banner, or migrations log `Context impl SQLiteImpl` | `DATABASE_URL` isn't set, so the app is writing to a local file that the next deploy destroys | Attach a managed Postgres instance and set `DATABASE_URL`. Any data created in the meantime is lost on the next deploy |
+| Data disappeared after a deploy | Same cause as above — the app was on SQLite, not Postgres | Set `DATABASE_URL` before putting real data in |
 
 ### Running tests
 

@@ -103,3 +103,57 @@ def _build_app(tmp_path, monkeypatch, filename):
     flask_app = app_module.create_app(MigrationTestConfig)
     monkeypatch.setattr(app_module, 'app', flask_app)
     return flask_app
+
+
+# ---- Deploy-safety guards --------------------------------------------------
+
+def test_seed_does_not_print_the_admin_password(tmp_path, monkeypatch, capsys):
+    """The seed message must never echo ADMIN_PASSWORD -- init_db() runs on
+    every boot, and host deploy logs are long-lived and widely readable."""
+    _build_app(tmp_path, monkeypatch, 'nopw.db')
+    monkeypatch.setenv('ADMIN_PASSWORD', 'sup3r-s3cret-value')
+
+    app_module.init_db()
+
+    out = capsys.readouterr().out
+    assert 'sup3r-s3cret-value' not in out
+    assert 'admin' in out.lower()
+
+
+def test_default_admin_password_is_called_out(tmp_path, monkeypatch, capsys):
+    """With no ADMIN_PASSWORD set the account really is admin/admin, so that
+    case should say so loudly rather than being coy about it."""
+    _build_app(tmp_path, monkeypatch, 'defaultpw.db')
+    monkeypatch.delenv('ADMIN_PASSWORD', raising=False)
+
+    app_module.init_db()
+
+    out = capsys.readouterr().out
+    assert 'CHANGE THIS PASSWORD' in out
+
+
+def test_production_on_sqlite_warns_loudly(tmp_path, monkeypatch, capsys):
+    flask_app = _build_app(tmp_path, monkeypatch, 'warn.db')
+    flask_app.config['ENV'] = 'production'
+
+    app_module._warn_if_ephemeral_database()
+
+    out = capsys.readouterr().out
+    assert 'WARNING' in out
+    assert 'DATABASE_URL' in out
+    assert 'DESTROYED ON THE NEXT DEPLOY' in out
+
+
+def test_no_warning_outside_production_or_on_postgres(tmp_path, monkeypatch, capsys):
+    flask_app = _build_app(tmp_path, monkeypatch, 'nowarn.db')
+
+    # Development on SQLite is the normal local setup -- no warning.
+    flask_app.config['ENV'] = 'development'
+    app_module._warn_if_ephemeral_database()
+    assert 'WARNING' not in capsys.readouterr().out
+
+    # Production on Postgres is the intended production setup -- no warning.
+    flask_app.config['ENV'] = 'production'
+    flask_app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://user@host/db'
+    app_module._warn_if_ephemeral_database()
+    assert 'WARNING' not in capsys.readouterr().out
