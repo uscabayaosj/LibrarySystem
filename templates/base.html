@@ -7,8 +7,25 @@
     <meta name="color-scheme" content="light dark">
     <meta name="theme-color" content="#F6F6F8" media="(prefers-color-scheme: light)">
     <meta name="theme-color" content="#242427" media="(prefers-color-scheme: dark)">
-    <title>{% block title %}Library{% endblock %} — Library System</title>
+
+    {% set icon_dir = 'uploads/branding' if org_settings.logo_filename else 'icons' %}
+    {# Installable app: manifest + icons, so "Add to Home Screen" gives a
+       real app icon and standalone launch instead of a bare bookmark.
+       Icons come from the org's uploaded logo when one is set, otherwise
+       from the library's bundled default. #}
+    <link rel="manifest" href="{{ url_for('manifest') }}">
+    <link rel="icon" href="{{ url_for('static', filename=icon_dir + '/favicon.ico') }}" sizes="any">
+    <link rel="icon" href="{{ url_for('static', filename=icon_dir + '/icon-192.png') }}" type="image/png" sizes="192x192">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename=icon_dir + '/apple-touch-icon.png') }}">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="{{ org_settings.org_name }}">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+    <title>{% block title %}Library{% endblock %} — {{ org_settings.org_name }}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+    {% if org_theme_css %}
+    <style>{{ org_theme_css|safe }}</style>
+    {% endif %}
     <script>
         // Applied before first paint so the correct appearance is never flashed.
         (function () {
@@ -26,7 +43,7 @@
 
 {% if current_user.is_authenticated %}
 {% set is_admin = current_user.is_admin %}
-<div class="app">
+<div class="app {{ 'app-member' if not is_admin }}">
     <div class="scrim" id="scrim"></div>
 
     <aside class="sidebar" id="sidebar" data-open="false">
@@ -35,7 +52,13 @@
         </div>
 
         <a class="sidebar-brand" href="{{ url_for('index') }}">
-            {{ icon('book', class='icon-lg') }} Library
+            {% if org_settings.logo_filename %}
+                <img class="sidebar-brand-logo" alt=""
+                     src="{{ url_for('static', filename='uploads/branding/' + org_settings.logo_filename) }}">
+            {% else %}
+                {{ icon('book', class='icon-lg') }}
+            {% endif %}
+            <span class="sidebar-brand-name">{{ org_settings.org_name }}</span>
         </a>
 
         <nav aria-label="Main">
@@ -54,6 +77,9 @@
                     <li><a class="sidebar-link" href="{{ url_for('admin.borrowing_history') }}"
                            {% if request.endpoint == 'admin.borrowing_history' %}aria-current="page"{% endif %}>
                         {{ icon('clock') }} Circulation</a></li>
+                    <li><a class="sidebar-link" href="{{ url_for('admin.settings') }}"
+                           {% if request.endpoint == 'admin.settings' %}aria-current="page"{% endif %}>
+                        {{ icon('gear') }} Settings</a></li>
                 {% else %}
                     <li><a class="sidebar-link" href="{{ url_for('member.dashboard') }}"
                            {% if request.endpoint == 'member.dashboard' %}aria-current="page"{% endif %}>
@@ -118,23 +144,62 @@
     </aside>
 
     <div class="main-col">
-        <header class="toolbar">
+        {% set page_heading %}{% block heading %}{{ self.title() }}{% endblock %}{% endset %}
+        <header class="toolbar" id="toolbar">
             <button class="btn btn-plain btn-icon sidebar-toggle" id="sidebar-toggle" type="button"
                     aria-expanded="false" aria-controls="sidebar" aria-label="Show navigation">
                 {{ icon('menu') }}
             </button>
-            <div>
-                <h1>{% block heading %}{{ self.title() }}{% endblock %}</h1>
+            <div class="toolbar-heading">
+                <h1>{{ page_heading }}</h1>
                 {% block subheading %}{% endblock %}
             </div>
             <div class="toolbar-actions">{% block toolbar %}{% endblock %}</div>
         </header>
 
         <main class="content" id="main">
+            {# Decorative large-title -- the real, single <h1> stays in the
+               toolbar above for consistent document structure; this is a
+               visual-only echo of the same text, shown large at the top of
+               the scroll and hidden from assistive tech so the page doesn't
+               appear to have two headings. Purely a mobile/member effect;
+               CSS keeps it off-screen everywhere else. #}
+            <h2 class="large-title" aria-hidden="true">{{ page_heading }}</h2>
             {% include "_flashes.html" %}
             {% block content %}{% endblock %}
         </main>
     </div>
+
+    {% if not is_admin %}
+    <nav class="tab-bar" aria-label="Primary">
+        <a class="tab-bar-item" href="{{ url_for('member.dashboard') }}"
+           {% if request.endpoint == 'member.dashboard' %}aria-current="page"{% endif %}>
+            <span class="tab-bar-icon">{{ icon('gauge') }}</span>
+            <span>Overview</span>
+        </a>
+        <a class="tab-bar-item" href="{{ url_for('member.search') }}"
+           {% if request.endpoint == 'member.search' %}aria-current="page"{% endif %}>
+            <span class="tab-bar-icon">{{ icon('search') }}</span>
+            <span>Browse</span>
+        </a>
+        <a class="tab-bar-item" href="{{ url_for('member.borrowing_history') }}"
+           {% if request.endpoint == 'member.borrowing_history' %}aria-current="page"{% endif %}>
+            <span class="tab-bar-icon">
+                {{ icon('archive') }}
+                {% if current_user.active_borrowings %}<span class="tab-bar-badge">{{ current_user.active_borrowings }}</span>{% endif %}
+            </span>
+            <span>Loans</span>
+        </a>
+        <a class="tab-bar-item" href="{{ url_for('member.reservations') }}"
+           {% if request.endpoint == 'member.reservations' %}aria-current="page"{% endif %}>
+            <span class="tab-bar-icon">
+                {{ icon('calendar-check') }}
+                {% if current_user.active_reservations_count %}<span class="tab-bar-badge">{{ current_user.active_reservations_count }}</span>{% endif %}
+            </span>
+            <span>Reserved</span>
+        </a>
+    </nav>
+    {% endif %}
 </div>
 
 {% else %}
@@ -144,7 +209,7 @@
             {% include "_flashes.html" %}
             {% block content_public %}{{ self.content() }}{% endblock %}
         </main>
-        <footer class="footer">Library Management System — Anthropology Department</footer>
+        <footer class="footer">Library Management System — {{ org_settings.org_name }}</footer>
     </div>
 </div>
 {% endif %}

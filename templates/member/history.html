@@ -32,8 +32,13 @@
                     {% for b in borrowings %}
                     <tr class="{{ 'row-alert' if b.due_state == 'overdue' }}">
                         <td class="cell-primary" data-label="Book">
-                            {{ b.book.title }}
-                            <div class="small text-secondary" style="font-weight:400">{{ b.book.author }}</div>
+                            <div style="display:flex;align-items:center;gap:10px">
+                                <div class="book-cover-sm" style="--hue: {{ b.book.isbn|cover_hue }}" aria-hidden="true">{{ b.book.title[0]|upper }}</div>
+                                <div>
+                                    {{ b.book.title }}
+                                    <div class="small text-secondary" style="font-weight:400">{{ b.book.author }}</div>
+                                </div>
+                            </div>
                         </td>
                         <td data-label="Borrowed">{{ b.borrow_date.strftime('%b %d, %Y') }}</td>
                         <td data-label="Due">
@@ -58,20 +63,29 @@
                             {% endif %}
                         </td>
                         <td class="cell-actions" data-label="">
-                            {% if b.can_renew %}
-                                <form action="{{ url_for('member.renew_borrowing', borrowing_id=b.id) }}" method="POST"
-                                      data-confirm="This will extend the due date by {{ config.LOAN_PERIOD_DAYS }} days from today."
-                                      data-confirm-title="Renew “{{ b.book.title }}”?"
-                                      data-confirm-label="Renew">
-                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <input type="hidden" name="next" value="history">
-                                    <button type="submit" class="btn btn-sm">{{ icon('refresh', class='icon-sm') }} Renew</button>
-                                </form>
-                            {% elif b.status == 'active' and b.renew_blocked_reason %}
-                                <span class="xs text-tertiary" title="{{ b.renew_blocked_reason }}">Can't renew</span>
-                            {% else %}
-                                <span class="text-tertiary">—</span>
-                            {% endif %}
+                            <div style="display:flex; gap:6px; align-items:center; justify-content:flex-end">
+                                {% if b.can_renew %}
+                                    <form action="{{ url_for('member.renew_borrowing', borrowing_id=b.id) }}" method="POST"
+                                          data-confirm="This will extend the due date by {{ config.LOAN_PERIOD_DAYS }} days from today."
+                                          data-confirm-title="Renew “{{ b.book.title }}”?"
+                                          data-confirm-label="Renew">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <input type="hidden" name="next" value="history">
+                                        <button type="submit" class="btn btn-sm">{{ icon('refresh', class='icon-sm') }} Renew</button>
+                                    </form>
+                                {% elif b.status == 'active' and b.renew_blocked_reason %}
+                                    <span class="xs text-tertiary" title="{{ b.renew_blocked_reason }}">Can't renew</span>
+                                {% else %}
+                                    <span class="text-tertiary">—</span>
+                                {% endif %}
+                                {% if b.status == 'active' %}
+                                    <a href="{{ url_for('member.loan_calendar', borrowing_id=b.id) }}"
+                                       class="btn btn-sm btn-icon btn-glass" title="Add due date to calendar"
+                                       aria-label="Add “{{ b.book.title }}” due date to calendar">
+                                        {{ icon('calendar', class='icon-sm') }}
+                                    </a>
+                                {% endif %}
+                            </div>
                         </td>
                     </tr>
                     {% endfor %}

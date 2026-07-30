@@ -5,6 +5,30 @@ from datetime import datetime, timedelta
 from extensions import db
 
 
+class OrganizationSettings(db.Model):
+    """Singleton row (always id=1) holding the per-deployment branding: the
+    organization's display name, an optional uploaded logo, and a custom
+    theme color. A real table (rather than a config file) so an admin can
+    change branding from the UI without redeploying or touching the
+    environment."""
+    __tablename__ = 'organization_settings'
+
+    id = db.Column(db.Integer, primary_key=True)
+    org_name = db.Column(db.String(80), nullable=False, default='Library System')
+    logo_filename = db.Column(db.String(120))
+    theme_color = db.Column(db.String(7))  # '#rrggbb', or None for the default palette
+
+    @classmethod
+    def get(cls):
+        """Fetch the singleton row, creating it with defaults on first use."""
+        settings = cls.query.get(1)
+        if settings is None:
+            settings = cls(id=1)
+            db.session.add(settings)
+            db.session.commit()
+        return settings
+
+
 class User(UserMixin, db.Model):
     __tablename__ = 'user'
 
@@ -211,9 +235,54 @@ class Reservation(db.Model):
             return 'Expires today'
         return f"{days} day{'s' if days != 1 else ''} left"
 
+    @property
+    def queue_position(self):
+        """1-indexed position in this book's reservation queue (the oldest
+        active reservation is #1), or None once this reservation is no
+        longer active.
+
+        Ties on reservation_date are broken by id, matching the ordering
+        get_active_reservation uses to decide who is fulfilled next -- so
+        "#1" here is always the same reservation that would actually be
+        filled first.
+        """
+        if self.status != 'active':
+            return None
+        ahead = Reservation.query.filter(
+            Reservation.book_id == self.book_id,
+            Reservation.status == 'active',
+        ).filter(
+            db.or_(
+                Reservation.reservation_date < self.reservation_date,
+                db.and_(
+                    Reservation.reservation_date == self.reservation_date,
+                    Reservation.id < self.id,
+                ),
+            )
+        ).count()
+        return ahead + 1
+
+    @property
+    def queue_length(self):
+        """Total number of members currently waiting for this book."""
+        return Reservation.query.filter_by(book_id=self.book_id, status='active').count()
+
+    @property
+    def queue_label(self):
+        """Human-readable queue status, e.g. "You're next in line" or
+        "#3 in line"."""
+        position = self.queue_position
+        if position is None:
+            return ''
+        if position == 1:
+            return "You're next in line"
+        return f'#{position} in line'
+
     @classmethod
     def get_active_reservation(cls, book_id):
-        return cls.query.filter_by(book_id=book_id, status='active').order_by(cls.reservation_date).first()
+        return cls.query.filter_by(book_id=book_id, status='active').order_by(
+            cls.reservation_date, cls.id
+        ).first()
 
     def fulfill(self):
         self.status = 'fulfilled'

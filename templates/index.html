@@ -5,12 +5,17 @@
 
 {% block content %}
 <div class="hero">
-    <div class="hero-mark">{{ icon('book', class='icon-xl') }}</div>
-    <h1>Library Management System</h1>
+    {% if org_settings.logo_filename %}
+        <img class="hero-mark-logo" alt=""
+             src="{{ url_for('static', filename='uploads/branding/' + org_settings.logo_filename) }}">
+    {% else %}
+        <div class="hero-mark">{{ icon('book', class='icon-xl') }}</div>
+    {% endif %}
+    <h1>{{ org_settings.org_name }}</h1>
     <p>
-        Anthropology Department Library. Browse and borrow from the collection,
-        reserve titles that are out, and keep track of what's due — with a
-        full cataloguing and circulation desk for librarians.
+        Browse and borrow from the collection, reserve titles that are out,
+        and keep track of what's due — with a full cataloguing and
+        circulation desk for librarians.
     </p>
     <div class="hero-actions">
         {% if current_user.is_authenticated %}

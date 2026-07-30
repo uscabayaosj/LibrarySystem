@@ -196,6 +196,34 @@
         }
 
         /* -----------------------------------------------------------
+           Large-title collapse (member phone experience)
+           Mirrors iOS's large-title nav bar: the big title at the top of
+           the content fades out and the compact toolbar title fades in
+           once the page has scrolled past a small threshold. Harmless
+           no-op outside that layout -- the CSS only reacts to
+           .is-scrolled inside the mobile/member media query.
+           ----------------------------------------------------------- */
+        var toolbar = document.getElementById('toolbar');
+        if (toolbar) {
+            var scrollTicking = false;
+            var THRESHOLD = 28;
+
+            function updateScrolled() {
+                var scrolled = (window.scrollY || document.documentElement.scrollTop) > THRESHOLD;
+                toolbar.classList.toggle('is-scrolled', scrolled);
+                scrollTicking = false;
+            }
+
+            updateScrolled();
+            window.addEventListener('scroll', function () {
+                if (!scrollTicking) {
+                    scrollTicking = true;
+                    window.requestAnimationFrame(updateScrolled);
+                }
+            }, { passive: true });
+        }
+
+        /* -----------------------------------------------------------
            Global keys
            ----------------------------------------------------------- */
         document.addEventListener('keydown', function (e) {

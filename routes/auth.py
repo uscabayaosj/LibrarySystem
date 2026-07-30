@@ -38,7 +38,8 @@ def login():
         if user is None or not user.check_password(password):
             flash('Invalid username or password.', 'danger')
             return render_template('login.html')
-        login_user(user)
+        remember = request.form.get('remember') == 'on'
+        login_user(user, remember=remember)
         next_page = request.args.get('next')
         if not _is_safe_next(next_page):
             next_page = _dashboard_for(user)

@@ -12,6 +12,7 @@ flask = "^3.0.3"
 flask-login = "^0.6.3"
 flask-wtf = "^1.2.1"
 psycopg2-binary = "^2.9.9"
+pillow = "^12.3.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.0.0"

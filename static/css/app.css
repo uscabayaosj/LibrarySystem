@@ -77,6 +77,7 @@
     --accent-soft: rgba(0, 105, 217, 0.11);
 
     --red: #D70015;
+    --red-fill: #D70015;
     --red-soft: rgba(215, 0, 21, 0.10);
     --orange: #B54708;
     --orange-soft: rgba(181, 71, 8, 0.11);
@@ -90,6 +91,16 @@
     --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.09), 0 0 0 0.5px rgba(0, 0, 0, 0.05);
     --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.20), 0 0 0 0.5px rgba(0, 0, 0, 0.10);
     --shadow-btn: 0 1px 1.5px rgba(0, 0, 0, 0.10), inset 0 0.5px 0 rgba(255, 255, 255, 0.35);
+
+    /* Frosted-glass control (calendar/reminder actions) — a translucent tint
+       over whatever sits behind it, not a flat fill, so it must stay very
+       light-alpha in light mode (the page behind it is already near-white). */
+    --glass-fill: rgba(255, 255, 255, 0.55);
+    --glass-fill-hover: rgba(255, 255, 255, 0.75);
+    --glass-fill-active: rgba(255, 255, 255, 0.92);
+    --glass-border: rgba(255, 255, 255, 0.9);
+    --glass-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 0 0 0.5px rgba(0, 0, 0, 0.06),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 
 /* ---- Dark appearance ---- */
@@ -122,6 +133,7 @@
         --accent-soft: rgba(76, 157, 255, 0.18);
 
         --red: #FF6961;
+        --red-fill: #D62E28;
         --red-soft: rgba(255, 105, 97, 0.16);
         --orange: #FFA02E;
         --orange-soft: rgba(255, 160, 46, 0.16);
@@ -135,6 +147,13 @@
         --shadow-md: 0 2px 10px rgba(0, 0, 0, 0.45), 0 0 0 0.5px rgba(255, 255, 255, 0.06);
         --shadow-lg: 0 12px 44px rgba(0, 0, 0, 0.6), 0 0 0 0.5px rgba(255, 255, 255, 0.10);
         --shadow-btn: 0 1px 1.5px rgba(0, 0, 0, 0.35), inset 0 0.5px 0 rgba(255, 255, 255, 0.10);
+
+        --glass-fill: rgba(255, 255, 255, 0.08);
+        --glass-fill-hover: rgba(255, 255, 255, 0.14);
+        --glass-fill-active: rgba(255, 255, 255, 0.20);
+        --glass-border: rgba(255, 255, 255, 0.18);
+        --glass-shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 0 0 0.5px rgba(255, 255, 255, 0.06),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.14);
     }
 }
 
@@ -162,6 +181,7 @@
     --accent-hover: #1573DD;
     --accent-soft: rgba(76, 157, 255, 0.18);
     --red: #FF6961;
+    --red-fill: #D62E28;
     --red-soft: rgba(255, 105, 97, 0.16);
     --orange: #FFA02E;
     --orange-soft: rgba(255, 160, 46, 0.16);
@@ -174,6 +194,12 @@
     --shadow-md: 0 2px 10px rgba(0, 0, 0, 0.45), 0 0 0 0.5px rgba(255, 255, 255, 0.06);
     --shadow-lg: 0 12px 44px rgba(0, 0, 0, 0.6), 0 0 0 0.5px rgba(255, 255, 255, 0.10);
     --shadow-btn: 0 1px 1.5px rgba(0, 0, 0, 0.35), inset 0 0.5px 0 rgba(255, 255, 255, 0.10);
+    --glass-fill: rgba(255, 255, 255, 0.08);
+    --glass-fill-hover: rgba(255, 255, 255, 0.14);
+    --glass-fill-active: rgba(255, 255, 255, 0.20);
+    --glass-border: rgba(255, 255, 255, 0.18);
+    --glass-shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 0 0 0.5px rgba(255, 255, 255, 0.06),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.14);
 }
 
 /* --------------------------------------------------------------------------
@@ -308,7 +334,14 @@ svg { display: block; flex: none; }
     color: var(--fg);
 }
 .sidebar-brand:hover { text-decoration: none; }
-.sidebar-brand svg { color: var(--accent); }
+.sidebar-brand svg { color: var(--accent); flex: none; }
+.sidebar-brand-logo {
+    width: 22px; height: 22px; flex: none;
+    object-fit: contain; border-radius: var(--r-xs);
+}
+.sidebar-brand-name {
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
 
 .sidebar-section {
     padding: 6px 8px 2px;
@@ -443,6 +476,15 @@ svg { display: block; flex: none; }
 .content { padding: 22px; flex: 1; }
 .content-narrow { max-width: 560px; margin: 0 auto; padding: 40px 22px; }
 
+/* Decorative large title: a visual echo of the toolbar <h1>, shown only on
+   the member phone experience (see the mobile media query below). Hidden
+   from assistive tech and off everywhere else so there's still exactly one
+   real heading per page. */
+.large-title { display: none; }
+
+/* iOS-style bottom tab bar: member phone experience only. */
+.tab-bar { display: none; }
+
 /* --------------------------------------------------------------------------
    4. Surfaces
    -------------------------------------------------------------------------- */
@@ -544,6 +586,28 @@ a.stat:hover { text-decoration: none; box-shadow: var(--shadow-md); transform: t
 .btn-block { width: 100%; }
 .btn:disabled, .btn[disabled] { opacity: 0.45; cursor: default; pointer-events: none; }
 
+/* ---- Glassmorphic icon button (calendar/reminder-style secondary actions) ----
+   A frosted, floating circle rather than a flat filled square: tints and
+   blurs whatever sits behind it instead of covering it, so it reads as a
+   layer of glass rather than another opaque control. */
+.btn-glass {
+    background: var(--glass-fill);
+    border-color: var(--glass-border);
+    border-radius: 50%;
+    box-shadow: var(--glass-shadow);
+    backdrop-filter: saturate(180%) blur(14px);
+    -webkit-backdrop-filter: saturate(180%) blur(14px);
+    color: var(--accent);
+}
+.btn-glass svg { color: var(--accent); }
+.btn-glass:hover { background: var(--glass-fill-hover); }
+.btn-glass:active { background: var(--glass-fill-active); }
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    /* No blur support: fall back to a plain raised icon button rather than
+       a flat tint that would read as a rendering bug. */
+    .btn-glass { background: var(--bg-raised); border-color: var(--separator-strong); }
+}
+
 /* List of nav-style buttons (quick actions) */
 .stack { display: flex; flex-direction: column; gap: 6px; }
 .stack .btn { justify-content: flex-start; }
@@ -606,6 +670,22 @@ select {
     box-shadow: 0 0 0 3px var(--accent-soft);
 }
 ::placeholder { color: var(--fg-tertiary); }
+
+/* Native checkbox/radio, themed via accent-color rather than a custom
+   markup replacement -- keeps native keyboard/AT behaviour for free. */
+input[type="checkbox"], input[type="radio"] {
+    accent-color: var(--accent-fill);
+    width: 16px; height: 16px;
+    flex: none;
+}
+.checkbox-field {
+    display: flex; align-items: center; gap: 8px;
+    font-size: var(--text-base);
+}
+.checkbox-field label { cursor: pointer; user-select: none; margin: 0; }
+@media (pointer: coarse) {
+    input[type="checkbox"], input[type="radio"] { width: 20px; height: 20px; }
+}
 
 .form-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 12px; }
 .col-3 { grid-column: span 3; }
@@ -723,6 +803,38 @@ table.data tr.row-alert:hover { background: var(--red-soft); filter: brightness(
     transition: box-shadow var(--dur) var(--ease), transform var(--dur) var(--ease);
 }
 .book:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+
+/* No cover-art pipeline exists, so every book gets a deterministic colour
+   (see cover_hue() in app.py, keyed off ISBN) plus its title's initial --
+   the same trick Apple Music/Podcasts/Contacts use to give visual identity
+   to items that have no real artwork/photo. The lightness values are capped
+   at 30%/18% rather than something more vivid because the hue rotates
+   through the full wheel, including yellow -- WCAG's luminance weighting
+   makes yellow far "brighter" than blue or red at the same HSL lightness,
+   so a value that looks fine for most hues can drop white text to ~2.6:1 at
+   the yellow end. 30%/18% keeps every hue at 4.7:1 or better (verified by
+   walking all 360 hues), so the letter stays legible on every book, not
+   just most of them. */
+.book-cover, .book-cover-sm {
+    background: linear-gradient(135deg,
+        hsl(var(--hue, 210) 55% 30%),
+        hsl(calc(var(--hue, 210) + 32) 55% 18%));
+    color: rgba(255, 255, 255, 0.94);
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex: none;
+}
+.book-cover {
+    height: 68px;
+    font-size: 26px;
+    letter-spacing: -0.01em;
+}
+.book-cover-sm {
+    width: 40px; height: 40px;
+    border-radius: var(--r-sm);
+    font-size: 15px;
+}
+
 .book-body { padding: 14px 16px; flex: 1; }
 .book-title { font-size: var(--text-md); font-weight: 600; letter-spacing: -0.01em; }
 .book-author { font-size: var(--text-base); color: var(--fg-secondary); margin-top: 1px; }
@@ -829,6 +941,17 @@ table.data tr.row-alert:hover { background: var(--red-soft); filter: brightness(
 /* ---- Breadcrumb ---- */
 .crumbs { display: flex; align-items: center; gap: 5px; font-size: var(--text-sm); color: var(--fg-secondary); margin-bottom: 14px; }
 .crumbs svg { color: var(--fg-tertiary); }
+/* Breadcrumbs sit directly on --bg-window rather than a --bg-content panel,
+   and --accent (tuned for white/dark-content backgrounds elsewhere) falls to
+   4.27:1 against the grey window background in light mode -- under the 4.5:1
+   AA floor. --accent-hover clears it in light mode, but only --accent does in
+   dark (accent-hover is a touch too light there), so the two states need
+   different tokens rather than one swapped value. */
+.crumbs a { color: var(--accent-hover); }
+@media (prefers-color-scheme: dark) {
+    :root:not([data-appearance="light"]) .crumbs a { color: var(--accent); }
+}
+:root[data-appearance="dark"] .crumbs a { color: var(--accent); }
 
 /* ---- Marketing / auth ---- */
 .hero { text-align: center; padding: 56px 20px 40px; }
@@ -859,6 +982,12 @@ table.data tr.row-alert:hover { background: var(--red-soft); filter: brightness(
 .auth-head { text-align: center; margin-bottom: 20px; }
 .auth-head .hero-mark { width: 48px; height: 48px; border-radius: var(--r-lg); margin-bottom: 14px; }
 .auth-head h1 { font-size: var(--text-lg); }
+.hero-mark-logo {
+    width: 64px; height: 64px; object-fit: contain;
+    border-radius: var(--r-xl); margin: 0 auto 20px; display: block;
+    box-shadow: var(--shadow-md); background: var(--bg-raised);
+}
+.auth-head .hero-mark-logo { width: 48px; height: 48px; border-radius: var(--r-lg); margin-bottom: 14px; }
 .auth-head p { font-size: var(--text-base); color: var(--fg-secondary); margin-top: 3px; }
 .auth-foot { text-align: center; margin-top: 18px; font-size: var(--text-base); color: var(--fg-secondary); }
 
@@ -927,6 +1056,99 @@ table.data tr.row-alert:hover { background: var(--red-soft); filter: brightness(
 
     .form-grid > * { grid-column: span 12 !important; }
     .toolbar h1 { font-size: var(--text-md); }
+
+    /* ---- Member phone experience ----------------------------------------
+       Bottom tab bar replaces the sidebar's page-navigation links (the
+       sidebar drawer still opens via the hamburger, but now only for
+       account/appearance/sign-out). Paired with an iOS-style large-title
+       header that starts big at the top of the scroll and crossfades into
+       the compact toolbar title as the page scrolls -- app.js toggles
+       .toolbar.is-scrolled past a small threshold. */
+    .app-member .sidebar-nav { display: none; }
+
+    .app-member .large-title {
+        display: block;
+        margin: 2px 0 16px;
+        font-size: 30px;
+        font-weight: 700;
+        letter-spacing: -0.021em;
+        line-height: 1.15;
+        opacity: 1;
+        transform: none;
+        transition: opacity 200ms var(--ease), transform 200ms var(--ease);
+    }
+    .app-member .toolbar.is-scrolled ~ .content .large-title {
+        opacity: 0;
+        transform: translateY(-6px);
+    }
+
+    .app-member .toolbar-heading {
+        opacity: 0;
+        transform: translateY(4px);
+        transition: opacity 180ms var(--ease), transform 180ms var(--ease);
+        pointer-events: none;
+    }
+    .app-member .toolbar.is-scrolled .toolbar-heading {
+        opacity: 1;
+        transform: none;
+        pointer-events: auto;
+    }
+
+    .app-member .content { padding-bottom: calc(78px + env(safe-area-inset-bottom, 0px)); }
+
+    .app-member .tab-bar {
+        display: flex;
+        position: fixed; left: 0; right: 0; bottom: 0; z-index: 70;
+        padding: 6px 4px calc(6px + env(safe-area-inset-bottom, 0px));
+        background: var(--bg-toolbar);
+        backdrop-filter: saturate(180%) blur(20px);
+        -webkit-backdrop-filter: saturate(180%) blur(20px);
+        border-top: 1px solid var(--separator);
+    }
+    @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+        .app-member .tab-bar { background: var(--bg-content); }
+    }
+}
+
+.tab-bar-item {
+    flex: 1;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 3px;
+    padding: 5px 2px 4px;
+    /* fg-tertiary (used elsewhere for de-emphasized text) measures 3.1:1
+       here against the translucent tab bar and fails AA at this font size --
+       fg-secondary is the tertiary tone's usual next-step-up and clears it
+       comfortably in both appearances. */
+    color: var(--fg-secondary);
+    font-size: 10px;
+    font-weight: 500;
+    border-radius: var(--r-sm);
+    transition: color 120ms var(--ease), transform 120ms var(--ease);
+}
+.tab-bar-item:hover { text-decoration: none; color: var(--fg); }
+.tab-bar-item:active { transform: scale(0.92); }
+/* --accent (the text-tuned variant), not --accent-fill (tuned for a solid
+   background holding white text) -- the label sits directly on the
+   translucent toolbar background here, so it needs the text pairing. Using
+   the fill variant measured 3.13:1 in dark mode, the same fill/text mix-up
+   already fixed once for breadcrumbs and once for the badge in this file. */
+.tab-bar-item[aria-current="page"] { color: var(--accent); }
+.tab-bar-item[aria-current="page"]:hover { color: var(--accent); }
+
+.tab-bar-icon { position: relative; display: block; line-height: 0; }
+.tab-bar-icon svg { width: 24px; height: 24px; stroke-width: 1.6; margin: 0 auto; }
+
+.tab-bar-badge {
+    position: absolute; top: -4px; right: -9px;
+    min-width: 15px; height: 15px; padding: 0 3px;
+    border-radius: 999px;
+    background: var(--red-fill);
+    color: #FFFFFF;
+    font-size: 9px; font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    display: flex; align-items: center; justify-content: center;
+    line-height: 1;
+    box-shadow: 0 0 0 2px var(--bg-toolbar);
 }
 
 @media (max-width: 520px) {

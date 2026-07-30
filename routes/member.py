@@ -1,7 +1,8 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app
+from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, Response, abort
 from flask_login import login_required, current_user
 from models import db, Book, Borrowing, Reservation
 from datetime import datetime, timedelta
+from calendar_export import build_ics
 
 bp = Blueprint('member', __name__)
 
@@ -202,6 +203,40 @@ def renew_borrowing(borrowing_id):
     return redirect(destination)
 
 
+@bp.route('/loans/<int:borrowing_id>/calendar.ics')
+@login_required
+def loan_calendar(borrowing_id):
+    """Downloadable due-date reminder. This is the practical shape a
+    'reminder' takes without any push-notification infrastructure: the
+    phone's own Calendar app gets an event with a built-in alarm the day
+    before the book is due."""
+    borrowing = Borrowing.query.options(db.joinedload(Borrowing.book)).get_or_404(borrowing_id)
+    if borrowing.user_id != current_user.id:
+        abort(403)
+    if borrowing.status != 'active':
+        flash('This loan has already been returned.', 'info')
+        return redirect(url_for('member.borrowing_history'))
+
+    ics = build_ics(
+        uid=f'loan-{borrowing.id}@library-system',
+        summary=f'Return "{borrowing.book.title}"',
+        description=(
+            f'"{borrowing.book.title}" by {borrowing.book.author} is due back '
+            f'at the Anthropology Department library.'
+        ),
+        event_date=borrowing.due_date,
+        reminder_days_before=1,
+        alarm_description=f'"{borrowing.book.title}" is due tomorrow',
+    )
+    return Response(
+        ics,
+        mimetype='text/calendar',
+        headers={
+            'Content-Disposition': f'attachment; filename="loan-{borrowing.id}.ics"',
+        },
+    )
+
+
 @bp.route('/history')
 @login_required
 def borrowing_history():
@@ -239,3 +274,39 @@ def cancel_reservation(reservation_id):
     db.session.commit()
     flash('Reservation cancelled.', 'success')
     return redirect(url_for('member.reservations'))
+
+
+@bp.route('/reservations/<int:reservation_id>/calendar.ics')
+@login_required
+def reservation_calendar(reservation_id):
+    """Downloadable expiry reminder, the reservation-queue counterpart to
+    loan_calendar()."""
+    reservation = Reservation.query.options(
+        db.joinedload(Reservation.book)
+    ).get_or_404(reservation_id)
+    if reservation.user_id != current_user.id:
+        abort(403)
+    if reservation.status != 'active':
+        flash('This reservation is no longer active.', 'info')
+        return redirect(url_for('member.reservations'))
+
+    ics = build_ics(
+        uid=f'reservation-{reservation.id}@library-system',
+        summary=f'Claim "{reservation.book.title}"',
+        description=(
+            f'Your reservation for "{reservation.book.title}" by '
+            f'{reservation.book.author} expires today -- claim it at the '
+            f'Anthropology Department library or it will go to the next '
+            f'person in the queue.'
+        ),
+        event_date=reservation.expiration_date,
+        reminder_days_before=1,
+        alarm_description=f'Your hold on "{reservation.book.title}" expires tomorrow',
+    )
+    return Response(
+        ics,
+        mimetype='text/calendar',
+        headers={
+            'Content-Disposition': f'attachment; filename="reservation-{reservation.id}.ics"',
+        },
+    )
