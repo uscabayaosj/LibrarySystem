@@ -24,12 +24,19 @@
                         <h2 class="book-title">{{ r.book.title }}</h2>
                         <p class="book-author">{{ r.book.author }}</p>
                     </div>
-                    <span class="badge badge-orange">{{ icon('calendar-check', class='icon-sm') }} Reserved</span>
+                    {% if r.queue_position == 1 %}
+                        <span class="badge badge-green">{{ icon('check', class='icon-sm') }} {{ r.queue_label }}</span>
+                    {% else %}
+                        <span class="badge badge-orange">{{ icon('clock', class='icon-sm') }} {{ r.queue_label }}</span>
+                    {% endif %}
                 </div>
 
                 <div class="book-status" style="display:block">
                     <div class="small text-secondary">
                         Reserved {{ r.reservation_date.strftime('%b %d, %Y') }}
+                        {% if r.queue_length > 1 %}
+                            · {{ r.queue_length }} members waiting for this title
+                        {% endif %}
                     </div>
                     <div class="small {{ 'text-red' if r.days_until_expiry is not none and r.days_until_expiry < 1 else 'text-orange' }}"
                          style="margin-top:2px">

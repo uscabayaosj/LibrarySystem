@@ -84,6 +84,7 @@
                                 <th scope="col">Reserved</th>
                                 <th scope="col">Expires</th>
                                 <th scope="col">Status</th>
+                                <th scope="col">Queue</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -97,6 +98,13 @@
                                     {% elif r.status == 'fulfilled' %}<span class="badge badge-green">Fulfilled</span>
                                     {% elif r.status == 'expired' %}<span class="badge badge-red">Expired</span>
                                     {% else %}<span class="badge">{{ r.status|capitalize }}</span>{% endif %}
+                                </td>
+                                <td data-label="Queue">
+                                    {% if r.status == 'active' %}
+                                        <span class="text-secondary">#{{ r.queue_position }} of {{ r.queue_length }}</span>
+                                    {% else %}
+                                        <span class="text-tertiary">—</span>
+                                    {% endif %}
                                 </td>
                             </tr>
                             {% endfor %}

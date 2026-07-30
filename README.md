@@ -10,7 +10,7 @@ A Flask-based library management system with separate **Librarian (Admin)** and 
 - **Search & Browse** — Find books by title, author, ISBN, or category
 - **Borrow Books** — 14-day loan period with automatic due-date tracking
 - **Renew Books** — Extend a loan yourself for a fresh loan period, as long as it isn't overdue, hasn't hit the renewal limit, and no one else is waiting for it
-- **Reserve Books** — Queue for books when all copies are borrowed (3-day hold)
+- **Reserve Books** — Queue for books when all copies are borrowed (3-day hold), with a queue-position indicator ("You're next in line" / "#2 in line") so you know where you stand
 - **Dashboard** — See currently borrowed books, overdue items, and recent activity at a glance
 - **History** — Complete borrowing and return history
 
@@ -131,6 +131,22 @@ Design notes:
 - **Motion** — all transitions collapse under `prefers-reduced-motion`.
 - **Keyboard** — skip link, visible focus rings, Escape closes menus and
   sheets, and ⌘K / Ctrl-K jumps to the search field.
+
+## What Changed (v3.2 — reservation queue position)
+
+- **Queue-position indicator.** The reservations page (audit `UIUX_AUDIT.md`
+  §11) now shows exactly where each reservation stands: "You're next in
+  line" for the head of the queue, "#N in line" further back, plus a note
+  when other members are waiting. The librarian's per-member detail view
+  shows the same data as a neutral "#N of M" for whichever member they're
+  looking at.
+- Position is computed consistently with which reservation is actually
+  fulfilled first (ties broken by id, matching `get_active_reservation`),
+  so "#1" never disagrees with reality.
+- Fixed a pre-existing contrast gap found while verifying this: breadcrumb
+  links sit directly on the window background rather than a card, and the
+  shared accent colour used everywhere else fell to 4.27:1 there in light
+  mode. Scoped fix, not a change to the shared token.
 
 ## What Changed (v3.1 — renewals + CI)
 

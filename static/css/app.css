@@ -829,6 +829,17 @@ table.data tr.row-alert:hover { background: var(--red-soft); filter: brightness(
 /* ---- Breadcrumb ---- */
 .crumbs { display: flex; align-items: center; gap: 5px; font-size: var(--text-sm); color: var(--fg-secondary); margin-bottom: 14px; }
 .crumbs svg { color: var(--fg-tertiary); }
+/* Breadcrumbs sit directly on --bg-window rather than a --bg-content panel,
+   and --accent (tuned for white/dark-content backgrounds elsewhere) falls to
+   4.27:1 against the grey window background in light mode -- under the 4.5:1
+   AA floor. --accent-hover clears it in light mode, but only --accent does in
+   dark (accent-hover is a touch too light there), so the two states need
+   different tokens rather than one swapped value. */
+.crumbs a { color: var(--accent-hover); }
+@media (prefers-color-scheme: dark) {
+    :root:not([data-appearance="light"]) .crumbs a { color: var(--accent); }
+}
+:root[data-appearance="dark"] .crumbs a { color: var(--accent); }
 
 /* ---- Marketing / auth ---- */
 .hero { text-align: center; padding: 56px 20px 40px; }
