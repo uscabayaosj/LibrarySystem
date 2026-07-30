@@ -1,0 +1,412 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Library System — Deployment Runbook</title>
+<link rel="stylesheet" href="base.css">
+<style>
+.cover {
+    border-bottom: 2px solid #0069D9;
+    padding-bottom: 14px;
+    margin-bottom: 18px;
+}
+.eyebrow {
+    font-size: 8pt;
+    font-weight: 600;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: #0069D9;
+    margin-bottom: 6px;
+}
+.cover h1 { font-size: 23pt; letter-spacing: -0.028em; }
+.cover .sub { font-size: 10.5pt; color: #55555f; margin-top: 5px; }
+.cover .meta {
+    margin-top: 11px; font-size: 8pt; color: #77777f;
+    display: flex; gap: 18px; flex-wrap: wrap;
+}
+
+h2 {
+    font-size: 13pt;
+    margin-top: 20px;
+    margin-bottom: 7px;
+    padding-bottom: 4px;
+    border-bottom: 0.5px solid #dcdce3;
+    page-break-after: avoid;
+}
+h2 .num {
+    display: inline-block;
+    min-width: 22px; height: 22px; line-height: 22px;
+    text-align: center;
+    background: #0069D9; color: #fff;
+    border-radius: 5px;
+    font-size: 9.5pt; font-weight: 600;
+    margin-right: 8px;
+    vertical-align: 1px;
+}
+h3 {
+    font-size: 10pt;
+    margin-top: 13px;
+    margin-bottom: 4px;
+    page-break-after: avoid;
+}
+
+.callout {
+    border-radius: 6px;
+    padding: 9px 12px;
+    margin: 10px 0;
+    font-size: 9pt;
+    page-break-inside: avoid;
+    border: 0.5px solid;
+}
+.callout .label {
+    font-weight: 700; font-size: 7.6pt; letter-spacing: 0.07em;
+    text-transform: uppercase; display: block; margin-bottom: 3px;
+}
+.callout p:first-of-type { margin-top: 0; }
+.callout p:last-child { margin-bottom: 0; }
+.c-warn   { background: #fff6ed; border-color: #f0c9a0; }
+.c-warn   .label { color: #9a4b06; }
+.c-danger { background: #fff1f1; border-color: #f2bcbc; }
+.c-danger .label { color: #a3121f; }
+.c-info   { background: #eff6fe; border-color: #b9d5f5; }
+.c-info   .label { color: #0059B8; }
+
+.checklist { list-style: none; padding-left: 0; }
+.checklist li {
+    padding-left: 20px; position: relative; margin: 5px 0;
+}
+.checklist li::before {
+    content: "";
+    position: absolute; left: 0; top: 2.5px;
+    width: 10px; height: 10px;
+    border: 1.2px solid #9a9aa5;
+    border-radius: 2.5px;
+}
+
+.kv { width: 100%; }
+.kv td:first-child { width: 33%; font-weight: 600; }
+
+.two-col { display: flex; gap: 14px; }
+.two-col > * { flex: 1; }
+
+.card {
+    border: 0.5px solid #dcdce3;
+    border-radius: 7px;
+    padding: 10px 12px;
+    background: #fbfbfc;
+    page-break-inside: avoid;
+}
+.card h4 { font-size: 9pt; margin-bottom: 4px; }
+
+.footnote {
+    margin-top: 22px; padding-top: 9px;
+    border-top: 0.5px solid #dcdce3;
+    font-size: 7.8pt; color: #77777f;
+}
+.avoid-break { page-break-inside: avoid; }
+</style>
+</head>
+<body>
+
+<div class="cover">
+    <div class="eyebrow">Operations Documentation</div>
+    <h1>Library System — Deployment Runbook</h1>
+    <div class="sub">Deploying, verifying, and operating a production instance</div>
+    <div class="meta">
+        <span><strong>Applies to</strong> — Flask app, Python 3.12, Postgres</span>
+        <span><strong>Repository</strong> — github.com/uscabayaosj/LibrarySystem</span>
+    </div>
+</div>
+
+<h2><span class="num">0</span>What this app needs from a host</h2>
+
+<p>Two requirements drive every choice in this document:</p>
+
+<ol>
+<li><strong>A real database.</strong> SQLite is a single file. It works locally, but on a host
+with an ephemeral filesystem it is wiped on every deploy and not shared between instances.
+Use managed Postgres in production.</li>
+<li><strong>A persistent disk.</strong> <em>Admin → Settings</em> writes the uploaded logo and its
+generated icon set to <code>static/uploads/branding/</code>. Without a persistent volume, the logo
+disappears on the next deploy.</li>
+</ol>
+
+<div class="callout c-info">
+    <span class="label">Host compatibility</span>
+    <p><strong>Container/VM hosts (Render, Railway, Fly.io) fit as-is.</strong>
+    <strong>Serverless platforms (Vercel, Netlify, Lambda) do not</strong> — their filesystem is
+    read-only apart from a temp directory that doesn't survive between invocations, which breaks
+    both requirements. Running there would need Postgres <em>and</em> logo storage moved to an
+    object store (S3, Vercel Blob, R2) — a code change to <code>logo_upload.py</code>, not just
+    configuration.</p>
+</div>
+
+<h3>The two commands a host needs</h3>
+
+<table class="kv">
+<tr><td>Build</td><td><code>pip install -r requirements.txt</code></td></tr>
+<tr><td>Start</td><td><code>python -c "from app import init_db; init_db()" &amp;&amp; gunicorn app:app --bind 0.0.0.0:$PORT --timeout 60</code></td></tr>
+</table>
+
+<p>The start command migrates the database before gunicorn binds, so the schema is current before
+the first request is served. The explicit <code>--bind 0.0.0.0:$PORT</code> matters: gunicorn
+otherwise binds to <code>127.0.0.1</code>, which the host can't route to.</p>
+
+<p>Worker count is deliberately not set. Gunicorn reads <code>WEB_CONCURRENCY</code>, which hosts
+set from the instance's available CPU (Render does this automatically), so leaving it off means the
+app scales with the instance instead of overriding it with a hardcoded number that could exhaust
+memory on a small plan.</p>
+
+<p>Hosts that read a <code>Procfile</code> (Railway, Fly, Heroku) can use the one in the repo root
+instead — it splits the same work into a <code>release</code> and a <code>web</code> step.</p>
+
+<h2><span class="num">1</span>First deploy — Render</h2>
+
+<p>The repo ships <code>render.yaml</code>, which declares the web service, the Postgres database,
+and the persistent disk together.</p>
+
+<h3>Blueprint (recommended)</h3>
+<p>Dashboard → <strong>New → Blueprint</strong> → pick this repo → Apply. Then set
+<code>ADMIN_PASSWORD</code> in the service's Environment tab before the first boot (see step 2).
+Everything else is already declared.</p>
+
+<h3>Manual setup</h3>
+<p>Dashboard → <strong>New → Web Service</strong> → pick this repo, then:</p>
+
+<table class="kv">
+<tr><td>Runtime</td><td>Python 3</td></tr>
+<tr><td>Build Command</td><td><code>pip install -r requirements.txt</code></td></tr>
+<tr><td>Start Command</td><td><code>python -c "from app import init_db; init_db()" &amp;&amp; gunicorn app:app --bind 0.0.0.0:$PORT --timeout 60</code></td></tr>
+<tr><td>Health Check Path</td><td><code>/login</code></td></tr>
+</table>
+
+<div class="callout c-warn">
+    <span class="label">Overwrite the pre-filled Build Command</span>
+    <p>Render detects <code>poetry.lock</code> and suggests <code>poetry install</code>, which pulls
+    in dev dependencies the production image doesn't need. It no longer <em>fails</em> —
+    <code>package-mode = false</code> in <code>pyproject.toml</code> handles that — but
+    <code>pip install -r requirements.txt</code> is the leaner build.</p>
+</div>
+
+<p>Then, before deploying:</p>
+
+<ol>
+<li><strong>New → Postgres.</strong> Create the database, copy its <strong>Internal Database URL</strong>.</li>
+<li><strong>Environment tab</strong> — add the variables in the table below.</li>
+<li><strong>Disks tab</strong> — add a disk, mount path
+<code>/opt/render/project/src/static/uploads</code>, 1&nbsp;GB.</li>
+</ol>
+
+<table>
+<thead><tr><th style="width:26%">Variable</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td><code>DATABASE_URL</code></td><td>The Postgres URL from step 1. The <code>postgres://</code> form is fine; the app rewrites it to <code>postgresql://</code> at startup.</td></tr>
+<tr><td><code>SECRET_KEY</code></td><td>A long random string. Generate with <code>python -c "import secrets; print(secrets.token_urlsafe(48))"</code>. <strong>The app refuses to start in production without it.</strong></td></tr>
+<tr><td><code>FLASK_ENV</code></td><td><code>production</code></td></tr>
+<tr><td><code>ADMIN_PASSWORD</code></td><td>The password for the seeded admin account.</td></tr>
+<tr><td><code>PYTHON_VERSION</code></td><td><code>3.12</code></td></tr>
+</tbody>
+</table>
+
+<div class="callout c-danger">
+    <span class="label">Most common mistake</span>
+    <p>Skipping the persistent disk. Everything appears to work until the first redeploy, when the
+    uploaded logo vanishes.</p>
+</div>
+
+<h2><span class="num">2</span>First boot</h2>
+
+<p>The first start runs every migration and seeds one admin account:</p>
+<ul><li>Username <code>admin</code>, password <code>$ADMIN_PASSWORD</code> (or <code>admin</code> if unset).</li></ul>
+
+<p><strong>Sign in and change that password immediately.</strong> The seed only happens when no admin
+exists, so it will not silently re-create or reset the account later.</p>
+
+<h2><span class="num">3</span>Verify the deploy</h2>
+
+<pre><code>curl -sf https://YOUR-APP.onrender.com/login  &gt; /dev/null &amp;&amp; echo "login OK"
+curl -sf https://YOUR-APP.onrender.com/manifest.json | head -c 200</code></pre>
+
+<h3>Check which database it actually connected to</h3>
+<p>The migration log line names the backend:</p>
+<ul>
+<li><code>Context impl PostgresqlImpl</code> — correct.</li>
+<li><code>Context impl SQLiteImpl</code> — <code>DATABASE_URL</code> didn't take effect. The app will
+run perfectly and lose everything on the next deploy. Fix this before entering real data. Startup
+also prints an unmissable warning banner in this case.</li>
+</ul>
+
+<h3>Then in a browser</h3>
+<ul class="checklist">
+<li>Sign in as admin</li>
+<li><strong>Admin → Settings</strong> — set the organization name, upload a logo, pick a theme color, save</li>
+<li>Hard-refresh: the sidebar shows the logo and name, and the accent color changed</li>
+<li>Add a book, register a member account, borrow it</li>
+<li>On a phone: the bottom tab bar appears, and <strong>Add to Home Screen</strong> shows the uploaded logo as the app icon</li>
+</ul>
+
+<h2><span class="num">4</span>Subsequent deploys</h2>
+
+<p>Push to <code>main</code>. The host rebuilds and re-runs the start command, which applies any new
+migrations before serving. Nothing manual.</p>
+
+<p>After changing a model, generate the migration locally and commit it with the code:</p>
+
+<pre><code>FLASK_APP=app.py flask db migrate -m "describe the change"
+FLASK_APP=app.py flask db upgrade      # apply locally</code></pre>
+
+<div class="callout c-warn">
+    <span class="label">Treat the migration as part of the change</span>
+    <p>A deploy whose migration file is missing will start fine and then fail at runtime on the
+    missing column — not at build, and not at boot.</p>
+</div>
+
+<h2><span class="num">5</span>Rollback</h2>
+
+<p>Render → <strong>Deploys</strong> tab → pick the last good deploy → <strong>Redeploy</strong>.</p>
+
+<p>Note that this rolls back <em>code</em>, not the <em>database</em>. Migrations don't auto-revert:
+if the bad deploy added a column, the rollback leaves it in place, which is harmless. If it
+<em>dropped</em> or rewrote one, restore the database from a backup instead (Render Postgres keeps
+daily backups on paid plans) and consider <code>flask db downgrade</code> locally against a copy
+first to confirm the down-migration is correct.</p>
+
+<h2><span class="num">6</span>Operations</h2>
+
+<h3>Open a shell (Render → Shell tab)</h3>
+<pre><code># Inspect migration state
+FLASK_APP=app.py flask db current
+FLASK_APP=app.py flask db history</code></pre>
+
+<h3>Reset a locked-out admin's password</h3>
+<pre><code>python -c "
+from app import app
+from extensions import db
+from models import User
+with app.app_context():
+    u = User.query.filter_by(username='admin').first()
+    u.set_password('a-new-strong-password')
+    db.session.commit()
+    print('password updated')
+"</code></pre>
+
+<h3>Back up the database</h3>
+<p>Run locally, with the <em>External</em> database URL:</p>
+<pre><code>pg_dump "$EXTERNAL_DATABASE_URL" &gt; backup-$(date +%F).sql</code></pre>
+<p>The persistent disk holds only logo files, which can be re-uploaded, so the database is the thing
+that actually needs backing up.</p>
+
+<div class="callout c-info">
+    <span class="label">Free-tier caveat</span>
+    <p>Render's free web services spin down after inactivity, so the first request after an idle
+    period takes ~30 seconds. Free Postgres instances also expire after 90 days. Fine for
+    evaluation; move to a paid instance for real use.</p>
+</div>
+
+<h2><span class="num">7</span>Troubleshooting</h2>
+
+<table>
+<thead><tr><th style="width:31%">Symptom</th><th style="width:29%">Cause</th><th>Fix</th></tr></thead>
+<tbody>
+<tr>
+<td><code>RuntimeError: SECRET_KEY environment variable must be set</code></td>
+<td><code>FLASK_ENV=production</code> with no <code>SECRET_KEY</code></td>
+<td>Set <code>SECRET_KEY</code> in the environment</td>
+</tr>
+<tr>
+<td>Deploy succeeds, host reports "no open ports detected"</td>
+<td>gunicorn bound to <code>127.0.0.1</code></td>
+<td>Use the full start command, including <code>--bind 0.0.0.0:$PORT</code></td>
+</tr>
+<tr>
+<td><code>Error: can't chdir to './app_dir'</code>, or any start command you don't recognise</td>
+<td>The Start Command field was left empty, so the host invented one</td>
+<td>Paste the Start Command from section 1 into the service's settings</td>
+</tr>
+<tr>
+<td><code>Can't load plugin: sqlalchemy.dialects:postgres</code></td>
+<td>Very old <code>DATABASE_URL</code> handling</td>
+<td>Already handled — the app rewrites <code>postgres://</code>. Confirm you're on current <code>main</code></td>
+</tr>
+<tr>
+<td><code>The current project could not be installed: No file/folder found for package library-system</code></td>
+<td>The host autodetected <code>poetry.lock</code> and ran a bare <code>poetry install</code>, which tries to install the app as a package</td>
+<td>Already handled — <code>package-mode = false</code>. Setting the Build Command to <code>pip install -r requirements.txt</code> also avoids it</td>
+</tr>
+<tr>
+<td>Build uses an unexpected Python version</td>
+<td>No version pinned, so the host picks its default (Render currently defaults to 3.14)</td>
+<td>Already handled — <code>.python-version</code> pins 3.12. <code>PYTHON_VERSION</code> overrides it</td>
+</tr>
+<tr>
+<td><code>ModuleNotFoundError: No module named 'psycopg2'</code></td>
+<td>Build didn't install requirements</td>
+<td>Check the Build Command is <code>pip install -r requirements.txt</code></td>
+</tr>
+<tr>
+<td>Uploaded logo disappears after a deploy</td>
+<td>No persistent disk</td>
+<td>Mount a disk at <code>/opt/render/project/src/static/uploads</code></td>
+</tr>
+<tr>
+<td><code>no such table</code> / <code>column ... does not exist</code> at runtime</td>
+<td>A migration wasn't committed, or the start command doesn't migrate</td>
+<td>Confirm the start command includes the <code>init_db()</code> prefix; generate and commit the missing migration</td>
+</tr>
+<tr>
+<td>Sign-in appears to succeed but bounces back to <code>/login</code></td>
+<td>Cookie marked secure while served over plain HTTP</td>
+<td>Serve over HTTPS (Render does this by default), or unset <code>SESSION_COOKIE_SECURE</code> for a non-TLS test host</td>
+</tr>
+<tr>
+<td>Startup logs <code>WARNING: running in production on SQLite</code>, or migrations log <code>Context impl SQLiteImpl</code></td>
+<td><code>DATABASE_URL</code> isn't set, so the app is writing to a local file that the next deploy destroys</td>
+<td>Attach managed Postgres and set <code>DATABASE_URL</code>. Any data created meanwhile is lost on the next deploy</td>
+</tr>
+<tr>
+<td>Data disappeared after a deploy</td>
+<td>Same cause as above — the app was on SQLite, not Postgres</td>
+<td>Set <code>DATABASE_URL</code> before putting real data in</td>
+</tr>
+</tbody>
+</table>
+
+<h2><span class="num">8</span>Reference</h2>
+
+<div class="two-col avoid-break">
+    <div class="card">
+        <h4>Environment variables</h4>
+        <table style="margin:4px 0; font-size:8pt">
+        <tr><td><code>SECRET_KEY</code></td><td>Required in production</td></tr>
+        <tr><td><code>DATABASE_URL</code></td><td>Default <code>sqlite:///library.db</code></td></tr>
+        <tr><td><code>FLASK_ENV</code></td><td>Default <code>development</code></td></tr>
+        <tr><td><code>FLASK_DEBUG</code></td><td>Default <code>0</code> — never <code>1</code> in production</td></tr>
+        <tr><td><code>SESSION_COOKIE_SECURE</code></td><td><code>1</code> in production</td></tr>
+        <tr><td><code>ADMIN_PASSWORD</code></td><td>Seeds first admin only</td></tr>
+        </table>
+    </div>
+    <div class="card">
+        <h4>Migration states handled on boot</h4>
+        <table style="margin:4px 0; font-size:8pt">
+        <tr><td>Brand-new DB</td><td>Runs every migration</td></tr>
+        <tr><td>Already migrated</td><td>Applies only what's outstanding</td></tr>
+        <tr><td>Legacy <code>create_all()</code></td><td>Stamped at baseline, then upgraded — existing rows preserved</td></tr>
+        </table>
+        <p style="font-size:8pt; margin-bottom:0">Migrations use <code>render_as_batch</code>, so
+        column changes work on SQLite and Postgres alike.</p>
+    </div>
+</div>
+
+<h3>Running tests</h3>
+<pre><code>pip install -r requirements.txt pytest
+pytest</code></pre>
+<p>CI (<code>.github/workflows/tests.yml</code>) runs the same suite on every push and pull request
+against <code>main</code>, on Python 3.11 and 3.12.</p>
+
+<div class="footnote">
+    Library Management System — deployment runbook. Generated from the project README; the
+    repository remains the source of truth.
+</div>
+
+</body>
+</html>
