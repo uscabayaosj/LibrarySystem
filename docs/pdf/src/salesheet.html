@@ -1,0 +1,416 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Library System — Overview</title>
+<link rel="stylesheet" href="base.css">
+<style>
+@page { margin: 12mm 12mm 12mm 12mm; }
+
+body { font-size: 9.4pt; }
+
+/* ---- Masthead ---- */
+.masthead {
+    display: flex; align-items: center; gap: 13px;
+    padding-bottom: 13px;
+    border-bottom: 2px solid #0069D9;
+}
+.mark {
+    width: 46px; height: 46px; border-radius: 11px;
+    background: linear-gradient(145deg, #0f7bef, #0055b4);
+    display: flex; align-items: center; justify-content: center;
+    flex: none;
+    box-shadow: 0 2px 5px rgba(0,60,140,0.28);
+}
+.mark svg { width: 27px; height: 27px; }
+.masthead .name { font-size: 16pt; font-weight: 700; letter-spacing: -0.028em; }
+.masthead .tag { font-size: 9pt; color: #55555f; margin-top: 1px; }
+.masthead .right {
+    margin-left: auto; text-align: right;
+    font-size: 7.6pt; color: #77777f; line-height: 1.45;
+}
+.badge-os {
+    display: inline-block; background: #e8f1fd; color: #0059B8;
+    border: 0.5px solid #b9d5f5; border-radius: 20px;
+    padding: 2px 9px; font-size: 7.4pt; font-weight: 600;
+    letter-spacing: 0.03em;
+}
+
+/* ---- Hero ---- */
+.hero { margin: 16px 0 4px; }
+.hero h1 {
+    font-size: 21pt; letter-spacing: -0.032em; line-height: 1.14;
+    max-width: 94%;
+}
+.hero h1 em { font-style: normal; color: #0069D9; }
+.hero .lede {
+    font-size: 10.2pt; color: #44444d; margin-top: 8px;
+    line-height: 1.5; max-width: 96%;
+}
+
+/* ---- Audience strip ---- */
+.audience {
+    display: flex; gap: 9px; margin: 15px 0 4px;
+}
+.aud {
+    flex: 1; border: 0.5px solid #dcdce3; border-radius: 8px;
+    padding: 10px 11px; background: #fbfbfc;
+}
+.aud .icon {
+    width: 22px; height: 22px; border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 6px; color: #fff; font-size: 10pt; font-weight: 700;
+}
+.aud h3 { font-size: 9.2pt; margin-bottom: 3px; }
+.aud p { font-size: 8.2pt; color: #55555f; margin: 0; line-height: 1.45; }
+
+/* ---- Section headings ---- */
+h2.sec {
+    font-size: 8pt; font-weight: 700; letter-spacing: 0.1em;
+    text-transform: uppercase; color: #0069D9;
+    margin: 18px 0 8px;
+    padding-bottom: 4px; border-bottom: 0.5px solid #dcdce3;
+}
+/* Page 2 carries more sections than page 1, so it runs tighter. */
+.page2 ~ h2.sec { margin: 10px 0 6px; }
+.page2 ~ .spec td { padding: 5px 8px; }
+
+/* Getting started — a compact 3-step strip rather than a list, so the
+   closing contact band stays on the same page. */
+.steps { display: flex; gap: 9px; page-break-inside: avoid; }
+.step {
+    flex: 1; border: 0.5px solid #e0e0e6; border-radius: 7px;
+    padding: 9px 11px; background: #fbfbfc;
+}
+.step .n {
+    display: inline-block; width: 17px; height: 17px; line-height: 17px;
+    text-align: center; border-radius: 50%;
+    background: #0069D9; color: #fff;
+    font-size: 7.6pt; font-weight: 700; margin-bottom: 5px;
+}
+.step h4 { font-size: 8.8pt; margin-bottom: 3px; }
+.step p { font-size: 8pt; color: #55555f; margin: 0; line-height: 1.42; }
+
+/* ---- Feature grid ---- */
+.features { display: flex; flex-wrap: wrap; gap: 9px; }
+.feat {
+    width: calc(50% - 4.5px);
+    border: 0.5px solid #e0e0e6; border-radius: 7px;
+    padding: 9px 11px;
+    page-break-inside: avoid;
+}
+.feat h4 { font-size: 9pt; margin-bottom: 3px; color: #16161a; }
+.feat p { font-size: 8.2pt; color: #55555f; margin: 0; line-height: 1.45; }
+
+/* ---- Phone callout ---- */
+.phone-band {
+    margin-top: 14px;
+    background: linear-gradient(135deg, #f4f8fe, #eef4fd);
+    border: 0.5px solid #cfe0f7; border-radius: 9px;
+    padding: 13px 15px;
+    page-break-inside: avoid;
+}
+.phone-band h3 { font-size: 11pt; margin-bottom: 5px; letter-spacing: -0.02em; }
+.phone-band p { font-size: 8.6pt; color: #44444d; margin: 0 0 7px; }
+.pills { display: flex; flex-wrap: wrap; gap: 5px; }
+.pill {
+    background: #fff; border: 0.5px solid #c4d8f2; color: #0059B8;
+    border-radius: 20px; padding: 2.5px 9px;
+    font-size: 7.6pt; font-weight: 600;
+}
+
+/* ---- Spec table ---- */
+.spec td { font-size: 8.4pt; }
+.spec td:first-child { width: 32%; font-weight: 600; }
+
+/* ---- Fit columns ---- */
+.fit { display: flex; gap: 11px; page-break-inside: avoid; }
+.fit > div {
+    flex: 1; border-radius: 8px; padding: 11px 12px;
+    border: 0.5px solid;
+}
+.fit-yes { background: #f1faf3; border-color: #bfe3c8; }
+.fit-no  { background: #fafafb; border-color: #dcdce3; }
+.fit h4 { font-size: 9pt; margin-bottom: 5px; }
+.fit-yes h4 { color: #1a6b32; }
+.fit-no  h4 { color: #5c5c66; }
+.fit ul { margin: 0; padding-left: 15px; }
+.fit li { font-size: 8.2pt; margin: 2px 0; color: #44444d; }
+
+/* ---- Cover-art motif (echoes the app's generated book covers) ---- */
+.covers { display: flex; gap: 5px; margin-top: 3px; flex: none; }
+.cover-note {
+    display: flex; align-items: center; gap: 12px; margin-top: 12px;
+    page-break-inside: avoid;
+}
+.cover-note p { font-size: 8.4pt; color: #55555f; margin: 0; }
+
+/* Four-across variant for the shorter maintenance cards. */
+.features.quad .feat { width: calc(25% - 6.75px); padding: 8px 10px; }
+.features.quad .feat h4 { font-size: 8.6pt; }
+.features.quad .feat p { font-size: 7.7pt; line-height: 1.4; }
+.cov {
+    width: 26px; height: 34px; border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    color: rgba(255,255,255,0.94); font-weight: 700; font-size: 11pt;
+}
+
+/* ---- Contact ---- */
+.contact {
+    margin-top: 13px; border-top: 2px solid #0069D9; padding-top: 10px;
+    display: flex; gap: 16px; align-items: flex-start;
+    page-break-inside: avoid;
+}
+.contact .blk { flex: 1; }
+.contact h4 { font-size: 8pt; letter-spacing: 0.08em; text-transform: uppercase;
+              color: #0069D9; margin-bottom: 4px; }
+.contact p { font-size: 8.4pt; margin: 2px 0; color: #44444d; }
+.placeholder {
+    color: #8a8a93; background: #f4f4f6; border: 0.5px dashed #c8c8d0;
+    border-radius: 3px; padding: 0 4px; font-size: 8pt;
+}
+.page2 { page-break-before: always; }
+</style>
+</head>
+<body>
+
+<!-- ============================ PAGE 1 ============================ -->
+<div class="masthead">
+    <div class="mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.7"
+             stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H9a3 3 0 0 1 3 3v13a2.5 2.5 0 0 0-2.5-2.5H4z"/>
+            <path d="M20 5.5A1.5 1.5 0 0 0 18.5 4H15a3 3 0 0 0-3 3v13a2.5 2.5 0 0 1 2.5-2.5H20z"/>
+        </svg>
+    </div>
+    <div>
+        <div class="name">Library System</div>
+        <div class="tag">Borrowing, reservations, and circulation — built for small collections</div>
+    </div>
+    <div class="right">
+        <span class="badge-os">Self-hosted &middot; Open source</span><br>
+        github.com/uscabayaosj/LibrarySystem
+    </div>
+</div>
+
+<div class="hero">
+    <h1>Run a real lending library<br>without buying <em>library software</em>.</h1>
+    <p class="lede">
+        Most library platforms are built for institutions with a systems librarian and a budget to
+        match. This one is built for the shelf in the department office, the collection nobody has
+        time to administer, and the borrower who only ever opens it on a phone.
+    </p>
+</div>
+
+<div class="audience">
+    <div class="aud">
+        <div class="icon" style="background:#0069D9">D</div>
+        <h3>Department libraries</h3>
+        <p>A few hundred to a few thousand titles, one or two staff, students borrowing between classes.</p>
+    </div>
+    <div class="aud">
+        <div class="icon" style="background:#0A6E82">P</div>
+        <h3>Private collections</h3>
+        <p>Personal or family libraries you actually lend from, and want returned.</p>
+    </div>
+    <div class="aud">
+        <div class="icon" style="background:#7A3DB8">S</div>
+        <h3>Small organizations</h3>
+        <p>Churches, clinics, studios, NGOs, research groups — any shared collection with a sign-out sheet today.</p>
+    </div>
+</div>
+
+<h2 class="sec">What it does</h2>
+
+<div class="features">
+    <div class="feat">
+        <h4>Catalogue &amp; copies</h4>
+        <p>Title, author, ISBN, category, publisher, year, description. Tracks total copies against
+        copies on the shelf, so availability is always accurate.</p>
+    </div>
+    <div class="feat">
+        <h4>Borrowing with real due dates</h4>
+        <p>A configurable loan period with day-accurate tracking. Due today, due soon, and overdue
+        are colour-coded everywhere they appear.</p>
+    </div>
+    <div class="feat">
+        <h4>Self-service renewals</h4>
+        <p>Borrowers renew their own loans, subject to rules you set: not while overdue, not past the
+        renewal limit, and never when someone else is waiting.</p>
+    </div>
+    <div class="feat">
+        <h4>Reservation queues</h4>
+        <p>When every copy is out, borrowers join a queue and see exactly where they stand —
+        "You're next in line" or "#3 in line". Filled automatically on return.</p>
+    </div>
+    <div class="feat">
+        <h4>Circulation desk</h4>
+        <p>Librarian view for adding books, managing members, processing returns in one click, and
+        reviewing full borrowing history with filters and pagination.</p>
+    </div>
+    <div class="feat">
+        <h4>Overdue visibility</h4>
+        <p>Overdue items surface on both the borrower's dashboard and the librarian's, with
+        configurable limits that block further borrowing.</p>
+    </div>
+</div>
+
+<div class="phone-band">
+    <h3>Designed phone-first, because that's how people borrow</h3>
+    <p>
+        Borrowers get a native-feeling mobile interface — a bottom tab bar, large titles that
+        collapse as you scroll, and generated cover art for titles without a photo. It installs to
+        the home screen as a real app. Librarians keep a full desktop workspace.
+    </p>
+    <div class="pills">
+        <span class="pill">Add to Home Screen</span>
+        <span class="pill">Bottom tab navigation</span>
+        <span class="pill">Add due dates to phone calendar</span>
+        <span class="pill">Day-before reminders</span>
+        <span class="pill">30-day stay signed in</span>
+        <span class="pill">Light &amp; dark</span>
+    </div>
+</div>
+
+<h2 class="sec">Reminders without a notification service</h2>
+<p style="margin-top:0">
+    Every loan and reservation has an <strong>Add to Calendar</strong> button. One tap puts the due
+    date into the borrower's own calendar app with an alarm the day before. No push infrastructure to
+    run, no SMS bill, no email deliverability to manage — the phone does the reminding.
+</p>
+
+<div class="cover-note">
+    <div class="covers">
+        <div class="cov" style="background:linear-gradient(135deg,hsl(210 55% 30%),hsl(242 55% 18%))">A</div>
+        <div class="cov" style="background:linear-gradient(135deg,hsl(28 55% 30%),hsl(60 55% 18%))">M</div>
+        <div class="cov" style="background:linear-gradient(135deg,hsl(150 55% 30%),hsl(182 55% 18%))">G</div>
+        <div class="cov" style="background:linear-gradient(135deg,hsl(320 55% 30%),hsl(352 55% 18%))">T</div>
+    </div>
+    <p>
+        <strong>And books without a cover photo still look like books.</strong> Each title gets a
+        distinct, stable colour tile generated from its ISBN — so shelves scan visually even when you
+        have no cover images to upload.
+    </p>
+</div>
+
+<!-- ============================ PAGE 2 ============================ -->
+<div class="page2"></div>
+
+<h2 class="sec" style="margin-top:0">Make it yours — no code, no redeploy</h2>
+
+<p style="margin-top:0">
+    An administrator sets the name, logo, and theme colour from a settings page. The whole interface
+    re-brands — sidebar, page titles, sign-in screen, and the installed app icon.
+</p>
+
+<table class="spec">
+<tr>
+    <td>Organization name</td>
+    <td>Appears in the sidebar, browser titles, sign-in page, and the installed app name.</td>
+</tr>
+<tr>
+    <td>Logo</td>
+    <td>Square PNG, JPEG, or WEBP — 512&times;512 to 1024&times;1024&nbsp;px recommended, 2&nbsp;MB max.
+    Regenerated automatically into the full app-icon set.</td>
+</tr>
+<tr>
+    <td>Theme colour</td>
+    <td>Pick one brand colour. Light and dark variants are derived automatically and checked against
+    WCAG AA contrast, so an off-brand shade can't quietly make text unreadable.</td>
+</tr>
+</table>
+
+<h2 class="sec">Built to be maintained by someone who isn't a developer</h2>
+
+<div class="features quad">
+    <div class="feat">
+        <h4>Deploys from a link</h4>
+        <p>Connect the repository to a host like Render, Railway, or Fly.io. A blueprint file
+        declares the app, database, and storage together.</p>
+    </div>
+    <div class="feat">
+        <h4>Upgrades apply themselves</h4>
+        <p>Database migrations run automatically on every deploy. No manual database step, and no
+        risk of code arriving ahead of its schema.</p>
+    </div>
+    <div class="feat">
+        <h4>Accessible by construction</h4>
+        <p>Every colour pairing is verified against WCAG AA contrast in both light and dark modes,
+        measured from rendered pixels rather than assumed.</p>
+    </div>
+    <div class="feat">
+        <h4>Works on poor networks</h4>
+        <p>No external CDN, fonts, or icon services. The whole interface is served from your own
+        instance, so it renders identically on a restricted or slow connection.</p>
+    </div>
+</div>
+
+<h2 class="sec">What you need to run it</h2>
+
+<table class="spec">
+<tr><td>Hosting</td><td>Any container or VM host — Render, Railway, Fly.io. Free tiers are fine for evaluation.</td></tr>
+<tr><td>Database</td><td>Managed PostgreSQL (SQLite for local trials).</td></tr>
+<tr><td>Storage</td><td>A small persistent disk (1&nbsp;GB) for the uploaded logo.</td></tr>
+<tr><td>Maintenance</td><td>Push to deploy. Back up the database on your own schedule.</td></tr>
+<tr><td>Licensing</td><td>Self-hosted and open source. No per-seat fees, no vendor lock-in, and the data stays in your database.</td></tr>
+</table>
+
+<h2 class="sec">Is it the right fit?</h2>
+
+<div class="fit">
+    <div class="fit-yes">
+        <h4>✓ A good fit when</h4>
+        <ul>
+            <li>You're tracking a shared collection on paper, a spreadsheet, or trust</li>
+            <li>Borrowers are mostly on phones</li>
+            <li>One organization, one collection, one deployment</li>
+            <li>You want your own branding, not a vendor's</li>
+            <li>You'd rather own the data than rent access to it</li>
+        </ul>
+    </div>
+    <div class="fit-no">
+        <h4>Look elsewhere if you need</h4>
+        <ul>
+            <li>MARC records, Z39.50, or union-catalogue federation</li>
+            <li>Barcode scanners and RFID hardware integration</li>
+            <li>Fines, payments, or accounting</li>
+            <li>Acquisitions, serials, or interlibrary loan</li>
+            <li>Multiple independent branches in one instance</li>
+        </ul>
+    </div>
+</div>
+
+<h2 class="sec">Getting started</h2>
+<div class="steps">
+    <div class="step">
+        <span class="n">1</span>
+        <h4>Try it</h4>
+        <p>Deploy to a free tier and load a few real titles — about an afternoon's work.</p>
+    </div>
+    <div class="step">
+        <span class="n">2</span>
+        <h4>Brand it</h4>
+        <p>Set your organization's name, logo, and colour from the settings page.</p>
+    </div>
+    <div class="step">
+        <span class="n">3</span>
+        <h4>Invite borrowers</h4>
+        <p>They register, sign in on a phone, and add it to the home screen.</p>
+    </div>
+</div>
+
+<div class="contact">
+    <div class="blk">
+        <h4>Source &amp; documentation</h4>
+        <p>github.com/uscabayaosj/LibrarySystem</p>
+        <p>Includes a full deployment runbook, migration guide, and troubleshooting reference.</p>
+    </div>
+    <div class="blk">
+        <h4>Enquiries</h4>
+        <p><span class="placeholder">Contact name</span></p>
+        <p><span class="placeholder">Email address</span> &middot; <span class="placeholder">Phone</span></p>
+    </div>
+</div>
+
+</body>
+</html>

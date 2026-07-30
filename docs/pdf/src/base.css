@@ -1,0 +1,91 @@
+/* Shared print styling — mirrors the app's own design system
+   (Apple-ish system type, brand blue #0069D9, hairline separators). */
+
+@page {
+    size: A4;
+    margin: 16mm 15mm 18mm 15mm;
+}
+
+* { box-sizing: border-box; }
+
+html {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+}
+
+body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue",
+                 "Segoe UI", Roboto, system-ui, sans-serif;
+    font-size: 9.6pt;
+    line-height: 1.5;
+    color: #16161a;
+    -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4 {
+    margin: 0;
+    letter-spacing: -0.018em;
+    line-height: 1.2;
+}
+
+code, pre, .mono {
+    font-family: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+code {
+    font-size: 0.88em;
+    background: #f1f1f4;
+    padding: 1px 4px;
+    border-radius: 3px;
+    color: #1b1b20;
+    word-break: break-word;
+}
+
+pre {
+    background: #f7f7f9;
+    border: 0.5px solid #d9d9e0;
+    border-left: 2.5px solid #0069D9;
+    border-radius: 5px;
+    padding: 9px 11px;
+    margin: 8px 0;
+    font-size: 8.2pt;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+    page-break-inside: avoid;
+}
+
+pre code { background: none; padding: 0; font-size: inherit; }
+
+a { color: #0059B8; text-decoration: none; }
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 9px 0;
+    font-size: 8.6pt;
+    page-break-inside: auto;
+}
+
+th {
+    text-align: left;
+    font-weight: 600;
+    background: #f2f2f5;
+    border-bottom: 1px solid #d0d0d8;
+    padding: 6px 8px;
+    vertical-align: top;
+}
+
+td {
+    padding: 6px 8px;
+    border-bottom: 0.5px solid #e3e3e9;
+    vertical-align: top;
+}
+
+tr { page-break-inside: avoid; }
+
+ul, ol { margin: 6px 0; padding-left: 18px; }
+li { margin: 3px 0; }
+p { margin: 6px 0; }
+strong { font-weight: 600; }
