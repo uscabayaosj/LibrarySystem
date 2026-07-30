@@ -120,39 +120,171 @@ For production: set a long random `SECRET_KEY`, keep `FLASK_DEBUG` unset/`0`, an
 providers hand out, as well as `postgresql://` — the app normalizes it, so the
 connection string can be pasted in verbatim.
 
-## Deployment
+## Deployment runbook
 
-The repo ships a `Procfile`:
+### 0. What this app needs from a host
 
+Two requirements drive every choice below:
+
+1. **A real database.** SQLite is a single file. It works locally, but on a
+   host with an ephemeral filesystem it is wiped on every deploy and not shared
+   between instances. Use managed Postgres in production.
+2. **A persistent disk.** `Admin → Settings` writes the uploaded logo and its
+   generated icon set to `static/uploads/branding/`. Without a persistent
+   volume, the logo disappears on the next deploy.
+
+**Container/VM hosts (Render, Railway, Fly.io) fit as-is.** **Serverless
+platforms (Vercel, Netlify, Lambda) do not** — their filesystem is read-only
+apart from a temp directory that doesn't survive between invocations, which
+breaks both requirements. Running there would need Postgres *and* logo storage
+moved to an object store (S3, Vercel Blob, R2) — a code change to
+`logo_upload.py`, not just configuration.
+
+The two commands a host needs:
+
+| | |
+|---|---|
+| **Build** | `pip install -r requirements.txt` |
+| **Start** | `python -c "from app import init_db; init_db()" && gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 60` |
+
+The start command migrates the database before gunicorn binds, so the schema is
+current before the first request is served. The explicit `--bind 0.0.0.0:$PORT`
+matters: gunicorn otherwise binds to `127.0.0.1`, which the host can't route to.
+
+Hosts that read a `Procfile` (Railway, Fly, Heroku) can use the one in the repo
+root instead — it splits the same work into a `release` and a `web` step.
+
+---
+
+### 1. First deploy — Render
+
+The repo ships `render.yaml`, which declares the web service, the Postgres
+database, and the persistent disk together.
+
+**Blueprint (recommended).** Dashboard → **New → Blueprint** → pick this repo →
+Apply. Then set `ADMIN_PASSWORD` in the service's Environment tab before the
+first boot (see step 2). Everything else is already declared.
+
+**Manual setup.** Dashboard → **New → Web Service** → pick this repo, then:
+
+| Field | Value |
+|---|---|
+| Runtime | Python 3 |
+| Build Command | `pip install -r requirements.txt` |
+| Start Command | `python -c "from app import init_db; init_db()" && gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 60` |
+| Health Check Path | `/login` |
+
+Then, before deploying:
+
+1. **New → Postgres.** Create the database, copy its **Internal Database URL**.
+2. **Environment tab** — add:
+   - `DATABASE_URL` — the Postgres URL from step 1. The `postgres://` form is
+     fine; the app rewrites it to `postgresql://` at startup.
+   - `SECRET_KEY` — a long random string. Generate one with
+     `python -c "import secrets; print(secrets.token_urlsafe(48))"`.
+     **The app refuses to start in production without it.**
+   - `FLASK_ENV` — `production`.
+   - `ADMIN_PASSWORD` — the password for the seeded admin account.
+   - `PYTHON_VERSION` — `3.12`.
+3. **Disks tab** — add a disk, mount path
+   `/opt/render/project/src/static/uploads`, 1 GB. **Skipping this is the most
+   common mistake** — everything appears to work until the first redeploy, when
+   the uploaded logo vanishes.
+
+### 2. First boot
+
+The first start runs every migration and seeds one admin account:
+
+- Username `admin`, password `$ADMIN_PASSWORD` (or `admin` if unset).
+
+**Sign in and change that password immediately.** The seed only happens when no
+admin exists, so it will not silently re-create or reset the account later.
+
+### 3. Verify the deploy
+
+```bash
+curl -sf https://YOUR-APP.onrender.com/login   > /dev/null && echo "login OK"
+curl -sf https://YOUR-APP.onrender.com/manifest.json | head -c 200
 ```
-release: python -c "from app import init_db; init_db()"
-web: gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 60
+
+Then in a browser:
+
+- [ ] Sign in as admin
+- [ ] **Admin → Settings** — set the organization name, upload a logo, pick a
+      theme color, save
+- [ ] Hard-refresh: the sidebar shows the logo and name, and the accent color
+      changed
+- [ ] Add a book, register a member account, borrow it
+- [ ] On a phone: the bottom tab bar appears, and **Add to Home Screen** shows
+      the uploaded logo as the app icon
+
+### 4. Subsequent deploys
+
+Push to `main`. The host rebuilds and re-runs the start command, which applies
+any new migrations before serving. Nothing manual.
+
+After changing a model, generate the migration locally and commit it with the
+code — see [Database migrations](#database-migrations). A deploy whose
+migration file is missing will start fine and then fail at runtime on the
+missing column, so treat the migration as part of the change, not a follow-up.
+
+### 5. Rollback
+
+Render → **Deploys** tab → pick the last good deploy → **Redeploy**.
+
+Note that this rolls back *code*, not the *database*. Migrations don't
+auto-revert: if the bad deploy added a column, the rollback leaves it in place,
+which is harmless. If it *dropped* or rewrote one, restore the database from a
+backup instead (Render Postgres keeps daily backups on paid plans) and consider
+`flask db downgrade` locally against a copy first to confirm the down-migration
+is correct.
+
+### 6. Operations
+
+**Open a shell** (Render → Shell tab):
+
+```bash
+# Inspect migration state
+FLASK_APP=app.py flask db current
+FLASK_APP=app.py flask db history
+
+# Reset a locked-out admin's password
+python -c "
+from app import app
+from extensions import db
+from models import User
+with app.app_context():
+    u = User.query.filter_by(username='admin').first()
+    u.set_password('a-new-strong-password')
+    db.session.commit()
+    print('password updated')
+"
 ```
 
-The `release` step migrates the database before any new code serves traffic;
-the `web` step runs the app under gunicorn.
+**Back up the database** (run locally, with the *External* database URL):
 
-### This app needs a persistent disk and a real database
+```bash
+pg_dump "$EXTERNAL_DATABASE_URL" > backup-$(date +%F).sql
+```
 
-Two things it does are worth knowing before picking a host:
+The persistent disk holds only regenerable-by-re-upload logo files, so the
+database is the thing that actually needs backing up.
 
-1. **The database.** SQLite is a file. It works locally, but on any host with
-   an ephemeral filesystem it is wiped on every deploy and not shared between
-   instances. Use managed Postgres in production and point `DATABASE_URL` at it.
-2. **Logo uploads.** `Admin → Settings` writes the uploaded logo and its
-   generated icon set to `static/uploads/branding/` on local disk. That needs
-   a persistent volume, or the logo disappears on the next deploy.
+**Free-tier caveat.** Render's free web services spin down after inactivity, so
+the first request after an idle period takes ~30s. Free Postgres instances also
+expire after 90 days. Fine for evaluation; move to a paid instance for real use.
 
-**A container/VM host (Render, Railway, Fly.io) fits this app as-is:** attach a
-managed Postgres instance, mount a persistent disk at `static/uploads`, set
-`SECRET_KEY` and `FLASK_ENV=production`, and the `Procfile` handles the rest.
+### 7. Troubleshooting
 
-**Serverless platforms (Vercel, Netlify, Lambda) do not fit without changes.**
-Their filesystem is read-only apart from a temporary directory that does not
-survive between invocations, which breaks both points above. Running there
-would require Postgres *and* moving logo storage to an object store (S3,
-Vercel Blob, Cloudflare R2) — a code change to `logo_upload.py`, not just
-configuration.
+| Symptom | Cause | Fix |
+|---|---|---|
+| Deploy fails: `RuntimeError: SECRET_KEY environment variable must be set` | `FLASK_ENV=production` with no `SECRET_KEY` | Set `SECRET_KEY` in the environment |
+| Deploy succeeds, host reports "no open ports detected" | gunicorn bound to `127.0.0.1` | Use the full start command, including `--bind 0.0.0.0:$PORT` |
+| `Can't load plugin: sqlalchemy.dialects:postgres` | Very old `DATABASE_URL` handling | Already handled — the app rewrites `postgres://`. Confirm you're on the current `main` |
+| `ModuleNotFoundError: No module named 'psycopg2'` | Build didn't install requirements | Check the Build Command is `pip install -r requirements.txt` |
+| Uploaded logo disappears after a deploy | No persistent disk | Mount a disk at `/opt/render/project/src/static/uploads` |
+| `no such table` / `column ... does not exist` at runtime | A migration wasn't committed, or the start command doesn't migrate | Confirm the start command includes the `init_db()` prefix; generate and commit the missing migration |
+| Sign-in appears to succeed but bounces back to `/login` | Cookie marked secure while served over plain HTTP | Serve over HTTPS (Render does this by default), or unset `SESSION_COOKIE_SECURE` for a non-TLS test host |
 
 ### Running tests
 
@@ -220,8 +352,14 @@ Design notes:
 - Fixed a latent break in the generated `migrations/env.py`: it called
   `db.get_engine()`, removed in Flask-SQLAlchemy 3.2, which would have turned a
   routine dependency bump into a failed deploy.
-- Documented what this app needs from a host (persistent disk + real database)
-  and why serverless platforms need code changes first — see **Deployment**.
+- **`requirements.txt`** pinned from `poetry.lock`, since most hosts build with
+  `pip install -r requirements.txt` out of the box. `pyproject.toml` remains
+  the source of truth for local development.
+- **`render.yaml`** blueprint declaring the web service, Postgres, and the
+  persistent disk for logo uploads together.
+- **A deployment runbook** in the README: first deploy, first boot, a
+  post-deploy verification checklist, subsequent deploys, rollback (and what
+  rollback does *not* undo), routine operations, and a troubleshooting table.
 
 ## What Changed (v3.3 — phone-first member experience + organization branding)
 
