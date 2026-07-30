@@ -1,3 +1,4 @@
+from flask import current_app
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta
@@ -70,6 +71,7 @@ class Borrowing(db.Model):
     return_date = db.Column(db.DateTime)
     due_date = db.Column(db.DateTime, nullable=False)
     status = db.Column(db.String(20), default='active')  # active, returned, overdue
+    renewal_count = db.Column(db.Integer, default=0, nullable=False)
 
     user = db.relationship('User', backref=db.backref(
         'borrowings', lazy='dynamic', cascade='all, delete-orphan'))
@@ -134,6 +136,39 @@ class Borrowing(db.Model):
         if state == 'today':
             return 'Due today'
         return f"{days} day{'s' if days != 1 else ''} left"
+
+    @property
+    def renewals_remaining(self):
+        max_renewals = current_app.config['MAX_RENEWALS']
+        return max(0, max_renewals - self.renewal_count)
+
+    @property
+    def renew_blocked_reason(self):
+        """Why this loan can't be self-renewed right now, or None if it can.
+        Exposed separately from can_renew so the UI can explain the block
+        instead of just disabling the button."""
+        if self.status != 'active':
+            return None  # not applicable; caller shouldn't be asking
+        if self.due_state == 'overdue':
+            return 'Overdue loans must be returned rather than renewed.'
+        if self.renewals_remaining <= 0:
+            return 'This loan has reached its renewal limit.'
+        if Reservation.get_active_reservation(self.book_id):
+            return 'Another member is waiting for this title.'
+        return None
+
+    @property
+    def can_renew(self):
+        return self.status == 'active' and self.renew_blocked_reason is None
+
+    def renew(self):
+        """Extend the due date by one fresh loan period and record the
+        renewal. Callers must check can_renew first -- this does not
+        re-validate, so it can also be used by an admin override later."""
+        loan_days = current_app.config['LOAN_PERIOD_DAYS']
+        self.due_date = datetime.utcnow() + timedelta(days=loan_days)
+        self.renewal_count += 1
+        db.session.commit()
 
     def mark_returned(self):
         self.status = 'returned'

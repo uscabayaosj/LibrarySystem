@@ -83,6 +83,18 @@
                             {% else %}
                                 <span class="badge badge-green">{{ b.due_label }}</span>
                             {% endif %}
+                            {% if b.can_renew %}
+                                <form action="{{ url_for('member.renew_borrowing', borrowing_id=b.id) }}" method="POST"
+                                      data-confirm="This will extend the due date by {{ config.LOAN_PERIOD_DAYS }} days from today."
+                                      data-confirm-title="Renew “{{ b.book.title }}”?"
+                                      data-confirm-label="Renew">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <input type="hidden" name="next" value="dashboard">
+                                    <button type="submit" class="btn btn-sm">{{ icon('refresh', class='icon-sm') }} Renew</button>
+                                </form>
+                            {% elif b.renew_blocked_reason %}
+                                <span class="xs text-tertiary" style="max-width:160px">{{ b.renew_blocked_reason }}</span>
+                            {% endif %}
                         </div>
                     </div>
                     {% endfor %}
