@@ -1,12 +1,15 @@
 # Library Management System
 
-A Flask-based library management system with separate **Librarian (Admin)** and **Borrower (Member)** dashboards. Supports book cataloguing, borrowing with due-date tracking, returns, reservations, and member management.
+[![Tests](https://github.com/uscabayaosj/LibrarySystem/actions/workflows/tests.yml/badge.svg)](https://github.com/uscabayaosj/LibrarySystem/actions/workflows/tests.yml)
+
+A Flask-based library management system with separate **Librarian (Admin)** and **Borrower (Member)** dashboards. Supports book cataloguing, borrowing with due-date tracking, returns, renewals, reservations, and member management.
 
 ## Features
 
 ### 👤 For Members (Borrowers)
 - **Search & Browse** — Find books by title, author, ISBN, or category
 - **Borrow Books** — 14-day loan period with automatic due-date tracking
+- **Renew Books** — Extend a loan yourself for a fresh loan period, as long as it isn't overdue, hasn't hit the renewal limit, and no one else is waiting for it
 - **Reserve Books** — Queue for books when all copies are borrowed (3-day hold)
 - **Dashboard** — See currently borrowed books, overdue items, and recent activity at a glance
 - **History** — Complete borrowing and return history
@@ -23,12 +26,12 @@ A Flask-based library management system with separate **Librarian (Admin)** and 
 ### 💡 UX Improvements
 - **Pagination** on all data tables (books, members, borrowing history)
 - **Search-as-You-Type** — Search books, members with instant results
-- **Status Filters** — Filter borrowing history by active/returned
-- **Colour-Coded Alerts** — Overdue items highlighted in red, due-soon in yellow
-- **Confirmation Dialogs** — Destructive actions (delete, cancel reservation) require confirmation
-- **Flash Messages** — Clear success/warning/danger/info feedback with auto-dismiss
-- **Responsive Design** — Works on desktop and mobile via Bootstrap 5
-- **Bootstrap Icons** — Intuitive iconography throughout
+- **Status Filters** — Filter borrowing history by active/overdue/returned
+- **Colour-Coded Alerts** — Overdue items highlighted in red, due-soon in orange, meeting WCAG AA contrast in both light and dark appearance
+- **Confirmation Sheets** — Destructive or consequential actions (delete, renew, cancel reservation) show a macOS-style sheet naming the exact record
+- **Flash Messages** — Clear success/warning/danger/info feedback; errors and warnings stay until dismissed
+- **Responsive Design** — A source-list sidebar on desktop collapses to a drawer on mobile, and data tables become stacked cards so row actions stay reachable
+- **Self-contained UI** — Hand-written CSS, vanilla JS, and inline SVG icons; no CDN, so the app renders identically offline
 
 ## Quick Start
 
@@ -85,13 +88,16 @@ pip install pytest flask-wtf
 pytest
 ```
 
+CI (`.github/workflows/tests.yml`) runs the same suite on every push and pull
+request against `main`, on Python 3.11 and 3.12.
+
 ## Database Schema
 
 | Table | Key Columns |
 |-------|-------------|
 | **User** | id, username, email, password_hash, is_admin, phone, member_since |
 | **Book** | id, title, author, isbn, category, publisher, publication_year, description, quantity, available_quantity |
-| **Borrowing** | id, user_id, book_id, borrow_date, due_date, return_date, status (active/returned) |
+| **Borrowing** | id, user_id, book_id, borrow_date, due_date, return_date, status (active/returned), renewal_count |
 | **Reservation** | id, user_id, book_id, reservation_date, expiration_date, status (active/fulfilled/expired/cancelled) |
 
 ## Tech Stack
@@ -125,6 +131,20 @@ Design notes:
 - **Motion** — all transitions collapse under `prefers-reduced-motion`.
 - **Keyboard** — skip link, visible focus rings, Escape closes menus and
   sheets, and ⌘K / Ctrl-K jumps to the search field.
+
+## What Changed (v3.1 — renewals + CI)
+
+- **Self-service renewals.** Members can renew an active loan for a fresh
+  loan period from the dashboard or My Loans, as long as it isn't overdue,
+  hasn't reached the renewal limit (`MAX_RENEWALS`, default 2), and no other
+  member is waiting on a reservation for that title. Blocked loans show the
+  specific reason instead of just disabling the button.
+- **Continuous integration.** A GitHub Actions workflow runs the pytest suite
+  on every push and pull request against `main`.
+- **Fixed a broken documented install path.** `poetry.lock` had drifted out of
+  sync with `pyproject.toml` since Flask-WTF and pytest were added, so
+  `poetry install` — the README's own alternate install command — would fail
+  on a clean checkout. Regenerated.
 
 ## What Changed (v3.0 — macOS-style interface)
 

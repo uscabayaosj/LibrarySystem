@@ -169,6 +169,39 @@ def reserve_book(book_id):
     return redirect(url_for('member.search', q=book.title))
 
 
+_RENEW_REDIRECTS = {
+    'dashboard': lambda: url_for('member.dashboard'),
+    'history': lambda: url_for('member.borrowing_history'),
+}
+
+
+@bp.route('/renew/<int:borrowing_id>', methods=['POST'])
+@login_required
+def renew_borrowing(borrowing_id):
+    borrowing = Borrowing.query.get_or_404(borrowing_id)
+    # Only two known redirect targets are ever accepted -- this is a closed
+    # set, not user-controlled input, so it can't become an open redirect.
+    destination = _RENEW_REDIRECTS.get(
+        request.form.get('next'), _RENEW_REDIRECTS['history']
+    )()
+
+    if borrowing.user_id != current_user.id:
+        flash('You do not have permission to renew this loan.', 'danger')
+        return redirect(destination)
+
+    if not borrowing.can_renew:
+        flash(borrowing.renew_blocked_reason or 'This loan cannot be renewed.', 'warning')
+        return redirect(destination)
+
+    borrowing.renew()
+    flash(
+        f'"{borrowing.book.title}" renewed — now due '
+        f'{borrowing.due_date.strftime("%b %d, %Y")}.',
+        'success',
+    )
+    return redirect(destination)
+
+
 @bp.route('/history')
 @login_required
 def borrowing_history():

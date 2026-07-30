@@ -219,6 +219,8 @@ Likewise, once a book is reserved there is no queue-position indicator ("you are
 
 **Fix.** At minimum, add renewal (with a policy check for overdue/reserved titles) — the highest-value missing member feature. Short of that, replace the bare warning with actionable instructions.
 
+> **Update:** Self-service renewal (with exactly this policy check — blocked when overdue, at the renewal limit, or reserved by another member) shipped in v3.1. The queue-position indicator on the reservations page remains open.
+
 ---
 
 ## 12. 🟡 Navigation from the history table is inconsistent and surprising

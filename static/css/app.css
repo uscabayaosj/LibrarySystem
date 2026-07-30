@@ -680,7 +680,10 @@ table.data tr.row-alert:hover { background: var(--red-soft); filter: brightness(
 .row-main { min-width: 0; flex: 1; }
 .row-title { font-weight: 550; font-size: var(--text-base); }
 .row-sub { font-size: var(--text-sm); color: var(--fg-secondary); margin-top: 1px; }
-.row-side { text-align: right; flex: none; }
+.row-side {
+    text-align: right; flex: none;
+    display: flex; flex-direction: column; align-items: flex-end; gap: 6px;
+}
 .row-item.is-alert { background: var(--red-soft); }
 
 /* ---- Badges / status pills ---- */
