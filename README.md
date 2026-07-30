@@ -218,6 +218,15 @@ curl -sf https://YOUR-APP.onrender.com/login   > /dev/null && echo "login OK"
 curl -sf https://YOUR-APP.onrender.com/manifest.json | head -c 200
 ```
 
+**Check the startup log for the database it actually connected to.** The
+migration line names the backend:
+
+- `Context impl PostgresqlImpl` — correct.
+- `Context impl SQLiteImpl` — `DATABASE_URL` didn't take effect. The app will
+  run perfectly and lose everything on the next deploy. Fix this before
+  entering real data. Startup also prints an unmissable warning banner in this
+  case.
+
 Then in a browser:
 
 - [ ] Sign in as admin
@@ -299,6 +308,8 @@ expire after 90 days. Fine for evaluation; move to a paid instance for real use.
 | Uploaded logo disappears after a deploy | No persistent disk | Mount a disk at `/opt/render/project/src/static/uploads` |
 | `no such table` / `column ... does not exist` at runtime | A migration wasn't committed, or the start command doesn't migrate | Confirm the start command includes the `init_db()` prefix; generate and commit the missing migration |
 | Sign-in appears to succeed but bounces back to `/login` | Cookie marked secure while served over plain HTTP | Serve over HTTPS (Render does this by default), or unset `SESSION_COOKIE_SECURE` for a non-TLS test host |
+| Startup logs a `WARNING: running in production on SQLite` banner, or migrations log `Context impl SQLiteImpl` | `DATABASE_URL` isn't set, so the app is writing to a local file that the next deploy destroys | Attach a managed Postgres instance and set `DATABASE_URL`. Any data created in the meantime is lost on the next deploy |
+| Data disappeared after a deploy | Same cause as above — the app was on SQLite, not Postgres | Set `DATABASE_URL` before putting real data in |
 
 ### Running tests
 

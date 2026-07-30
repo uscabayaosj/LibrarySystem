@@ -154,15 +154,45 @@ def _apply_migrations():
 # The initial migration -- the schema an old create_all() database already has.
 _BASELINE_REVISION = 'a062ad0fb313'
 
+_DEFAULT_ADMIN_PASSWORD = 'admin'
+
+
+def _warn_if_ephemeral_database():
+    """Shout if production is running on SQLite.
+
+    A managed host's filesystem is usually ephemeral, so a SQLite database
+    there is silently destroyed on the next deploy -- every book, member, and
+    loan gone, with nothing in the logs at the time to indicate it. The app
+    starts and serves perfectly either way, which is exactly what makes this
+    worth an unmissable banner rather than a one-line note.
+    """
+    uri = app.config.get('SQLALCHEMY_DATABASE_URI', '')
+    if app.config.get('ENV') != 'production' or not uri.startswith('sqlite'):
+        return
+    print(
+        '\n'
+        '  ***************************************************************\n'
+        '  *  WARNING: running in production on SQLite.                  *\n'
+        '  *                                                             *\n'
+        '  *  DATABASE_URL is not set, so data is being written to a     *\n'
+        '  *  local file. On a host with an ephemeral filesystem that    *\n'
+        '  *  file is DESTROYED ON THE NEXT DEPLOY.                      *\n'
+        '  *                                                             *\n'
+        '  *  Attach a managed Postgres instance and set DATABASE_URL.   *\n'
+        '  ***************************************************************\n',
+        flush=True,
+    )
+
 
 def init_db():
     """Migrate to the latest schema and seed an admin user if there isn't one.
     Safe to call repeatedly, and safe to call on every boot."""
+    _warn_if_ephemeral_database()
     _apply_migrations()
     with app.app_context():
         admin = User.query.filter_by(is_admin=True).first()
         if not admin:
-            seed_password = os.environ.get('ADMIN_PASSWORD', 'admin')
+            seed_password = os.environ.get('ADMIN_PASSWORD', _DEFAULT_ADMIN_PASSWORD)
             admin = User(
                 username='admin',
                 email='admin@example.com',
@@ -171,7 +201,16 @@ def init_db():
             admin.set_password(seed_password)
             db.session.add(admin)
             db.session.commit()
-            print(f'Admin user created (admin / {seed_password})')
+            # Deliberately not echoing the password. This runs on every boot,
+            # including on hosts that retain deploy logs indefinitely, and
+            # those logs are visible to anyone with dashboard access and get
+            # pasted into support threads.
+            if seed_password == _DEFAULT_ADMIN_PASSWORD:
+                print('Admin user created (admin / admin) -- CHANGE THIS PASSWORD NOW. '
+                      'Set ADMIN_PASSWORD before first boot to avoid the default.')
+            else:
+                print('Admin user created (username: admin) with the password '
+                      'from ADMIN_PASSWORD.')
 
 
 if __name__ == '__main__':
