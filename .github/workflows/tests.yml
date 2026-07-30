@@ -21,7 +21,7 @@ jobs:
           cache: pip
 
       - name: Install dependencies
-        run: pip install flask flask-sqlalchemy flask-login flask-wtf pytest
+        run: pip install flask flask-sqlalchemy flask-login flask-wtf pillow pytest
 
       - name: Run test suite
         env:
