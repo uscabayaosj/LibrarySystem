@@ -18,6 +18,7 @@
     <div class="grid grid-cards">
         {% for r in reservations %}
         <article class="book">
+            <div class="book-cover" style="--hue: {{ r.book.isbn|cover_hue }}" aria-hidden="true">{{ r.book.title[0]|upper }}</div>
             <div class="book-body">
                 <div style="display:flex;align-items:flex-start;gap:10px">
                     <div style="flex:1;min-width:0">
@@ -53,6 +54,11 @@
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" class="btn btn-danger btn-sm">{{ icon('x', class='icon-sm') }} Cancel</button>
                 </form>
+                <a href="{{ url_for('member.reservation_calendar', reservation_id=r.id) }}"
+                   class="btn btn-sm btn-icon btn-glass" title="Add expiry to calendar"
+                   aria-label="Add “{{ r.book.title }}” expiry to calendar">
+                    {{ icon('calendar', class='icon-sm') }}
+                </a>
             </div>
         </article>
         {% endfor %}

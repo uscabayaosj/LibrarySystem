@@ -7,9 +7,13 @@
 <div class="content-narrow" style="max-width:400px">
     <div class="auth-card">
         <div class="auth-head">
-            <div class="hero-mark">{{ icon('book', class='icon-lg') }}</div>
-            <h1>Sign in to Library</h1>
-            <p>Anthropology Department</p>
+            {% if org_settings.logo_filename %}
+                <img class="hero-mark-logo" alt=""
+                     src="{{ url_for('static', filename='uploads/branding/' + org_settings.logo_filename) }}">
+            {% else %}
+                <div class="hero-mark">{{ icon('book', class='icon-lg') }}</div>
+            {% endif %}
+            <h1>Sign in to {{ org_settings.org_name }}</h1>
         </div>
 
         <form method="POST" action="{{ url_for('auth.login') }}">
@@ -18,9 +22,13 @@
                 <label for="username">Username</label>
                 <input type="text" id="username" name="username" autocomplete="username" required autofocus>
             </div>
-            <div class="field" style="margin-bottom:18px">
+            <div class="field" style="margin-bottom:14px">
                 <label for="password">Password</label>
                 <input type="password" id="password" name="password" autocomplete="current-password" required>
+            </div>
+            <div class="checkbox-field" style="margin-bottom:18px">
+                <input type="checkbox" id="remember" name="remember">
+                <label for="remember">Remember me on this device</label>
             </div>
             <button type="submit" class="btn btn-primary btn-block btn-lg">Sign In</button>
         </form>

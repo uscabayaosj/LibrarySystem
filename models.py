@@ -5,6 +5,30 @@ from datetime import datetime, timedelta
 from extensions import db
 
 
+class OrganizationSettings(db.Model):
+    """Singleton row (always id=1) holding the per-deployment branding: the
+    organization's display name, an optional uploaded logo, and a custom
+    theme color. A real table (rather than a config file) so an admin can
+    change branding from the UI without redeploying or touching the
+    environment."""
+    __tablename__ = 'organization_settings'
+
+    id = db.Column(db.Integer, primary_key=True)
+    org_name = db.Column(db.String(80), nullable=False, default='Library System')
+    logo_filename = db.Column(db.String(120))
+    theme_color = db.Column(db.String(7))  # '#rrggbb', or None for the default palette
+
+    @classmethod
+    def get(cls):
+        """Fetch the singleton row, creating it with defaults on first use."""
+        settings = cls.query.get(1)
+        if settings is None:
+            settings = cls(id=1)
+            db.session.add(settings)
+            db.session.commit()
+        return settings
+
+
 class User(UserMixin, db.Model):
     __tablename__ = 'user'
 

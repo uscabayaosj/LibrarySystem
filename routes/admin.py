@@ -1,7 +1,11 @@
+import os
+
 from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app
 from flask_login import login_required, current_user
-from models import db, Book, User, Borrowing, Reservation
+from models import db, Book, User, Borrowing, Reservation, OrganizationSettings
 from datetime import datetime, timedelta
+from theming import normalize_hex
+from logo_upload import validate_and_save, LogoValidationError
 
 bp = Blueprint('admin', __name__, url_prefix='/admin')
 
@@ -333,3 +337,58 @@ def check_reservations():
     db.session.commit()
     flash(f'Checked reservations: {len(expired)} expired, {fulfilled_count} fulfilled.', 'info')
     return redirect(url_for('admin.dashboard'))
+
+
+def _branding_upload_dir():
+    return os.path.join(current_app.root_path, 'static', 'uploads', 'branding')
+
+
+@bp.route('/settings', methods=['GET', 'POST'])
+def settings():
+    org_settings = OrganizationSettings.get()
+
+    if request.method == 'POST':
+        org_name = request.form.get('org_name', '').strip()
+        theme_color_input = request.form.get('theme_color', '').strip()
+        remove_logo = request.form.get('remove_logo') == 'on'
+        logo_file = request.files.get('logo')
+
+        errors = []
+        if not org_name:
+            errors.append('Organization name is required.')
+        elif len(org_name) > 80:
+            errors.append('Organization name must be 80 characters or fewer.')
+
+        normalized_color = None
+        if theme_color_input:
+            normalized_color = normalize_hex(theme_color_input)
+            if not normalized_color:
+                errors.append('Theme color must be a valid hex color, e.g. #0069D9.')
+
+        new_logo_filename = None
+        if logo_file and logo_file.filename:
+            try:
+                new_logo_filename = validate_and_save(logo_file, _branding_upload_dir())
+            except LogoValidationError as e:
+                errors.append(str(e))
+
+        if errors:
+            for msg in errors:
+                flash(msg, 'danger')
+            return render_template(
+                'admin/settings.html',
+                org_settings=org_settings,
+                form_values={'org_name': org_name, 'theme_color': theme_color_input},
+            )
+
+        org_settings.org_name = org_name
+        org_settings.theme_color = normalized_color
+        if new_logo_filename:
+            org_settings.logo_filename = new_logo_filename
+        elif remove_logo:
+            org_settings.logo_filename = None
+        db.session.commit()
+        flash('Branding updated.', 'success')
+        return redirect(url_for('admin.settings'))
+
+    return render_template('admin/settings.html', org_settings=org_settings, form_values=None)

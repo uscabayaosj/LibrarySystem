@@ -1,4 +1,5 @@
 import os
+from datetime import timedelta
 
 
 def _env_flag(name, default=False):
@@ -32,6 +33,19 @@ class Config:
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = 'Lax'
     SESSION_COOKIE_SECURE = _env_flag('SESSION_COOKIE_SECURE', ENV == 'production')
+
+    # "Remember me" issues a separate long-lived cookie (Flask-Login's
+    # remember_token) so a phone borrower checking due dates in short bursts
+    # isn't logged out between visits the way a plain session cookie would.
+    # Hardened the same way as the session cookie above.
+    REMEMBER_COOKIE_DURATION = timedelta(days=30)
+    REMEMBER_COOKIE_HTTPONLY = True
+    REMEMBER_COOKIE_SAMESITE = 'Lax'
+    REMEMBER_COOKIE_SECURE = SESSION_COOKIE_SECURE
+
+    # Hard ceiling on any request body, at the WSGI layer -- defense in depth
+    # around the logo upload's own (stricter) size check in logo_upload.py.
+    MAX_CONTENT_LENGTH = 5 * 1024 * 1024
 
     # Business rules
     LOAN_PERIOD_DAYS = 14

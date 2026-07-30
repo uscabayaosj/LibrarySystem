@@ -33,6 +33,17 @@ A Flask-based library management system with separate **Librarian (Admin)** and 
 - **Responsive Design** — A source-list sidebar on desktop collapses to a drawer on mobile, and data tables become stacked cards so row actions stay reachable
 - **Self-contained UI** — Hand-written CSS, vanilla JS, and inline SVG icons; no CDN, so the app renders identically offline
 
+### 📱 Phone-First for Members
+- **Bottom tab bar** on phones (Overview / Browse / Loans / Reserved), with a collapsing large-title header — the admin side stays desktop-only
+- **Installable app** — Add to Home Screen for a standalone app with its own icon
+- **Remember me** — optional 30-day persistent login
+- **Calendar export** — one tap adds a loan's due date or a reservation's expiry to the phone's own Calendar app, with a day-before reminder built in
+
+### 🎨 Organization Branding
+- **Custom name, logo, and theme color** — set from Admin → Settings, no redeploy required
+- Uploaded logos are validated, re-encoded, and used to regenerate the installed-app icon set
+- A single brand color yields a full light/dark accent palette, derived and WCAG-AA-verified automatically
+
 ## Quick Start
 
 ### Prerequisites
@@ -131,6 +142,53 @@ Design notes:
 - **Motion** — all transitions collapse under `prefers-reduced-motion`.
 - **Keyboard** — skip link, visible focus rings, Escape closes menus and
   sheets, and ⌘K / Ctrl-K jumps to the search field.
+
+## What Changed (v3.3 — phone-first member experience + organization branding)
+
+This release has two parts: making the app genuinely usable for borrowers on a
+phone (the primary way most members actually use it), and making the app
+itself deployable for a different organization without touching code.
+
+**Phone-first member experience:**
+- **Bottom tab bar.** Members on a phone (≤860px) get an iOS-style translucent,
+  blurred tab bar (Overview / Browse / Loans / Reserved) instead of the desktop
+  sidebar, with unread-style badges for active loans/reservations. Admins
+  always keep the desktop sidebar — this is a borrower-only change.
+- **Large-title collapse.** Page headings render large at the top of the
+  scroll and shrink into the toolbar as you scroll down, mirroring
+  `UINavigationBar` large titles.
+- **Generated cover art.** Books without a photo get a deterministic
+  "Music/Podcasts-style" colour tile (stable per-ISBN hash, not random —
+  the colour doesn't change on server restart) instead of a blank icon.
+- **Remember me.** An optional 30-day persistent login cookie so a phone
+  borrower isn't signed out between short visits.
+- **Installable app.** A web manifest + icon set so "Add to Home Screen" gives
+  a real standalone app with its own icon, not a bare bookmark tab.
+- **Calendar export.** Every active loan and reservation has an "add to
+  calendar" button that downloads an `.ics` file with a built-in
+  day-before reminder — due dates and expiries land in the phone's own
+  Calendar app without this project needing any push-notification backend.
+- **Glassmorphic action buttons.** The calendar buttons use a frosted,
+  translucent circular style (`.btn-glass`) rather than a flat icon button.
+- Fixed three WCAG AA contrast regressions introduced by this work (tab-bar
+  label/badge/active-state colours, and the generated cover-art gradient at
+  certain hues), all found and fixed using the same fill-vs-text token
+  pattern already established in the design system.
+
+**Organization branding:**
+- **Settings page** (Admin → Settings): set the organization's display name,
+  upload a logo, and pick a theme color, all from the UI — no redeploy.
+- **Logo.** Square PNG/JPEG/WEBP, ideally 512×512–1024×1024px (transparent PNG
+  recommended), max 2 MB. Uploads are re-validated and re-encoded through
+  Pillow (not saved as-is) and used to regenerate the installed-app icon set
+  (favicon, apple-touch-icon, manifest icons) so "Add to Home Screen" shows
+  the organization's own mark.
+- **Theme color.** One brand color is enough — a light and dark accent
+  variant (plus the separate "holds white text" fill shade this design system
+  already needs) are derived algorithmically and verified against real WCAG
+  contrast math, so an arbitrary brand color can't silently break readability.
+- The org name now appears in the sidebar, page titles, the login page, the
+  installed-app name, and the PWA manifest.
 
 ## What Changed (v3.2 — reservation queue position)
 

@@ -67,6 +67,7 @@
                 <div class="rows">
                     {% for b in active_borrowings %}
                     <div class="row-item {{ 'is-alert' if b.due_state == 'overdue' }}">
+                        <div class="book-cover-sm" style="--hue: {{ b.book.isbn|cover_hue }}" aria-hidden="true">{{ b.book.title[0]|upper }}</div>
                         <div class="row-main">
                             <div class="row-title">{{ b.book.title }}</div>
                             <div class="row-sub">
@@ -83,18 +84,25 @@
                             {% else %}
                                 <span class="badge badge-green">{{ b.due_label }}</span>
                             {% endif %}
-                            {% if b.can_renew %}
-                                <form action="{{ url_for('member.renew_borrowing', borrowing_id=b.id) }}" method="POST"
-                                      data-confirm="This will extend the due date by {{ config.LOAN_PERIOD_DAYS }} days from today."
-                                      data-confirm-title="Renew “{{ b.book.title }}”?"
-                                      data-confirm-label="Renew">
-                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <input type="hidden" name="next" value="dashboard">
-                                    <button type="submit" class="btn btn-sm">{{ icon('refresh', class='icon-sm') }} Renew</button>
-                                </form>
-                            {% elif b.renew_blocked_reason %}
-                                <span class="xs text-tertiary" style="max-width:160px">{{ b.renew_blocked_reason }}</span>
-                            {% endif %}
+                            <div style="display:flex; gap:6px; align-items:center">
+                                {% if b.can_renew %}
+                                    <form action="{{ url_for('member.renew_borrowing', borrowing_id=b.id) }}" method="POST"
+                                          data-confirm="This will extend the due date by {{ config.LOAN_PERIOD_DAYS }} days from today."
+                                          data-confirm-title="Renew “{{ b.book.title }}”?"
+                                          data-confirm-label="Renew">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <input type="hidden" name="next" value="dashboard">
+                                        <button type="submit" class="btn btn-sm">{{ icon('refresh', class='icon-sm') }} Renew</button>
+                                    </form>
+                                {% elif b.renew_blocked_reason %}
+                                    <span class="xs text-tertiary" style="max-width:130px">{{ b.renew_blocked_reason }}</span>
+                                {% endif %}
+                                <a href="{{ url_for('member.loan_calendar', borrowing_id=b.id) }}"
+                                   class="btn btn-sm btn-icon btn-glass" title="Add due date to calendar"
+                                   aria-label="Add “{{ b.book.title }}” due date to calendar">
+                                    {{ icon('calendar', class='icon-sm') }}
+                                </a>
+                            </div>
                         </div>
                     </div>
                     {% endfor %}
@@ -117,6 +125,7 @@
                 <div class="rows">
                     {% for b in recent_returns %}
                     <div class="row-item">
+                        <div class="book-cover-sm" style="--hue: {{ b.book.isbn|cover_hue }}" aria-hidden="true">{{ b.book.title[0]|upper }}</div>
                         <div class="row-main">
                             <div class="row-title">{{ b.book.title }}</div>
                             <div class="row-sub">Returned {{ b.return_date.strftime('%b %d, %Y') }}</div>

@@ -47,6 +47,7 @@
         {% set my_loan = my_loans.get(book.id) %}
         {% set my_res = my_reservations.get(book.id) %}
         <article class="book">
+            <div class="book-cover" style="--hue: {{ book.isbn|cover_hue }}" aria-hidden="true">{{ book.title[0]|upper }}</div>
             <div class="book-body">
                 <h2 class="book-title">{{ book.title }}</h2>
                 <p class="book-author">

@@ -83,6 +83,10 @@
 <path d="M20 14.2A8.2 8.2 0 0 1 9.8 4 8.5 8.5 0 1 0 20 14.2z"/>
 {%- elif name == 'auto' -%}
 <circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17a8.5 8.5 0 0 0 0-17z" fill="currentColor" stroke="none"/>
+{%- elif name == 'gear' -%}
+<path d="M4 7h9m4 0h3"/><circle cx="15" cy="7" r="2"/><path d="M4 12h3m4 0h9"/><circle cx="9" cy="12" r="2"/><path d="M4 17h9m4 0h3"/><circle cx="15" cy="17" r="2"/>
+{%- elif name == 'upload' -%}
+<path d="M12 15V4m0 0 4 4m-4-4-4 4"/><path d="M4 15v3.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V15"/>
 {%- endif -%}
 </svg>
 {%- endmacro -%}
