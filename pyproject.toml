@@ -4,6 +4,14 @@ version = "2.0.0"
 description = "Library Management System with admin (librarian) and user (borrower) dashboards"
 authors = []
 readme = "README.md"
+# This is a deployed application, not a distributable package -- the code sits
+# in flat modules (app.py, models.py, routes/) with no `library_system/`
+# package directory. Without this, `poetry install` tries to install the
+# project itself and fails with "No file/folder found for package
+# library-system". Hosts that autodetect poetry.lock (Render among them) run
+# a bare `poetry install`, so that failure is a broken deploy, not just a
+# local annoyance.
+package-mode = false
 
 [tool.poetry.dependencies]
 python = "^3.11"
