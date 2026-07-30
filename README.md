@@ -67,8 +67,32 @@ python app.py
 ```
 
 The first run will:
-1. Create a local SQLite database (`instance/library.db`)
+1. Create a local SQLite database (`instance/library.db`) and run every migration
 2. Seed an admin user: **admin / admin**
+
+### Database migrations
+
+Schema changes are managed with Flask-Migrate (Alembic). **You do not need to
+run anything by hand on deploy** — `init_db()` brings the database to the
+latest revision on boot, and the `Procfile`'s `release` step calls it.
+
+It handles all three states a database can be in:
+
+| State | What happens |
+|---|---|
+| Brand-new database | Every migration runs from scratch |
+| Already on migrations | Only outstanding migrations run |
+| Created by the old `db.create_all()` (no `alembic_version`) | Stamped at the baseline revision first, so Alembic won't try to re-create existing tables, then anything newer is applied |
+
+After changing a model, generate a migration and commit it alongside the code:
+
+```bash
+FLASK_APP=app.py flask db migrate -m "describe the change"
+FLASK_APP=app.py flask db upgrade      # apply locally
+```
+
+Migrations are generated with `render_as_batch=True` so column changes work on
+SQLite as well as Postgres.
 
 ### Default Login
 
@@ -91,6 +115,44 @@ Set environment variables:
 | `ADMIN_PASSWORD` | `admin` | Password for the seeded admin account on first run |
 
 For production: set a long random `SECRET_KEY`, keep `FLASK_DEBUG` unset/`0`, and change the seeded admin password.
+
+`DATABASE_URL` accepts the `postgres://` form that most managed-database
+providers hand out, as well as `postgresql://` — the app normalizes it, so the
+connection string can be pasted in verbatim.
+
+## Deployment
+
+The repo ships a `Procfile`:
+
+```
+release: python -c "from app import init_db; init_db()"
+web: gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 60
+```
+
+The `release` step migrates the database before any new code serves traffic;
+the `web` step runs the app under gunicorn.
+
+### This app needs a persistent disk and a real database
+
+Two things it does are worth knowing before picking a host:
+
+1. **The database.** SQLite is a file. It works locally, but on any host with
+   an ephemeral filesystem it is wiped on every deploy and not shared between
+   instances. Use managed Postgres in production and point `DATABASE_URL` at it.
+2. **Logo uploads.** `Admin → Settings` writes the uploaded logo and its
+   generated icon set to `static/uploads/branding/` on local disk. That needs
+   a persistent volume, or the logo disappears on the next deploy.
+
+**A container/VM host (Render, Railway, Fly.io) fits this app as-is:** attach a
+managed Postgres instance, mount a persistent disk at `static/uploads`, set
+`SECRET_KEY` and `FLASK_ENV=production`, and the `Procfile` handles the rest.
+
+**Serverless platforms (Vercel, Netlify, Lambda) do not fit without changes.**
+Their filesystem is read-only apart from a temporary directory that does not
+survive between invocations, which breaks both points above. Running there
+would require Postgres *and* moving logo storage to an object store (S3,
+Vercel Blob, Cloudflare R2) — a code change to `logo_upload.py`, not just
+configuration.
 
 ### Running tests
 
@@ -142,6 +204,24 @@ Design notes:
 - **Motion** — all transitions collapse under `prefers-reduced-motion`.
 - **Keyboard** — skip link, visible focus rings, Escape closes menus and
   sheets, and ⌘K / Ctrl-K jumps to the search field.
+
+## What Changed (v3.4 — database migrations + deployment)
+
+- **Flask-Migrate (Alembic).** Schema changes are now versioned. `init_db()`
+  migrates to the latest revision on boot, so a deploy never needs a manual
+  database step. A database created by the old `db.create_all()` is detected
+  and stamped at the baseline revision rather than having Alembic try to
+  re-create tables that already exist — existing deployments upgrade in place
+  without losing data.
+- **`Procfile`** with a `release` step (migrate) and a `web` step (gunicorn).
+- **`postgres://` URLs are normalized** to `postgresql://`, so a managed
+  provider's connection string can be pasted into `DATABASE_URL` as-is instead
+  of failing at startup.
+- Fixed a latent break in the generated `migrations/env.py`: it called
+  `db.get_engine()`, removed in Flask-SQLAlchemy 3.2, which would have turned a
+  routine dependency bump into a failed deploy.
+- Documented what this app needs from a host (persistent disk + real database)
+  and why serverless platforms need code changes first — see **Deployment**.
 
 ## What Changed (v3.3 — phone-first member experience + organization branding)
 
