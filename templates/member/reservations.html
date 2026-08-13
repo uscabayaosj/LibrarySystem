@@ -34,14 +34,14 @@
 
                 <div class="book-status" style="display:block">
                     <div class="small text-secondary">
-                        Reserved {{ r.reservation_date.strftime('%b %d, %Y') }}
+                        Reserved {{ r.reservation_date|localdate('%b %d, %Y') }}
                         {% if r.queue_length > 1 %}
                             · {{ r.queue_length }} members waiting for this title
                         {% endif %}
                     </div>
                     <div class="small {{ 'text-red' if r.days_until_expiry is not none and r.days_until_expiry < 1 else 'text-orange' }}"
                          style="margin-top:2px">
-                        Expires {{ r.expiration_date.strftime('%b %d, %Y') }} · {{ r.expiry_label }}
+                        Expires {{ r.expiration_date|localdate('%b %d, %Y') }} · {{ r.expiry_label }}
                     </div>
                 </div>
             </div>

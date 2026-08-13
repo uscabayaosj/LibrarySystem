@@ -29,7 +29,7 @@
         {% for item in overdue_items %}
             <div class="small">
                 <span class="strong">{{ item.book.title }}</span>
-                <span class="text-secondary">— was due {{ item.due_date.strftime('%b %d, %Y') }}
+                <span class="text-secondary">— was due {{ item.due_date|localdate('%b %d, %Y') }}
                 ({{ item.due_label }})</span>
             </div>
         {% endfor %}
@@ -71,7 +71,7 @@
                         <div class="row-main">
                             <div class="row-title">{{ b.book.title }}</div>
                             <div class="row-sub">
-                                {{ b.book.author }} · Due {{ b.due_date.strftime('%b %d, %Y') }}
+                                {{ b.book.author }} · Due {{ b.due_date|localdate('%b %d, %Y') }}
                             </div>
                         </div>
                         <div class="row-side">
@@ -128,7 +128,7 @@
                         <div class="book-cover-sm" style="--hue: {{ b.book.isbn|cover_hue }}" aria-hidden="true">{{ b.book.title[0]|upper }}</div>
                         <div class="row-main">
                             <div class="row-title">{{ b.book.title }}</div>
-                            <div class="row-sub">Returned {{ b.return_date.strftime('%b %d, %Y') }}</div>
+                            <div class="row-sub">Returned {{ b.return_date|localdate('%b %d, %Y') }}</div>
                         </div>
                         {{ icon('check-circle', class='icon-sm text-green') }}
                     </div>

@@ -68,13 +68,39 @@
         var sidebar = document.getElementById('sidebar');
         var scrim = document.getElementById('scrim');
         var toggle = document.getElementById('sidebar-toggle');
+        var mainCol = document.getElementById('app-main-col');
+        var sidebarLastFocus = null;
 
+        /* The sidebar is a persistent, non-modal nav on desktop and an
+           overlay drawer with modal behaviour on phones (see the 860px
+           breakpoint in app.css) -- the same element serving two different
+           interaction models. role/aria-modal, the focus trap, and inert-ing
+           the page behind it are only ever applied here, on open, so a
+           desktop screen reader never sees the always-visible sidebar as a
+           dialog it can't leave. */
         function setSidebar(open) {
             if (!sidebar) { return; }
             sidebar.setAttribute('data-open', open ? 'true' : 'false');
             if (scrim) { scrim.setAttribute('data-open', open ? 'true' : 'false'); }
             if (toggle) { toggle.setAttribute('aria-expanded', open ? 'true' : 'false'); }
             document.body.style.overflow = open ? 'hidden' : '';
+
+            if (open) {
+                sidebar.setAttribute('role', 'dialog');
+                sidebar.setAttribute('aria-modal', 'true');
+                if (mainCol) { mainCol.inert = true; }
+                sidebarLastFocus = document.activeElement;
+                var firstFocusable = sidebar.querySelector(
+                    'a[href], button:not([disabled]), input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])'
+                );
+                if (firstFocusable) { firstFocusable.focus(); }
+            } else {
+                sidebar.removeAttribute('role');
+                sidebar.removeAttribute('aria-modal');
+                if (mainCol) { mainCol.inert = false; }
+                if (sidebarLastFocus) { sidebarLastFocus.focus(); }
+                sidebarLastFocus = null;
+            }
         }
 
         on(toggle, 'click', function () {
@@ -230,6 +256,9 @@
             if (e.key === 'Escape') {
                 setMenu(false);
                 if (sidebar && sidebar.getAttribute('data-open') === 'true') { setSidebar(false); }
+            }
+            if (e.key === 'Tab' && sidebar && sidebar.getAttribute('data-open') === 'true') {
+                trapFocus(sidebar, e);
             }
             // Cmd/Ctrl-K focuses search when the page offers one.
             if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {

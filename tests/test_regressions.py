@@ -2,8 +2,20 @@
 security and data-integrity fixes."""
 from datetime import datetime, timedelta
 
+import models
+from localtime import to_local
 from models import User, Book, Borrowing, Reservation
 from tests.conftest import login
+
+# A fixed instant, deliberately mid-morning in the library's local timezone
+# (see localtime.py) so it sits nowhere near a day boundary in either UTC or
+# local time. Calendar-day math (days_until_due, days_until_expiry) depends
+# on *when* "now" is, not just the elapsed offset -- a due_date built as
+# "utcnow() + 1 day 2 hours" crosses a different number of local-midnight
+# boundaries depending on the wall-clock time the test happens to run at.
+# Pinning models.local_now() to this instant makes those tests deterministic
+# regardless of when CI runs them.
+FIXED_UTC_NOW = datetime(2026, 1, 10, 1, 0, 0)
 
 
 # ---- §1.1: My Reservations page no longer 500s -------------------------------
@@ -109,12 +121,12 @@ def test_due_today_is_not_reported_as_overdue_zero(db, member, book):
     assert b.due_label == 'Due today'
 
 
-def test_days_left_is_not_short_by_one(db, member, book):
+def test_days_left_is_not_short_by_one(db, member, book, monkeypatch):
     """A book due in 1d18h used to read '1 day(s) left'; by calendar date it
     is due the day after tomorrow, i.e. 2 days."""
-    now = datetime.utcnow()
+    monkeypatch.setattr(models, 'local_now', lambda: to_local(FIXED_UTC_NOW))
     b = Borrowing(user_id=member.id, book_id=book.id,
-                  due_date=now + timedelta(days=1, hours=18), status='active')
+                  due_date=FIXED_UTC_NOW + timedelta(days=1, hours=18), status='active')
     db.session.add(b)
     db.session.commit()
 
@@ -122,9 +134,10 @@ def test_days_left_is_not_short_by_one(db, member, book):
     assert b.due_label == '2 days left'
 
 
-def test_singular_day_is_not_pluralised(db, member, book):
+def test_singular_day_is_not_pluralised(db, member, book, monkeypatch):
+    monkeypatch.setattr(models, 'local_now', lambda: to_local(FIXED_UTC_NOW))
     b = Borrowing(user_id=member.id, book_id=book.id,
-                  due_date=datetime.utcnow() + timedelta(days=1, hours=2),
+                  due_date=FIXED_UTC_NOW + timedelta(days=1, hours=2),
                   status='active')
     db.session.add(b)
     db.session.commit()

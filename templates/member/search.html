@@ -17,7 +17,7 @@
 <form method="GET" action="{{ url_for('member.search') }}" class="panel" style="margin-bottom:16px">
     <div class="panel-body">
         <div class="searchbar">
-            <div class="field" style="flex:none;width:150px">
+            <div class="field searchbar-scope">
                 <label class="visually-hidden" for="type">Search in</label>
                 <select id="type" name="type">
                     <option value="all" {% if search_type == 'all' %}selected{% endif %}>All fields</option>
@@ -64,7 +64,7 @@
                 <div class="book-status">
                     {% if my_loan %}
                         {{ icon('bookmark', class='icon-sm text-accent') }}
-                        <span class="text-accent">You have this — due {{ my_loan.due_date.strftime('%b %d') }}</span>
+                        <span class="text-accent">You have this — due {{ my_loan.due_date|localdate('%b %d') }}</span>
                     {% elif book.available_quantity > 0 %}
                         {{ icon('check-circle', class='icon-sm text-green') }}
                         <span class="text-green">{{ book.available_quantity }} of {{ book.quantity }} available</span>

@@ -3,6 +3,7 @@ from flask_login import login_required, current_user
 from models import db, Book, Borrowing, Reservation
 from datetime import datetime, timedelta
 from calendar_export import build_ics
+from localtime import to_local
 
 bp = Blueprint('member', __name__)
 
@@ -224,7 +225,7 @@ def loan_calendar(borrowing_id):
             f'"{borrowing.book.title}" by {borrowing.book.author} is due back '
             f'at the Anthropology Department library.'
         ),
-        event_date=borrowing.due_date,
+        event_date=to_local(borrowing.due_date),
         reminder_days_before=1,
         alarm_description=f'"{borrowing.book.title}" is due tomorrow',
     )
@@ -299,7 +300,7 @@ def reservation_calendar(reservation_id):
             f'Anthropology Department library or it will go to the next '
             f'person in the queue.'
         ),
-        event_date=reservation.expiration_date,
+        event_date=to_local(reservation.expiration_date),
         reminder_days_before=1,
         alarm_description=f'Your hold on "{reservation.book.title}" expires tomorrow',
     )
