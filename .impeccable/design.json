@@ -1,0 +1,156 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-13T00:00:00Z",
+  "title": "Design System: Library System",
+  "extensions": {
+    "colorMeta": {
+      "system-blue": { "role": "primary", "displayName": "System Blue", "canonical": "#0069D9", "tonalRamp": ["#021e3b", "#04366c", "#074f9d", "#0968ce", "#1e86f6", "#59a6f8", "#93c5fb", "#cee5fd"] },
+      "system-red": { "role": "error", "displayName": "System Red", "canonical": "#D70015", "tonalRamp": ["#3b0208", "#6c040f", "#9d0715", "#ce091c", "#f61e33", "#f85968", "#fb939d", "#fdced3"] },
+      "accessible-amber": { "role": "warning", "displayName": "Accessible Amber", "canonical": "#B54708", "tonalRamp": ["#381805", "#672b09", "#963f0d", "#c55312", "#ec6f28", "#f19560", "#f6ba98", "#fbe0d0"] },
+      "accessible-forest": { "role": "success", "displayName": "Accessible Forest", "canonical": "#1E7A38", "tonalRamp": ["#0e2f17", "#19572b", "#257e3e", "#30a651", "#49ca6e", "#79d894", "#a8e6b9", "#d7f4df"] },
+      "deep-teal": { "role": "info", "displayName": "Deep Teal", "canonical": "#0A6E82", "tonalRamp": ["#072e36", "#0d5564", "#127c91", "#18a3be", "#2fc6e5", "#65d5ec", "#9be4f2", "#d2f3f9"] },
+      "muted-violet": { "role": "neutral", "displayName": "Muted Violet (reserved)", "canonical": "#7A3DB8", "tonalRamp": ["#1e0e2f", "#381957", "#51257e", "#6b30a6", "#8949ca", "#a879d8", "#c7a8e6", "#e5d7f4"] },
+      "window-gray": { "role": "neutral", "displayName": "Window Gray", "canonical": "#E8E8EA", "tonalRamp": ["#18191b", "#2c2d30", "#404145", "#585b5f", "#71747a", "#909298", "#b5b7ba", "#dfe0e2"] },
+      "content-white": { "role": "neutral", "displayName": "Content White", "canonical": "#FFFFFF" },
+      "surface-raised": { "role": "neutral", "displayName": "Surface Raised", "canonical": "#FFFFFF", "darkModeCanonical": "#2A2A2E" },
+      "sunken-gray": { "role": "neutral", "displayName": "Sunken Gray", "canonical": "#F2F2F4", "darkModeCanonical": "#1E1E21" },
+      "ink": { "role": "text", "displayName": "Ink", "canonical": "rgba(0, 0, 0, 0.88)", "darkModeCanonical": "rgba(255, 255, 255, 0.92)" },
+      "ink-secondary": { "role": "text", "displayName": "Ink Secondary", "canonical": "rgba(0, 0, 0, 0.56)", "darkModeCanonical": "rgba(255, 255, 255, 0.60)" },
+      "ink-tertiary": { "role": "text", "displayName": "Ink Tertiary", "canonical": "rgba(0, 0, 0, 0.42)", "darkModeCanonical": "rgba(255, 255, 255, 0.42)" },
+      "hairline": { "role": "border", "displayName": "Hairline", "canonical": "rgba(0, 0, 0, 0.11)", "darkModeCanonical": "rgba(255, 255, 255, 0.12)" }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Hero/marketing headline only — login, register, landing." },
+      "headline": { "displayName": "Headline", "purpose": "The toolbar page title; one real h1 per page." },
+      "title": { "displayName": "Title", "purpose": "Panel and section headings, book titles." },
+      "body": { "displayName": "Body", "purpose": "Controls, table cells, form fields, paragraphs — the system's true base size." },
+      "label": { "displayName": "Label", "purpose": "Sidebar section headers, badges, tiny metadata tags." }
+    },
+    "shadows": [
+      { "name": "shadow-sm", "value": "0 1px 2px rgba(0,0,0,0.07), 0 0 0 0.5px rgba(0,0,0,0.05)", "purpose": "Resting panels, cards, stat tiles, book cards." },
+      { "name": "shadow-md", "value": "0 2px 8px rgba(0,0,0,0.09), 0 0 0 0.5px rgba(0,0,0,0.05)", "purpose": "Hover-lifted cards/stats, the auth card." },
+      { "name": "shadow-lg", "value": "0 12px 40px rgba(0,0,0,0.20), 0 0 0 0.5px rgba(0,0,0,0.10)", "purpose": "Menus, confirmation sheets, the open mobile sidebar drawer." },
+      { "name": "shadow-btn", "value": "0 1px 1.5px rgba(0,0,0,0.10), inset 0 0.5px 0 rgba(255,255,255,0.35)", "purpose": "Every default button — hairline top highlight plus a whisper of drop shadow." },
+      { "name": "glass-shadow", "value": "0 1px 3px rgba(0,0,0,0.12), 0 0 0 0.5px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.9)", "purpose": "Frosted-glass floating chrome (glass icon buttons)." }
+    ],
+    "motion": [
+      { "name": "ease", "value": "cubic-bezier(0.4, 0.0, 0.2, 1)", "purpose": "Default state-change easing (background, border, color)." },
+      { "name": "ease-out", "value": "cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "Entrance/reveal easing (menus, sheets, drawer)." },
+      { "name": "dur", "value": "180ms", "purpose": "Default transition duration." },
+      { "name": "press-scale", "value": "scale(0.975)", "purpose": "Button :active squash — reinforces physicality." }
+    ],
+    "breakpoints": [
+      { "name": "mobile", "value": "860px", "purpose": "Sidebar becomes overlay drawer; tables stack; member shell switches to bottom tab bar." },
+      { "name": "compact", "value": "520px", "purpose": "Stat grid drops to 2 columns; hero padding tightens; searchbar stacks vertically." }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one filled, colored button in the system — reserved for the primary action on a page or panel.",
+      "html": "<button class=\"ds-btn-primary\" type=\"button\"><svg class=\"ds-icon\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12 5v14M5 12h14\"/></svg>Add Book</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 6px 13px; min-height: 30px; font: 500 13px -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', 'Segoe UI', Roboto, system-ui, sans-serif; color: #fff; background: var(--accent-fill, #0069D9); border: 1px solid transparent; border-radius: var(--r-sm, 6px); box-shadow: 0 1px 1.5px rgba(0,0,0,0.10), inset 0 0.5px 0 rgba(255,255,255,0.35); cursor: pointer; white-space: nowrap; transition: background 180ms cubic-bezier(0.4,0,0.2,1), transform 60ms cubic-bezier(0.4,0,0.2,1); } .ds-btn-primary:hover { background: var(--accent-hover, #0059B8); } .ds-btn-primary:active { transform: scale(0.975); } .ds-btn-primary:focus-visible { outline: 2px solid var(--accent, #0069D9); outline-offset: 2px; border-radius: 4px; } .ds-btn-primary .ds-icon { width: 16px; height: 16px; flex: none; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "The default button shape — neutral fill, hairline border. Used everywhere a primary button isn't warranted.",
+      "html": "<button class=\"ds-btn-secondary\" type=\"button\">Cancel</button>",
+      "css": ".ds-btn-secondary { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 6px 13px; min-height: 30px; font: 500 13px -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', 'Segoe UI', Roboto, system-ui, sans-serif; color: var(--fg, rgba(0,0,0,0.88)); background: var(--bg-raised, #fff); border: 1px solid var(--separator-strong, rgba(0,0,0,0.18)); border-radius: var(--r-sm, 6px); box-shadow: 0 1px 1.5px rgba(0,0,0,0.10), inset 0 0.5px 0 rgba(255,255,255,0.35); cursor: pointer; white-space: nowrap; transition: background 180ms cubic-bezier(0.4,0,0.2,1), transform 60ms cubic-bezier(0.4,0,0.2,1); } .ds-btn-secondary:hover { background: var(--bg-hover, rgba(0,0,0,0.045)); } .ds-btn-secondary:active { transform: scale(0.975); background: var(--bg-active, rgba(0,0,0,0.075)); } .ds-btn-secondary:focus-visible { outline: 2px solid var(--accent, #0069D9); outline-offset: 2px; border-radius: 4px; }"
+    },
+    {
+      "name": "Status Badge",
+      "kind": "chip",
+      "refersTo": "badge-accent",
+      "description": "A rounded status pill; recolored per semantic role (accent/red/orange/green/teal) but always the same shape.",
+      "html": "<span class=\"ds-badge ds-badge-red\">3 overdue</span>",
+      "css": ".ds-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; font: 600 11px -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif; letter-spacing: 0.02em; border-radius: 999px; white-space: nowrap; } .ds-badge-red { background: var(--red-soft, rgba(215,0,21,0.10)); color: var(--red, #D70015); } .ds-badge-accent { background: var(--accent-soft, rgba(0,105,217,0.11)); color: var(--accent, #0069D9); } .ds-badge-green { background: var(--green-soft, rgba(30,122,56,0.11)); color: var(--green, #1E7A38); }"
+    },
+    {
+      "name": "Stat Tile",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "The primary dashboard card — a linkable tile that lifts slightly on hover, colored by the metric's urgency.",
+      "html": "<a class=\"ds-stat ds-stat-red\" href=\"#\"><span class=\"ds-stat-top\"><svg class=\"ds-icon-sm\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"8.5\"/><path d=\"M12 7.5V12l3 1.8\"/></svg>Overdue</span><span class=\"ds-stat-value\">4</span></a>",
+      "css": ".ds-stat { display: block; background: var(--bg-content, #fff); border-radius: var(--r-lg, 12px); box-shadow: 0 1px 2px rgba(0,0,0,0.07), 0 0 0 0.5px rgba(0,0,0,0.05); padding: 14px 16px; text-decoration: none; transition: transform 180ms cubic-bezier(0.4,0,0.2,1), box-shadow 180ms cubic-bezier(0.4,0,0.2,1); } .ds-stat:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.09), 0 0 0 0.5px rgba(0,0,0,0.05); transform: translateY(-1px); } .ds-stat-top { display: flex; align-items: center; gap: 7px; color: var(--fg-secondary, rgba(0,0,0,0.56)); font: 500 12px -apple-system, sans-serif; } .ds-stat-value { display: block; font: 600 28px -apple-system, sans-serif; letter-spacing: -0.025em; font-variant-numeric: tabular-nums; margin-top: 6px; } .ds-stat-red .ds-stat-value, .ds-stat-red .ds-stat-top { color: var(--red, #D70015); } .ds-icon-sm { width: 14px; height: 14px; flex: none; }"
+    },
+    {
+      "name": "Input Field",
+      "kind": "input",
+      "refersTo": "input-field",
+      "description": "The single text-input style used across every form in the system, including selects and textareas.",
+      "html": "<label class=\"ds-field\"><span class=\"ds-field-label\">Title</span><input class=\"ds-input\" type=\"text\" placeholder=\"Book title\"></label>",
+      "css": ".ds-field { display: flex; flex-direction: column; gap: 5px; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif; } .ds-field-label { font: 500 12px inherit; color: var(--fg-secondary, rgba(0,0,0,0.56)); } .ds-input { width: 100%; padding: 6px 10px; min-height: 30px; font: 13px inherit; color: var(--fg, rgba(0,0,0,0.88)); background: var(--bg-field, #fff); border: 1px solid var(--separator-strong, rgba(0,0,0,0.18)); border-radius: var(--r-sm, 6px); transition: border-color 180ms cubic-bezier(0.4,0,0.2,1), box-shadow 180ms cubic-bezier(0.4,0,0.2,1); } .ds-input:focus { outline: none; border-color: var(--accent, #0069D9); box-shadow: 0 0 0 3px var(--accent-soft, rgba(0,105,217,0.11)); }"
+    },
+    {
+      "name": "Book Cover",
+      "kind": "custom",
+      "refersTo": "book-cover",
+      "description": "Signature component: a deterministic gradient-plus-initial cover for books with no real artwork, hue-derived from ISBN.",
+      "html": "<div class=\"ds-book-cover\">TA</div>",
+      "css": ".ds-book-cover { width: 100%; height: 68px; border-radius: var(--r-lg, 12px) var(--r-lg, 12px) 0 0; background: linear-gradient(135deg, hsl(210 55% 30%), hsl(242 55% 18%)); color: rgba(255,255,255,0.94); font: 700 26px -apple-system, sans-serif; letter-spacing: -0.01em; display: flex; align-items: center; justify-content: center; }"
+    },
+    {
+      "name": "Confirmation Sheet",
+      "kind": "custom",
+      "refersTo": "sheet",
+      "description": "Signature component: macOS-style modal for destructive/consequential actions, always naming the exact record.",
+      "html": "<div class=\"ds-sheet\"><div class=\"ds-sheet-icon\"><svg class=\"ds-icon-lg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" aria-hidden=\"true\"><path d=\"M4 7h16M9 7V4.5A1.5 1.5 0 0 1 10.5 3h3A1.5 1.5 0 0 1 15 4.5V7m2 0v12.5A1.5 1.5 0 0 1 15.5 21h-7A1.5 1.5 0 0 1 7 19.5V7\"/></svg></div><h2 class=\"ds-sheet-title\">Delete “The Great Gatsby”?</h2><p class=\"ds-sheet-body\">This permanently removes the book and its borrowing history.</p><div class=\"ds-sheet-actions\"><button class=\"ds-btn-secondary\" style=\"flex:1;justify-content:center;\">Cancel</button><button class=\"ds-btn-danger\" style=\"flex:1;justify-content:center;\">Delete</button></div></div>",
+      "css": ".ds-sheet { width: min(400px, calc(100vw - 32px)); background: var(--bg-raised, #fff); border-radius: var(--r-lg, 12px); box-shadow: 0 12px 40px rgba(0,0,0,0.20), 0 0 0 0.5px rgba(0,0,0,0.10); padding: 20px 22px 16px; text-align: center; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif; } .ds-sheet-icon { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; margin: 0 auto 12px; background: var(--red-soft, rgba(215,0,21,0.10)); color: var(--red, #D70015); } .ds-sheet-title { font: 600 15px inherit; margin: 0 0 5px; color: var(--fg, rgba(0,0,0,0.88)); } .ds-sheet-body { font: 13px inherit; color: var(--fg-secondary, rgba(0,0,0,0.56)); margin: 0; } .ds-sheet-actions { display: flex; gap: 8px; margin-top: 18px; } .ds-icon-lg { width: 20px; height: 20px; } .ds-btn-danger { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 6px 13px; min-height: 30px; font: 500 13px inherit; color: var(--red, #D70015); background: var(--bg-raised, #fff); border: 1px solid var(--separator-strong, rgba(0,0,0,0.18)); border-radius: var(--r-sm, 6px); cursor: pointer; } .ds-btn-danger:hover { background: var(--red-soft, rgba(215,0,21,0.10)); }"
+    },
+    {
+      "name": "Tab Bar Item",
+      "kind": "nav",
+      "refersTo": "tab-bar-item",
+      "description": "Signature component: the member (borrower) phone shell's bottom tab, with an unread-style badge.",
+      "html": "<a class=\"ds-tab-item ds-tab-item-active\" aria-current=\"page\"><span class=\"ds-tab-icon\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" aria-hidden=\"true\"><path d=\"M4 5.5A1.5 1.5 0 0 1 5.5 4H9a3 3 0 0 1 3 3v13a2.5 2.5 0 0 0-2.5-2.5H4z\"/></svg><span class=\"ds-tab-badge\">2</span></span><span>Loans</span></a>",
+      "css": ".ds-tab-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 5px 2px 4px; text-decoration: none; color: var(--fg-secondary, rgba(0,0,0,0.56)); font: 500 10px -apple-system, sans-serif; border-radius: 6px; transition: color 120ms cubic-bezier(0.4,0,0.2,1), transform 120ms cubic-bezier(0.4,0,0.2,1); } .ds-tab-item:active { transform: scale(0.92); } .ds-tab-item-active { color: var(--accent, #0069D9); } .ds-tab-icon { position: relative; display: block; line-height: 0; } .ds-tab-icon svg { width: 24px; height: 24px; margin: 0 auto; } .ds-tab-badge { position: absolute; top: -4px; right: -9px; min-width: 15px; height: 15px; padding: 0 3px; border-radius: 999px; background: var(--red-fill, #D70015); color: #fff; font: 700 9px -apple-system, sans-serif; display: flex; align-items: center; justify-content: center; }"
+    },
+    {
+      "name": "Sidebar Link",
+      "kind": "nav",
+      "refersTo": "sidebar-link-active",
+      "description": "The source-list navigation item; active state fills solid with the accent color, matching the primary button's selection language.",
+      "html": "<a class=\"ds-sidebar-link ds-sidebar-link-active\" aria-current=\"page\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"8.5\"/><path d=\"m15 9-3.5 3.5\"/></svg>Dashboard</a>",
+      "css": ".ds-sidebar-link { display: flex; align-items: center; gap: 9px; padding: 6px 8px; border-radius: 6px; color: var(--fg, rgba(0,0,0,0.88)); font: 500 13px -apple-system, sans-serif; text-decoration: none; transition: background 180ms cubic-bezier(0.4,0,0.2,1); } .ds-sidebar-link svg { width: 16px; height: 16px; color: var(--fg-secondary, rgba(0,0,0,0.56)); } .ds-sidebar-link:hover { background: var(--bg-hover, rgba(0,0,0,0.045)); } .ds-sidebar-link-active { background: var(--accent-fill, #0069D9); color: #fff; } .ds-sidebar-link-active svg { color: #fff; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Circulation Desk as Finder",
+    "overview": "The interface is built around the librarian's actual desk: a source-list sidebar stands in for the shelf of collections (Dashboard, Books, Members, History), a translucent sticky toolbar holds the tools for whatever's open, and content panels behave like folders and documents — flat, hairline-bordered, quiet until you act on them. This isn't a library app wearing macOS chrome for polish; the desk metaphor is the actual information architecture. Everything native-feeling about it (traffic-light dots, SF-style type, frosted-glass overlays, sheet-style confirmations) exists to make that metaphor legible rather than as decoration for its own sake.\n\nThe system is self-contained by construction — hand-written CSS, vanilla JS, inline SVG icons, no CDN — so the desk metaphor renders identically offline and on restricted campus networks, which matters because the primary audience is a school library where that constraint is real, not aspirational.\n\nTwo sibling experiences share this system without diverging from it: the librarian's desk is desktop-only and dense; the borrower's side collapses to an iOS-style phone shell (bottom tab bar, large-title header) using the exact same tokens, just recomposed. One design system, two native-feeling shells.",
+    "keyCharacteristics": [
+      "Source-list sidebar + translucent sticky toolbar as the primary navigation grammar",
+      "Flat, hairline-bordered panels; shadows are soft and ambient, never heavy",
+      "Frosted-glass translucency reserved for floating/overlay chrome (sidebar, toolbar, glass icon buttons, sheets)",
+      "A restrained accent (system blue) used only to mark selection, primary action, and links — never as page-level decoration",
+      "Full light/dark appearance parity, with every token re-tuned per mode rather than just dimmed",
+      "macOS-style confirmation sheets for anything destructive, naming the exact record being acted on"
+    ],
+    "rules": [
+      { "name": "The Text/Fill Split Rule", "body": "Every semantic color that appears both as text-on-page and as a filled surface holding white text gets two tokens (system-blue vs. its fill variant), because a blue tuned to be legible as text in dark mode is too light to hold white text as a button fill. Never reuse the text variant as a background-with-white-text, or vice versa.", "section": "colors" },
+      { "name": "The Independent-Mode Rule", "body": "Dark appearance is never filter: invert() or a flat opacity dim — every single token is re-picked by hand for the dark surface it sits on, checked against the same WCAG math as light mode.", "section": "colors" },
+      { "name": "The One-Heading Rule", "body": "Exactly one real h1 exists per page (the toolbar title); any larger decorative title is aria-hidden and purely visual.", "section": "typography" },
+      { "name": "The Glass-Is-Chrome Rule", "body": "Frosted-glass blur is reserved for floating navigational/overlay chrome — sidebar, toolbar, menus, sheets, the round glass icon buttons — never for resting content surfaces.", "section": "elevation" },
+      { "name": "The No-Blur Fallback Rule", "body": "Every backdrop-filter use ships an @supports not fallback to a flat, opaque surface color — never a transparent layer with no blur.", "section": "elevation" },
+      { "name": "The Explain-the-Block Rule", "body": "When a control is disabled or an action is unavailable, the interface surfaces the specific reason as copy near the control rather than leaving a silently disabled button.", "section": "components" }
+    ],
+    "dos": [
+      "Do keep color meaning-only: system blue for selection/primary/links, red/amber/forest/teal for status — never decorative color blocking on neutral surfaces.",
+      "Do re-derive every color independently for dark mode and verify it against real WCAG contrast math; don't dim or invert.",
+      "Do use frosted-glass blur only for floating/overlay chrome, and always ship a flat opaque @supports not fallback.",
+      "Do collapse all motion under prefers-reduced-motion: reduce — every transition and animation in this system already does.",
+      "Do keep the librarian (admin) shell desktop-only and the borrower (member) shell phone-optimized; treat them as two shells sharing one token set, not one responsive layout.",
+      "Do name the exact record in any destructive-action confirmation sheet."
+    ],
+    "donts": [
+      "Don't introduce a second brand accent alongside system blue — Muted Violet exists in the token set specifically as spare semantic capacity, not an invitation to add a second \"brand\" color.",
+      "Don't use the fill-tuned accent token as text color, or the text-tuned token as a background holding white text — they diverge in dark mode and this mix-up has already caused real contrast bugs (breadcrumbs, tab-bar labels).",
+      "Don't add heavy drop shadows, flat Material-style colorful cards, or ripple/elevation effects — depth here is either a soft ambient hint or frosted glass, never a loud statement.",
+      "Don't disable a control without explaining why next to it.",
+      "Don't depend on a CDN, web font, icon font, or external asset for anything in this system — every icon is inline SVG and every font is a system stack, by design."
+    ]
+  }
+}

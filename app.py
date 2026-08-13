@@ -8,6 +8,7 @@ from config import Config
 from extensions import db, login_manager, csrf, migrate
 from models import User, OrganizationSettings
 from theming import build_theme_css
+from localtime import to_local
 
 
 def cover_hue(seed):
@@ -18,6 +19,15 @@ def cover_hue(seed):
     server restart."""
     digest = hashlib.md5(str(seed or '').encode('utf-8')).hexdigest()
     return int(digest, 16) % 360
+
+
+def localdate(dt, fmt='%b %d, %Y'):
+    """Template filter: format a stored (naive-UTC) datetime in the
+    library's local timezone, so a due/borrow/return date displayed to a
+    user always matches the calendar day the property calculations use --
+    see localtime.py."""
+    local = to_local(dt)
+    return local.strftime(fmt) if local else ''
 
 
 def create_app(config_object=Config):
@@ -34,6 +44,7 @@ def create_app(config_object=Config):
     migrate.init_app(app, db, render_as_batch=True)
 
     app.add_template_filter(cover_hue)
+    app.add_template_filter(localdate)
 
     with app.app_context():
         from routes import auth, admin, member

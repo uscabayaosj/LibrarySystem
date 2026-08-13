@@ -38,10 +38,10 @@
                             {% for b in borrowings %}
                             <tr class="{{ 'row-alert' if b.due_state == 'overdue' }}">
                                 <td class="cell-primary" data-label="Book">{{ b.book.title }}</td>
-                                <td data-label="Borrowed">{{ b.borrow_date.strftime('%b %d, %Y') }}</td>
-                                <td data-label="Due">{{ b.due_date.strftime('%b %d, %Y') }}</td>
+                                <td data-label="Borrowed">{{ b.borrow_date|localdate('%b %d, %Y') }}</td>
+                                <td data-label="Due">{{ b.due_date|localdate('%b %d, %Y') }}</td>
                                 <td data-label="Returned">
-                                    {% if b.return_date %}{{ b.return_date.strftime('%b %d, %Y') }}
+                                    {% if b.return_date %}{{ b.return_date|localdate('%b %d, %Y') }}
                                     {% else %}<span class="text-tertiary">—</span>{% endif %}
                                 </td>
                                 <td data-label="Status">
@@ -91,8 +91,8 @@
                             {% for r in reservations %}
                             <tr>
                                 <td class="cell-primary" data-label="Book">{{ r.book.title }}</td>
-                                <td data-label="Reserved">{{ r.reservation_date.strftime('%b %d, %Y') }}</td>
-                                <td data-label="Expires">{{ r.expiration_date.strftime('%b %d, %Y') }}</td>
+                                <td data-label="Reserved">{{ r.reservation_date|localdate('%b %d, %Y') }}</td>
+                                <td data-label="Expires">{{ r.expiration_date|localdate('%b %d, %Y') }}</td>
                                 <td data-label="Status">
                                     {% if r.status == 'active' %}<span class="badge badge-accent">Active</span>
                                     {% elif r.status == 'fulfilled' %}<span class="badge badge-green">Fulfilled</span>
@@ -133,7 +133,7 @@
                     <p class="small text-secondary">{{ member.phone }}</p>
                 {% endif %}
                 <p class="small text-secondary" style="margin-top:6px">
-                    Member since {{ member.member_since.strftime('%B %Y') if member.member_since else 'unknown' }}
+                    Member since {{ member.member_since|localdate('%B %Y') if member.member_since else 'unknown' }}
                 </p>
             </div>
 

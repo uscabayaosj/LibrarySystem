@@ -25,7 +25,7 @@ A Flask-based library management system with separate **Librarian (Admin)** and 
 
 ### 💡 UX Improvements
 - **Pagination** on all data tables (books, members, borrowing history)
-- **Search-as-You-Type** — Search books, members with instant results
+- **Search** — Find books by title, author, ISBN, or category, and members by name or email, from a single search bar with a one-tap clear
 - **Status Filters** — Filter borrowing history by active/overdue/returned
 - **Colour-Coded Alerts** — Overdue items highlighted in red, due-soon in orange, meeting WCAG AA contrast in both light and dark appearance
 - **Confirmation Sheets** — Destructive or consequential actions (delete, renew, cancel reservation) show a macOS-style sheet naming the exact record

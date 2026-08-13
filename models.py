@@ -3,6 +3,7 @@ from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta
 from extensions import db
+from localtime import to_local, local_now
 
 
 class OrganizationSettings(db.Model):
@@ -117,10 +118,16 @@ class Borrowing(db.Model):
         orders gives answers that differ by one, because timedelta.days floors
         toward negative infinity. Deriving every label from this one property
         keeps those numbers consistent everywhere they are shown.
+
+        The comparison happens in the library's local timezone (see
+        localtime.py), not the server's UTC clock -- otherwise "today" flips
+        over at UTC midnight, which is mid-morning for every actual user of
+        this deployment, and a book due-today could read as due-tomorrow (or
+        vice versa) for hours at a stretch.
         """
         if self.due_date is None:
             return None
-        return (self.due_date.date() - datetime.utcnow().date()).days
+        return (to_local(self.due_date).date() - local_now().date()).days
 
     @property
     def days_overdue(self):
@@ -219,10 +226,11 @@ class Reservation(db.Model):
     @property
     def days_until_expiry(self):
         """Whole days until this reservation expires (calendar-date based,
-        matching Borrowing.days_until_due)."""
+        matching Borrowing.days_until_due -- including the same library-local
+        timezone comparison)."""
         if self.expiration_date is None:
             return None
-        return (self.expiration_date.date() - datetime.utcnow().date()).days
+        return (to_local(self.expiration_date).date() - local_now().date()).days
 
     @property
     def expiry_label(self):

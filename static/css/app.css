@@ -293,6 +293,13 @@ svg { display: block; flex: none; }
     background: var(--bg-sidebar);
     backdrop-filter: saturate(180%) blur(30px);
     -webkit-backdrop-filter: saturate(180%) blur(30px);
+    /* Effectively pinned to the viewport for the whole page scroll (its own
+       height already equals 100vh), so its backdrop is recomputed every
+       scroll frame. will-change tells the compositor to keep this layer's
+       blur pre-composited rather than recapturing it from scratch each
+       frame -- a targeted hint for this specific known-continuous repaint,
+       not a blanket "always fast" flag. */
+    will-change: backdrop-filter;
     border-right: 1px solid var(--separator);
     display: flex;
     flex-direction: column;
@@ -461,6 +468,10 @@ svg { display: block; flex: none; }
     background: var(--bg-toolbar);
     backdrop-filter: saturate(180%) blur(30px);
     -webkit-backdrop-filter: saturate(180%) blur(30px);
+    /* The one blur that repaints on every scroll frame of every page --
+       see the sidebar's will-change comment above for why this is a
+       targeted hint rather than a default. */
+    will-change: backdrop-filter;
     border-bottom: 1px solid var(--separator);
 }
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
@@ -705,6 +716,11 @@ input[type="checkbox"], input[type="radio"] {
     color: var(--fg-tertiary); pointer-events: none;
 }
 .searchbar-field input { padding-left: 30px; border-radius: var(--r-md); }
+
+/* A search-scope field (e.g. member search's "Search in" select) sitting
+   beside the main field: fixed-width at rest so it doesn't compete with the
+   input for space, full-width once .searchbar stacks vertically below. */
+.searchbar-scope { flex: none; width: 150px; }
 
 /* --------------------------------------------------------------------------
    6. Data display
@@ -1006,6 +1022,14 @@ table.data tr.row-alert:hover { background: var(--red-soft); filter: brightness(
         transform: translateX(-100%);
         transition: transform 260ms var(--ease-out);
         background: var(--bg-sidebar-solid);
+        /* The drawer's background above is fully opaque, so the desktop
+           rule's backdrop-filter blur would be computed every frame while
+           open and then be entirely hidden underneath it -- pure wasted
+           GPU work with no visible effect. Turn it off outright rather
+           than just shrinking it. */
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+        will-change: auto;
     }
     .sidebar[data-open="true"] { transform: none; box-shadow: var(--shadow-lg); }
 
@@ -1103,6 +1127,10 @@ table.data tr.row-alert:hover { background: var(--red-soft); filter: brightness(
         background: var(--bg-toolbar);
         backdrop-filter: saturate(180%) blur(20px);
         -webkit-backdrop-filter: saturate(180%) blur(20px);
+        /* Fixed and translucent for the whole scroll, on the weakest
+           hardware class this system targets -- see the toolbar/sidebar
+           will-change comments. */
+        will-change: backdrop-filter;
         border-top: 1px solid var(--separator);
     }
     @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
@@ -1155,6 +1183,7 @@ table.data tr.row-alert:hover { background: var(--red-soft); filter: brightness(
     .grid-stats { grid-template-columns: repeat(2, 1fr); }
     .hero { padding: 36px 16px 28px; }
     .searchbar { flex-direction: column; }
+    .searchbar-scope { width: 100%; }
 }
 
 /* Touch devices get larger hit areas */
