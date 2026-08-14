@@ -28,23 +28,23 @@
             <div class="form-grid">
                 <div class="field col-5">
                     <label for="title">Title <span class="req" aria-hidden="true">*</span></label>
-                    <input type="text" id="title" name="title" value="{{ form_values.get('title', '') }}" required>
+                    <input type="text" id="title" name="title" value="{{ form_values.get('title', '') }}" required maxlength="{{ maxlen('Book', 'title') }}">
                 </div>
                 <div class="field col-4">
                     <label for="author">Author <span class="req" aria-hidden="true">*</span></label>
-                    <input type="text" id="author" name="author" value="{{ form_values.get('author', '') }}" required>
+                    <input type="text" id="author" name="author" value="{{ form_values.get('author', '') }}" required maxlength="{{ maxlen('Book', 'author') }}">
                 </div>
                 <div class="field col-3">
                     <label for="isbn">ISBN <span class="req" aria-hidden="true">*</span></label>
-                    <input type="text" id="isbn" name="isbn" value="{{ form_values.get('isbn', '') }}" required>
+                    <input type="text" id="isbn" name="isbn" value="{{ form_values.get('isbn', '') }}" required maxlength="{{ maxlen('Book', 'isbn') }}">
                 </div>
                 <div class="field col-3">
                     <label for="category">Category</label>
-                    <input type="text" id="category" name="category" value="{{ form_values.get('category', '') }}">
+                    <input type="text" id="category" name="category" value="{{ form_values.get('category', '') }}" maxlength="{{ maxlen('Book', 'category') }}">
                 </div>
                 <div class="field col-4">
                     <label for="publisher">Publisher</label>
-                    <input type="text" id="publisher" name="publisher" value="{{ form_values.get('publisher', '') }}">
+                    <input type="text" id="publisher" name="publisher" value="{{ form_values.get('publisher', '') }}" maxlength="{{ maxlen('Book', 'publisher') }}">
                 </div>
                 <div class="field col-3">
                     <label for="publication_year">Year</label>
@@ -108,7 +108,13 @@
                         </td>
                         <td data-label="Author">{{ book.author }}</td>
                         <td data-label="ISBN"><span class="mono">{{ book.isbn }}</span></td>
-                        <td data-label="Category"><span class="badge">{{ book.category or 'Uncategorised' }}</span></td>
+                        <td data-label="Category">
+                            {% if book.category %}
+                                <span class="badge badge-category" style="--hue: {{ book.category|cover_hue }}" title="{{ book.category }}">{{ book.category }}</span>
+                            {% else %}
+                                <span class="badge">Uncategorised</span>
+                            {% endif %}
+                        </td>
                         <td data-label="Available" class="num">
                             {% if book.available_quantity > 0 %}
                                 <span class="badge badge-green">{{ book.available_quantity }} / {{ book.quantity }}</span>

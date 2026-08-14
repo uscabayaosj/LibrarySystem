@@ -62,6 +62,15 @@ class Config:
     # around the logo upload's own (stricter) size check in logo_upload.py.
     MAX_CONTENT_LENGTH = 5 * 1024 * 1024
 
+    # Flask's default for static files is `no-cache`, which makes the browser
+    # revalidate the stylesheet and script on every single navigation. This is
+    # a multi-page app -- each tap on the member tab bar is a full page load --
+    # so on a phone that was a render-blocking round trip per tap that returned
+    # 304 and no bytes. Safe to cache hard because every static URL carries a
+    # ?v= stamp derived from the file's mtime (see app.py), so a changed file
+    # is a changed URL rather than a stale hit.
+    SEND_FILE_MAX_AGE_DEFAULT = timedelta(days=365)
+
     # Business rules
     LOAN_PERIOD_DAYS = 14
     RESERVATION_HOLD_DAYS = 3

@@ -18,7 +18,7 @@
             <div class="panel-head">
                 <h2>Loans</h2>
                 <span class="spacer"></span>
-                <span class="badge badge-count">{{ borrowings|length }}</span>
+                <span class="badge badge-count">{{ pagination.total }}</span>
             </div>
             <div class="panel-body flush">
                 {% if borrowings %}
@@ -42,7 +42,7 @@
                                 <td data-label="Due">{{ b.due_date|localdate('%b %d, %Y') }}</td>
                                 <td data-label="Returned">
                                     {% if b.return_date %}{{ b.return_date|localdate('%b %d, %Y') }}
-                                    {% else %}<span class="text-tertiary">—</span>{% endif %}
+                                    {% else %}<span class="text-secondary">—</span>{% endif %}
                                 </td>
                                 <td data-label="Status">
                                     {% if b.status == 'returned' %}
@@ -65,13 +65,32 @@
                 </div>
                 {% endif %}
             </div>
+            {% if pagination.pages > 1 %}
+            <nav class="pagination" aria-label="Loan history pages" style="padding:12px">
+                {% if pagination.has_prev %}
+                    <a href="{{ url_for('admin.member_detail', id=member.id, page=pagination.prev_num) }}">Previous</a>
+                {% else %}<span class="is-disabled">Previous</span>{% endif %}
+                {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                    {% if p %}
+                        {% if p == pagination.page %}
+                            <span class="is-current" aria-current="page">{{ p }}</span>
+                        {% else %}
+                            <a href="{{ url_for('admin.member_detail', id=member.id, page=p) }}">{{ p }}</a>
+                        {% endif %}
+                    {% else %}<span class="is-disabled">…</span>{% endif %}
+                {% endfor %}
+                {% if pagination.has_next %}
+                    <a href="{{ url_for('admin.member_detail', id=member.id, page=pagination.next_num) }}">Next</a>
+                {% else %}<span class="is-disabled">Next</span>{% endif %}
+            </nav>
+            {% endif %}
         </section>
 
         <section class="panel">
             <div class="panel-head">
                 <h2>Reservations</h2>
                 <span class="spacer"></span>
-                <span class="badge badge-count">{{ reservations|length }}</span>
+                <span class="badge badge-count">{{ reservation_total }}</span>
             </div>
             <div class="panel-body flush">
                 {% if reservations %}
@@ -103,7 +122,7 @@
                                     {% if r.status == 'active' %}
                                         <span class="text-secondary">#{{ r.queue_position }} of {{ r.queue_length }}</span>
                                     {% else %}
-                                        <span class="text-tertiary">—</span>
+                                        <span class="text-secondary">—</span>
                                     {% endif %}
                                 </td>
                             </tr>
@@ -111,6 +130,12 @@
                         </tbody>
                     </table>
                 </div>
+                {% if reservation_total > reservation_limit %}
+                <p class="small text-secondary" style="padding:12px 16px;margin:0">
+                    Showing the {{ reservation_limit }} most recent of
+                    {{ reservation_total }} reservations.
+                </p>
+                {% endif %}
                 {% else %}
                 <div class="empty" style="padding:32px 16px">
                     {{ icon('calendar', class='icon-lg') }}

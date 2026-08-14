@@ -54,11 +54,11 @@
                         </td>
                         <td data-label="On loan" class="num">
                             {% if active %}<span class="badge badge-accent">{{ active }}</span>
-                            {% else %}<span class="text-tertiary">0</span>{% endif %}
+                            {% else %}<span class="text-secondary">0</span>{% endif %}
                         </td>
                         <td data-label="Overdue" class="num">
                             {% if overdue %}<span class="badge badge-red">{{ overdue }}</span>
-                            {% else %}<span class="text-tertiary">0</span>{% endif %}
+                            {% else %}<span class="text-secondary">0</span>{% endif %}
                         </td>
                         <td class="cell-actions" data-label="">
                             <a href="{{ url_for('admin.member_detail', id=member.id) }}"

@@ -1,9 +1,21 @@
-from flask import current_app
+from flask import current_app, g, has_app_context
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta
+from functools import cached_property
+from sqlalchemy import event
 from extensions import db
 from localtime import to_local, local_now
+
+# Several display properties below issue their own query (a reservation
+# lookup, a count). Templates read them more than once per object -- the
+# dashboard alone asked for renew_blocked_reason three times per loan, via
+# can_renew, then the elif, then the output -- which turned five loans into
+# fifteen identical SELECTs. They are memoized with cached_property, which
+# is safe because SQLAlchemy hands out a fresh instance per request and the
+# session is torn down at the end of it, so a cached value never outlives
+# the request that computed it. Mutating methods clear their own entries so
+# a read-after-write inside one request still sees the truth.
 
 
 class OrganizationSettings(db.Model):
@@ -47,11 +59,13 @@ class User(UserMixin, db.Model):
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
 
-    @property
+    # Read on every page: the member tab bar renders unread-style badges from
+    # these, and the dashboard reads them again for its summary tiles.
+    @cached_property
     def active_borrowings(self):
         return Borrowing.query.filter_by(user_id=self.id, status='active').count()
 
-    @property
+    @cached_property
     def overdue_borrowings(self):
         return Borrowing.query.filter(
             Borrowing.user_id == self.id,
@@ -59,7 +73,7 @@ class User(UserMixin, db.Model):
             Borrowing.due_date < datetime.utcnow()
         ).count()
 
-    @property
+    @cached_property
     def active_reservations_count(self):
         return Reservation.query.filter_by(user_id=self.id, status='active').count()
 
@@ -173,20 +187,30 @@ class Borrowing(db.Model):
         max_renewals = current_app.config['MAX_RENEWALS']
         return max(0, max_renewals - self.renewal_count)
 
-    @property
+    @cached_property
     def renew_blocked_reason(self):
         """Why this loan can't be self-renewed right now, or None if it can.
         Exposed separately from can_renew so the UI can explain the block
-        instead of just disabling the button."""
+        instead of just disabling the button.
+
+        Memoized: the last check hits the database, and every list of loans
+        asks for this two or three times per row (can_renew, then the branch
+        that decides whether to show the reason, then the reason itself).
+        Cleared by _invalidate_derived() whenever this loan changes."""
         if self.status != 'active':
             return None  # not applicable; caller shouldn't be asking
         if self.due_state == 'overdue':
             return 'Overdue loans must be returned rather than renewed.'
         if self.renewals_remaining <= 0:
             return 'This loan has reached its renewal limit.'
-        if Reservation.get_active_reservation(self.book_id):
+        if self.book_id in Reservation.reserved_book_ids():
             return 'Another member is waiting for this title.'
         return None
+
+    def _invalidate_derived(self):
+        """Drop memoized derived values after a change to this loan, so a
+        read following a write inside the same request isn't stale."""
+        self.__dict__.pop('renew_blocked_reason', None)
 
     @property
     def can_renew(self):
@@ -200,12 +224,14 @@ class Borrowing(db.Model):
         self.due_date = datetime.utcnow() + timedelta(days=loan_days)
         self.renewal_count += 1
         db.session.commit()
+        self._invalidate_derived()
 
     def mark_returned(self):
         self.status = 'returned'
         self.return_date = datetime.utcnow()
         self.book.available_quantity += 1
         db.session.commit()
+        self._invalidate_derived()
 
 
 class Reservation(db.Model):
@@ -243,11 +269,14 @@ class Reservation(db.Model):
             return 'Expires today'
         return f"{days} day{'s' if days != 1 else ''} left"
 
-    @property
+    @cached_property
     def queue_position(self):
         """1-indexed position in this book's reservation queue (the oldest
         active reservation is #1), or None once this reservation is no
         longer active.
+
+        Memoized alongside queue_length: the Reserved tab renders both for
+        every reservation, and each one is its own query.
 
         Ties on reservation_date are broken by id, matching the ordering
         get_active_reservation uses to decide who is fulfilled next -- so
@@ -256,6 +285,11 @@ class Reservation(db.Model):
         """
         if self.status != 'active':
             return None
+        queue = Reservation._active_queues().get(self.book_id, [])
+        if self.id in queue:
+            return queue.index(self.id) + 1
+        # Not in the batched snapshot -- e.g. added but not yet committed.
+        # Fall back to asking the database directly rather than lying.
         ahead = Reservation.query.filter(
             Reservation.book_id == self.book_id,
             Reservation.status == 'active',
@@ -270,9 +304,12 @@ class Reservation(db.Model):
         ).count()
         return ahead + 1
 
-    @property
+    @cached_property
     def queue_length(self):
         """Total number of members currently waiting for this book."""
+        queues = Reservation._active_queues()
+        if self.book_id in queues:
+            return len(queues[self.book_id])
         return Reservation.query.filter_by(book_id=self.book_id, status='active').count()
 
     @property
@@ -287,6 +324,54 @@ class Reservation(db.Model):
         return f'#{position} in line'
 
     @classmethod
+    def _active_queues(cls):
+        """{book_id: [reservation id, ...]} in queue order, for every active
+        reservation, built in one query and reused for the whole request.
+
+        Position and length were a query each, per reservation -- a member
+        with thirty holds cost sixty round trips to render one screen. One
+        ordered fetch answers both for every row. The ordering here must stay
+        identical to get_active_reservation's (reservation_date, then id), or
+        "#1 in line" would name someone other than whoever is actually filled
+        next.
+        """
+        cached = has_app_context() and hasattr(g, '_active_queues')
+        if cached:
+            return g._active_queues
+        queues = {}
+        rows = db.session.query(cls.id, cls.book_id).filter_by(
+            status='active').order_by(cls.reservation_date, cls.id).all()
+        for reservation_id, book_id in rows:
+            queues.setdefault(book_id, []).append(reservation_id)
+        if has_app_context():
+            g._active_queues = queues
+        return queues
+
+    @classmethod
+    def reserved_book_ids(cls):
+        """Every book id with at least one active reservation, fetched once
+        per request and shared by all callers.
+
+        Without this, "is anyone waiting for this title?" is one query per
+        loan on a list screen. Answering it for the whole catalogue in a
+        single query is cheaper than answering it five times individually,
+        and keeps the query count flat as MAX_ACTIVE_LOANS grows.
+
+        Cached on `g` because the answer must stay stable within one request
+        but must never survive into the next one. Outside an application
+        context (a script, a shell) it simply runs the query each time.
+        """
+        if not has_app_context():
+            return {row[0] for row in
+                    db.session.query(cls.book_id).filter_by(status='active').distinct()}
+        if not hasattr(g, '_reserved_book_ids'):
+            g._reserved_book_ids = {
+                row[0] for row in
+                db.session.query(cls.book_id).filter_by(status='active').distinct()
+            }
+        return g._reserved_book_ids
+
+    @classmethod
     def get_active_reservation(cls, book_id):
         return cls.query.filter_by(book_id=book_id, status='active').order_by(
             cls.reservation_date, cls.id
@@ -299,3 +384,14 @@ class Reservation(db.Model):
     def expire(self):
         self.status = 'expired'
         db.session.commit()
+
+
+@event.listens_for(db.session, 'after_commit')
+def _drop_request_scoped_caches(session):
+    """Any commit can change who is waiting for a title, so the batched
+    reservation lookups must not outlive it. Clearing here means the caches
+    are correct by construction rather than by every caller remembering to
+    invalidate them."""
+    if has_app_context():
+        g.pop('_reserved_book_ids', None)
+        g.pop('_active_queues', None)

@@ -4,7 +4,7 @@
 {% block title %}My Loans{% endblock %}
 {% block heading %}My Loans{% endblock %}
 {% block subheading %}
-    <p class="toolbar-sub">{{ borrowings|length }} record{{ 's' if borrowings|length != 1 }}</p>
+    <p class="toolbar-sub">{{ pagination.total }} record{{ 's' if pagination.total != 1 }}</p>
 {% endblock %}
 
 {% block toolbar %}
@@ -74,9 +74,13 @@
                                         <button type="submit" class="btn btn-sm">{{ icon('refresh', class='icon-sm') }} Renew</button>
                                     </form>
                                 {% elif b.status == 'active' and b.renew_blocked_reason %}
-                                    <span class="xs text-tertiary" title="{{ b.renew_blocked_reason }}">Can't renew</span>
+                                    <span class="row-note" title="{{ b.renew_blocked_reason }}">Can't renew</span>
                                 {% else %}
-                                    <span class="text-tertiary">—</span>
+                                    {# Placeholder only for the table layout, where the column
+                                       header gives it meaning. In the stacked-card layout below
+                                       860px there is no column, so a lone dash reads as a stray
+                                       character -- hidden there via .cell-dash. #}
+                                    <span class="text-tertiary cell-dash" aria-hidden="true">—</span>
                                 {% endif %}
                                 {% if b.status == 'active' %}
                                     <a href="{{ url_for('member.loan_calendar', borrowing_id=b.id) }}"
@@ -102,4 +106,24 @@
         {% endif %}
     </div>
 </section>
+
+{% if pagination.pages > 1 %}
+<nav class="pagination" aria-label="Loan history pages">
+    {% if pagination.has_prev %}
+        <a href="{{ url_for('member.borrowing_history', page=pagination.prev_num) }}">Previous</a>
+    {% else %}<span class="is-disabled">Previous</span>{% endif %}
+    {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+        {% if p %}
+            {% if p == pagination.page %}
+                <span class="is-current" aria-current="page">{{ p }}</span>
+            {% else %}
+                <a href="{{ url_for('member.borrowing_history', page=p) }}">{{ p }}</a>
+            {% endif %}
+        {% else %}<span class="is-disabled">…</span>{% endif %}
+    {% endfor %}
+    {% if pagination.has_next %}
+        <a href="{{ url_for('member.borrowing_history', page=pagination.next_num) }}">Next</a>
+    {% else %}<span class="is-disabled">Next</span>{% endif %}
+</nav>
+{% endif %}
 {% endblock %}

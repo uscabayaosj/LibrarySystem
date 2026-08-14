@@ -35,7 +35,7 @@
         <div class="stat-value">{{ overdue_count }}</div>
         <div class="stat-note">{% if overdue_count %}Needs follow-up{% else %}All on time{% endif %}</div>
     </a>
-    <a class="stat" href="{{ url_for('admin.members') }}">
+    <a class="stat stat-purple" href="{{ url_for('admin.members') }}">
         <div class="stat-top">{{ icon('people', class='icon-sm') }} Members</div>
         <div class="stat-value">{{ total_members }}</div>
         <div class="stat-note">{{ active_reservations }} pending reservation{{ 's' if active_reservations != 1 }}</div>

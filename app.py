@@ -6,9 +6,10 @@ import sqlalchemy as sa
 from flask import Flask, render_template, jsonify, url_for
 from config import Config
 from extensions import db, login_manager, csrf, migrate
-from models import User, OrganizationSettings
+from models import User, Book, OrganizationSettings
 from theming import build_theme_css
 from localtime import to_local
+from validation import max_length
 
 
 def cover_hue(seed):
@@ -45,6 +46,40 @@ def create_app(config_object=Config):
 
     app.add_template_filter(cover_hue)
     app.add_template_filter(localdate)
+
+    @app.template_global()
+    def maxlen(model_name, field):
+        """Character limit for a form field, read from the model column.
+
+        Templates use this for the `maxlength` attribute so the browser stops
+        over-long input at the source, and the server-side check in
+        validation.py catches anyone who bypasses it. Both read the same
+        column, so they cannot disagree.
+        """
+        return max_length({'Book': Book, 'User': User,
+                           'OrganizationSettings': OrganizationSettings}[model_name], field)
+
+    @app.url_defaults
+    def _stamp_static_url(endpoint, values):
+        """Append ?v=<mtime> to every static URL.
+
+        This is what makes the year-long SEND_FILE_MAX_AGE_DEFAULT safe: a
+        deploy that changes app.css changes its URL, so browsers fetch the new
+        file instead of serving a year-old copy. Deliberately stat()s on each
+        call rather than caching -- an admin replacing the organisation logo
+        changes a static file without a deploy, and a cached table would keep
+        serving the old one. A handful of stats per request is not measurable;
+        a wrong logo for a year is.
+        """
+        if endpoint != 'static' or 'filename' not in values:
+            return
+        try:
+            path = os.path.join(app.static_folder, values['filename'])
+            values['v'] = int(os.stat(path).st_mtime)
+        except OSError:
+            # Missing file (e.g. a logo row pointing at a deleted upload).
+            # Leave the URL unstamped and let the 404 speak for itself.
+            pass
 
     with app.app_context():
         from routes import auth, admin, member

@@ -19,19 +19,19 @@
             <div class="form-grid">
                 <div class="field col-8">
                     <label for="title">Title <span class="req" aria-hidden="true">*</span></label>
-                    <input type="text" id="title" name="title" value="{{ book.title }}" required>
+                    <input type="text" id="title" name="title" value="{{ book.title }}" required maxlength="{{ maxlen('Book', 'title') }}">
                 </div>
                 <div class="field col-4">
                     <label for="category">Category</label>
-                    <input type="text" id="category" name="category" value="{{ book.category or '' }}">
+                    <input type="text" id="category" name="category" value="{{ book.category or '' }}" maxlength="{{ maxlen('Book', 'category') }}">
                 </div>
                 <div class="field col-6">
                     <label for="author">Author <span class="req" aria-hidden="true">*</span></label>
-                    <input type="text" id="author" name="author" value="{{ book.author }}" required>
+                    <input type="text" id="author" name="author" value="{{ book.author }}" required maxlength="{{ maxlen('Book', 'author') }}">
                 </div>
                 <div class="field col-3">
                     <label for="isbn">ISBN <span class="req" aria-hidden="true">*</span></label>
-                    <input type="text" id="isbn" name="isbn" value="{{ book.isbn }}" required>
+                    <input type="text" id="isbn" name="isbn" value="{{ book.isbn }}" required maxlength="{{ maxlen('Book', 'isbn') }}">
                 </div>
                 <div class="field col-3">
                     <label for="quantity">Total copies</label>
@@ -43,7 +43,7 @@
                 </div>
                 <div class="field col-6">
                     <label for="publisher">Publisher</label>
-                    <input type="text" id="publisher" name="publisher" value="{{ book.publisher or '' }}">
+                    <input type="text" id="publisher" name="publisher" value="{{ book.publisher or '' }}" maxlength="{{ maxlen('Book', 'publisher') }}">
                 </div>
                 <div class="field col-3">
                     <label for="publication_year">Year</label>

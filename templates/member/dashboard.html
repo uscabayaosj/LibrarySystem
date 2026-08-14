@@ -19,7 +19,7 @@
 
 {% block content %}
 {% if overdue_items %}
-<div class="alert alert-danger" role="alert" style="margin-bottom:16px">
+<div class="alert alert-danger region" role="alert">
     {{ icon('warning', class='icon lead') }}
     <div class="alert-body">
         <div class="alert-title">
@@ -37,7 +37,7 @@
 </div>
 {% endif %}
 
-<div class="grid grid-stats" style="margin-bottom:16px">
+<div class="grid grid-stats region">
     <div class="stat stat-accent">
         <div class="stat-top">{{ icon('book', class='icon-sm') }} Borrowed</div>
         <div class="stat-value">{{ active_borrowings|length }}</div>
@@ -55,7 +55,7 @@
     </a>
 </div>
 
-<div class="split">
+<div class="split region">
     <section class="panel">
         <div class="panel-head">
             <h2>Currently Borrowed</h2>
@@ -84,7 +84,7 @@
                             {% else %}
                                 <span class="badge badge-green">{{ b.due_label }}</span>
                             {% endif %}
-                            <div style="display:flex; gap:6px; align-items:center">
+                            <div class="row-actions">
                                 {% if b.can_renew %}
                                     <form action="{{ url_for('member.renew_borrowing', borrowing_id=b.id) }}" method="POST"
                                           data-confirm="This will extend the due date by {{ config.LOAN_PERIOD_DAYS }} days from today."
@@ -95,7 +95,7 @@
                                         <button type="submit" class="btn btn-sm">{{ icon('refresh', class='icon-sm') }} Renew</button>
                                     </form>
                                 {% elif b.renew_blocked_reason %}
-                                    <span class="xs text-tertiary" style="max-width:130px">{{ b.renew_blocked_reason }}</span>
+                                    <span class="row-note">{{ b.renew_blocked_reason }}</span>
                                 {% endif %}
                                 <a href="{{ url_for('member.loan_calendar', borrowing_id=b.id) }}"
                                    class="btn btn-sm btn-icon btn-glass" title="Add due date to calendar"
