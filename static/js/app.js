@@ -229,6 +229,29 @@
         }
 
         /* -----------------------------------------------------------
+           Open a <details> when a link points at it.
+           The "Add Book" toolbar button is <a href="#add-book">, and
+           #add-book is a collapsed <details>. Following the anchor scrolls
+           the summary into view but leaves the panel shut, so the form never
+           appears -- the button looks broken. Opening the target here makes
+           it a single click. Progressive enhancement: without JS the summary
+           is still clickable, and a server re-render with form errors still
+           opens the panel via the template's `open` attribute.
+           ----------------------------------------------------------- */
+        function openTargetDetails(hash) {
+            if (!hash || hash.charAt(0) !== '#' || hash.length < 2) { return; }
+            var target;
+            try { target = document.getElementById(decodeURIComponent(hash.slice(1))); }
+            catch (e) { return; }
+            if (target && target.tagName === 'DETAILS') { target.open = true; }
+        }
+        document.querySelectorAll('a[href^="#"]').forEach(function (link) {
+            on(link, 'click', function () { openTargetDetails(link.getAttribute('href')); });
+        });
+        // Also handle a deep link that lands directly on the hash.
+        openTargetDetails(window.location.hash);
+
+        /* -----------------------------------------------------------
            Large-title collapse (member phone experience)
            Mirrors iOS's large-title nav bar: the big title at the top of
            the content fades out and the compact toolbar title fades in
