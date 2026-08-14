@@ -9,9 +9,7 @@
     </p>
 {% endblock %}
 
-{% block toolbar %}
-    <a href="{{ url_for('member.search') }}" class="btn">{{ icon('search') }} Browse</a>
-{% endblock %}
+{# Browse lives in the bottom tab bar / sidebar, not in the toolbar. #}
 
 {% block content %}
 {% if reservations %}
@@ -39,10 +37,21 @@
                             · {{ r.queue_length }} members waiting for this title
                         {% endif %}
                     </div>
-                    <div class="small {{ 'text-red' if r.days_until_expiry is not none and r.days_until_expiry < 1 else 'text-orange' }}"
-                         style="margin-top:2px">
-                        Expires {{ r.expiration_date|localdate('%b %d, %Y') }} · {{ r.expiry_label }}
-                    </div>
+                    {# The hold has an outer deadline, but for someone still in line
+                       an alarm-red countdown reads as imminent personal loss. Stay
+                       calm until the last day, and say plainly that the lapse is
+                       conditional on a copy freeing up -- not on the member. #}
+                    {% if r.days_until_expiry is not none and r.days_until_expiry < 0 %}
+                        <div class="small text-secondary" style="margin-top:2px">Reservation expired</div>
+                    {% elif r.days_until_expiry is not none and r.days_until_expiry <= 1 %}
+                        <div class="small text-orange" style="margin-top:2px">
+                            Expires {{ r.expiration_date|localdate('%b %d') }} unless a copy frees up
+                        </div>
+                    {% else %}
+                        <div class="small text-secondary" style="margin-top:2px">
+                            Held until {{ r.expiration_date|localdate('%b %d, %Y') }}
+                        </div>
+                    {% endif %}
                 </div>
             </div>
             <div class="book-foot">
@@ -50,6 +59,7 @@
                       data-confirm="You'll lose your place in the queue for this title."
                       data-confirm-title="Cancel this reservation?"
                       data-confirm-label="Cancel Reservation"
+                      data-confirm-cancel="Keep Reservation"
                       data-confirm-kind="danger">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" class="btn btn-danger btn-sm">{{ icon('x', class='icon-sm') }} Cancel</button>

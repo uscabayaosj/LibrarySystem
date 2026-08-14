@@ -116,7 +116,10 @@ def create_app(config_object=Config):
         # has set in Settings -- an org that uploads its own logo gets its
         # own home-screen icon, not the library's default book mark.
         settings = OrganizationSettings.get()
-        icon_dir = 'uploads/branding' if settings.logo_filename else 'icons'
+        # logo_ready, not logo_filename: if the uploaded icons are missing from
+        # disk, point the manifest at the bundled defaults so an installed app
+        # gets the book mark instead of four broken icon references.
+        icon_dir = 'uploads/branding' if settings.logo_ready else 'icons'
         icons = [
             {'src': url_for('static', filename=f'{icon_dir}/icon-192.png'),
              'sizes': '192x192', 'type': 'image/png', 'purpose': 'any'},

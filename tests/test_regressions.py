@@ -31,7 +31,11 @@ def test_reservations_page_renders_with_active_reservation(client, db, member, b
     resp = client.get('/reservations')
     assert resp.status_code == 200
     assert book.title.encode() in resp.data
-    assert b'3 days left' in resp.data  # from Reservation.expiry_label
+    # A reservation with days to spare shows the calm hold-deadline form
+    # ("Held until <date>") rather than an alarm countdown -- the countdown
+    # only appears in the last day, so an in-line member isn't told they're
+    # about to lose a hold they were never offered.
+    assert b'Held until' in resp.data
 
 
 # ---- §1.2 / §1.3: deleting records with history no longer 500s ---------------

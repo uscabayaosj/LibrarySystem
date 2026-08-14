@@ -7,7 +7,7 @@
 <div class="content-narrow" style="max-width:400px">
     <div class="auth-card">
         <div class="auth-head">
-            {% if org_settings.logo_filename %}
+            {% if org_settings.logo_ready %}
                 <img class="hero-mark-logo" alt=""
                      src="{{ url_for('static', filename='uploads/branding/' + org_settings.logo_filename) }}">
             {% else %}

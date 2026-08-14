@@ -24,7 +24,7 @@
             <div class="field" style="margin-bottom:18px">
                 <label>Logo</label>
                 <div style="display:flex; align-items:center; gap:14px; margin-top:4px">
-                    {% if org_settings.logo_filename %}
+                    {% if org_settings.logo_ready %}
                         <img src="{{ url_for('static', filename='uploads/branding/' + org_settings.logo_filename) }}"
                              alt="Current logo" style="width:56px;height:56px;object-fit:contain;
                              border-radius:var(--r-md);background:var(--bg-sunken);border:1px solid var(--separator)">
@@ -37,7 +37,7 @@
                             Square PNG, JPEG, or WEBP, ideally 512×512 to 1024×1024px
                             (transparent PNG recommended). Max 2 MB.
                         </div>
-                        {% if org_settings.logo_filename %}
+                        {% if org_settings.logo_ready %}
                             <div class="checkbox-field" style="margin-top:8px">
                                 <input type="checkbox" id="remove_logo" name="remove_logo">
                                 <label for="remove_logo">Remove current logo and use the default mark</label>

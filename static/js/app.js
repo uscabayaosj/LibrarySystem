@@ -185,11 +185,18 @@
             function openSheet(form) {
                 pendingForm = form;
                 lastFocus = document.activeElement;
+                var isDanger = form.getAttribute('data-confirm-kind') === 'danger';
                 sheetTitle.textContent = form.getAttribute('data-confirm-title') || 'Are you sure?';
                 sheetBody.textContent = form.getAttribute('data-confirm') || '';
                 sheetOk.textContent = form.getAttribute('data-confirm-label') || 'Confirm';
-                sheetOk.className = 'btn ' +
-                    (form.getAttribute('data-confirm-kind') === 'danger' ? 'btn-danger' : 'btn-primary');
+                sheetOk.className = 'btn ' + (isDanger ? 'btn-danger' : 'btn-primary');
+                // The abort button is per-form: a destructive sheet whose confirm
+                // reads "Cancel Reservation" must not sit beside a "Cancel" that
+                // means the opposite. Default stays "Cancel" for everything else.
+                sheetCancel.textContent = form.getAttribute('data-confirm-cancel') || 'Cancel';
+                // Warning-triangle for destructive actions only; routine ones
+                // (borrow, renew) get a neutral tone rather than an alarm.
+                backdrop.setAttribute('data-kind', isDanger ? 'danger' : 'safe');
                 backdrop.setAttribute('data-open', 'true');
                 sheetCancel.focus();
             }

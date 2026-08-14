@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from "_icons.html" import icon %}
+{% from "_macros.html" import due_badge %}
 
 {% block title %}My Loans{% endblock %}
 {% block heading %}My Loans{% endblock %}
@@ -7,9 +8,7 @@
     <p class="toolbar-sub">{{ pagination.total }} record{{ 's' if pagination.total != 1 }}</p>
 {% endblock %}
 
-{% block toolbar %}
-    <a href="{{ url_for('member.search') }}" class="btn">{{ icon('search') }} Browse</a>
-{% endblock %}
+{# Browse lives in the bottom tab bar / sidebar, not in the toolbar. #}
 
 {% block content %}
 <section class="panel">
@@ -51,17 +50,7 @@
                             {% if b.return_date %}{{ b.return_date|localdate('%b %d, %Y') }}
                             {% else %}<span class="text-tertiary">—</span>{% endif %}
                         </td>
-                        <td data-label="Status">
-                            {% if b.status == 'returned' %}
-                                <span class="badge badge-green">{{ icon('check', class='icon-sm') }} Returned</span>
-                            {% elif b.due_state == 'overdue' %}
-                                <span class="badge badge-red">{{ b.due_label }}</span>
-                            {% elif b.due_state in ['today', 'soon'] %}
-                                <span class="badge badge-orange">{{ b.due_label }}</span>
-                            {% else %}
-                                <span class="badge badge-accent">{{ b.due_label }}</span>
-                            {% endif %}
-                        </td>
+                        <td data-label="Status">{{ due_badge(b) }}</td>
                         <td class="cell-actions" data-label="">
                             <div style="display:flex; gap:6px; align-items:center; justify-content:flex-end">
                                 {% if b.can_renew %}
@@ -74,7 +63,10 @@
                                         <button type="submit" class="btn btn-sm">{{ icon('refresh', class='icon-sm') }} Renew</button>
                                     </form>
                                 {% elif b.status == 'active' and b.renew_blocked_reason %}
-                                    <span class="row-note" title="{{ b.renew_blocked_reason }}">Can't renew</span>
+                                    {# Show the actual reason, not a hover-only tooltip: this is the
+                                       phone-primary screen and tooltips never fire on touch. Matches
+                                       the dashboard's visible .row-note (the Explain-the-Block rule). #}
+                                    <span class="row-note">{{ b.renew_blocked_reason }}</span>
                                 {% else %}
                                     {# Placeholder only for the table layout, where the column
                                        header gives it meaning. In the stacked-card layout below
