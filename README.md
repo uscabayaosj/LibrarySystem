@@ -122,6 +122,11 @@ connection string can be pasted in verbatim.
 
 ## Deployment runbook
 
+**Live instance:** https://librarysystem-ng3s.onrender.com — Render appends a
+random suffix to a service name when the plain one is taken, so the actual
+host doesn't match `render.yaml`'s `name: library-system`. Check the service's
+own page on the Render dashboard for the current URL rather than assuming it.
+
 ### 0. What this app needs from a host
 
 Two requirements drive every choice below:
