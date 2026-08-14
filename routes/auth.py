@@ -3,6 +3,7 @@ from flask_login import login_user, logout_user, login_required, current_user
 from urllib.parse import urlparse
 from models import User
 from extensions import db
+from validation import length_errors
 
 bp = Blueprint('auth', __name__)
 
@@ -66,6 +67,11 @@ def register():
         password = request.form.get('password', '')
         if not all([username, email, password]):
             flash('All fields are required.', 'warning')
+            return render_template('register.html', username=username, email=email)
+        too_long = length_errors(User, {'username': username, 'email': email})
+        if too_long:
+            for message in too_long:
+                flash(message, 'warning')
             return render_template('register.html', username=username, email=email)
         min_len = current_app.config['MIN_PASSWORD_LENGTH']
         if len(password) < min_len:

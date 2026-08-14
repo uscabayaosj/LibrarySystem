@@ -6,8 +6,14 @@ from models import db, Book, User, Borrowing, Reservation, OrganizationSettings
 from datetime import datetime, timedelta
 from theming import normalize_hex
 from logo_upload import validate_and_save, LogoValidationError
+from validation import length_errors
 
 bp = Blueprint('admin', __name__, url_prefix='/admin')
+
+# How many of a member's reservations the detail page shows before it just
+# reports the total. Their loan history is paginated; this list is short in
+# practice, so a cap plus an honest count beats a second page control.
+RESERVATION_PREVIEW_LIMIT = 25
 
 
 @bp.before_request
@@ -93,6 +99,10 @@ def add_book():
     errors = []
     if not all([title, author, isbn]):
         errors.append('Title, Author, and ISBN are required.')
+    errors.extend(length_errors(Book, {
+        'title': title, 'author': author, 'isbn': isbn,
+        'category': category, 'publisher': publisher,
+    }))
     if quantity is None or quantity < 1:
         errors.append('Quantity must be at least 1.')
         quantity = 1
@@ -132,6 +142,11 @@ def edit_book(id):
         errors = []
         if not all([title, author, isbn]):
             errors.append('Title, Author, and ISBN are required.')
+        errors.extend(length_errors(Book, {
+            'title': title, 'author': author, 'isbn': isbn,
+            'category': request.form.get('category', '').strip(),
+            'publisher': request.form.get('publisher', '').strip(),
+        }))
         if new_quantity is None or new_quantity < 0:
             errors.append('Quantity cannot be negative.')
             new_quantity = book.quantity
@@ -230,18 +245,32 @@ def member_detail(id):
     if member.is_admin:
         flash('Invalid member.', 'danger')
         return redirect(url_for('admin.members'))
-    borrowings = Borrowing.query.options(
+    # Both lists grow for the life of the account, so neither is fetched
+    # whole: loan history is paginated, and the shorter reservation list is
+    # capped with the total shown alongside it so nothing looks silently
+    # truncated.
+    page = request.args.get('page', 1, type=int)
+    borrowings_pagination = Borrowing.query.options(
         db.joinedload(Borrowing.book)
-    ).filter_by(user_id=id).order_by(Borrowing.borrow_date.desc()).all()
-    reservations = Reservation.query.options(
+    ).filter_by(user_id=id).order_by(
+        Borrowing.borrow_date.desc()
+    ).paginate(page=page, per_page=25, error_out=False)
+
+    reservation_query = Reservation.query.options(
         db.joinedload(Reservation.book)
-    ).filter_by(user_id=id).order_by(Reservation.reservation_date.desc()).all()
+    ).filter_by(user_id=id).order_by(Reservation.reservation_date.desc())
+    reservation_total = reservation_query.count()
+    reservations = reservation_query.limit(RESERVATION_PREVIEW_LIMIT).all()
+
     now = datetime.utcnow()
     return render_template(
         'admin/member_detail.html',
         member=member,
-        borrowings=borrowings,
+        borrowings=borrowings_pagination.items,
+        pagination=borrowings_pagination,
         reservations=reservations,
+        reservation_total=reservation_total,
+        reservation_limit=RESERVATION_PREVIEW_LIMIT,
         now=now,
     )
 

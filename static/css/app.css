@@ -220,6 +220,13 @@ body {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     font-synthesis: none;
+    /* Almost every string on screen is user-entered -- a book title, an
+       author, a category, an email. One without spaces (a pasted URL, a
+       run-together title, CJK text) is a single unbreakable word as far as
+       layout is concerned, and would push its container wider than the
+       viewport rather than wrap. break-word only breaks words that cannot
+       otherwise fit, so ordinary prose is unaffected. */
+    overflow-wrap: break-word;
 }
 
 h1, h2, h3, h4, h5, h6 { margin: 0; font-weight: 600; letter-spacing: -0.01em; }
@@ -508,6 +515,15 @@ svg { display: block; flex: none; }
 }
 .panel + .panel { margin-top: 16px; }
 
+/* Major page regions (alert / summary tiles / detail panels).
+   The interval *between* regions is deliberately wider than the 16px gap
+   *within* one, so proximity alone reads them as separate groups. At a
+   uniform 16px a stat tile sits as close to the alert above it as to its
+   own sibling tile, which flattens the page into one undifferentiated
+   stack -- the gap has to carry the grouping, since these regions share a
+   surface and have no divider between them. */
+.region + .region { margin-top: 28px; }
+
 .panel-head {
     display: flex; align-items: center; gap: 10px;
     padding: 12px 16px;
@@ -549,6 +565,10 @@ a.stat:hover { text-decoration: none; box-shadow: var(--shadow-md); transform: t
 .stat-orange .stat-top { color: var(--orange); }
 .stat-green .stat-value { color: var(--green); }
 .stat-teal .stat-value { color: var(--teal); }
+/* Roster/people counts. Only the alarm tones (red, orange) tint their label
+   too -- an informational tile colours the number alone, so the row reads as
+   "cool hues are inventory, warm is the exception". */
+.stat-purple .stat-value { color: var(--purple); }
 
 /* --------------------------------------------------------------------------
    5. Controls
@@ -764,23 +784,67 @@ table.data tr.row-alert:hover { background: var(--red-soft); filter: brightness(
 .cell-actions > * { display: inline-flex; vertical-align: middle; }
 .cell-actions > * + * { margin-left: 6px; }
 
-/* ---- Rows (list group) ---- */
+/* ---- Rows (list group) ----
+   Grid rather than flex: the title column must be free to take the leftover
+   width and wrap, while the cover and the status/action side stay at their
+   intrinsic size. With flex, a long title and a wide side column compete for
+   the same space and the title loses -- book titles are the thing a borrower
+   scans for, so they get the flexible track. */
 .rows { display: flex; flex-direction: column; }
 .row-item {
-    display: flex; align-items: center; gap: 12px;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
     padding: 11px 16px;
     border-bottom: 1px solid var(--separator);
 }
 .row-item:last-child { border-bottom: none; }
 .row-item:hover { background: var(--bg-hover); }
-.row-main { min-width: 0; flex: 1; }
+.row-main { min-width: 0; }
 .row-title { font-weight: 550; font-size: var(--text-base); }
 .row-sub { font-size: var(--text-sm); color: var(--fg-secondary); margin-top: 1px; }
 .row-side {
-    text-align: right; flex: none;
+    text-align: right;
     display: flex; flex-direction: column; align-items: flex-end; gap: 6px;
 }
 .row-item.is-alert { background: var(--red-soft); }
+
+/* Explanation for a blocked action (see DESIGN.md's Explain-the-Block Rule).
+   Measure-bound rather than pixel-bound so it wraps at a sensible number of
+   characters instead of a fixed width. fg-secondary, not fg-tertiary: at this
+   size tertiary measures 2.96:1 on an alert row and fails AA -- the same
+   fill/tone mix-up already corrected once for the tab-bar labels. */
+.row-note {
+    font-size: var(--text-xs);
+    color: var(--fg-secondary);
+    max-width: 24ch;
+    text-wrap: balance;
+}
+
+.row-actions { display: flex; gap: 6px; align-items: center; }
+
+/* Below this width the three-column row cannot hold a real book title and a
+   status column side by side, so the status/actions group moves to its own
+   line under the title instead of squeezing it to two words per line. This
+   threshold is set by the row's own content, not by a device class. */
+@media (max-width: 640px) {
+    .row-item { row-gap: 10px; }
+    .row-item > .row-side {
+        grid-column: 1 / -1;
+        flex-direction: row;
+        align-items: center;
+        justify-content: flex-start;
+        flex-wrap: wrap;
+        gap: 8px;
+        text-align: left;
+    }
+    /* Actions take their own full-width line and push the explanation and the
+       calendar button to opposite edges, rather than the three items fighting
+       over one line and wrapping the explanation into a narrow column. */
+    .row-actions { flex: 1 1 100%; justify-content: space-between; }
+    .row-note { max-width: none; text-align: left; }
+}
 
 /* ---- Badges / status pills ---- */
 .badge {
@@ -797,6 +861,46 @@ table.data tr.row-alert:hover { background: var(--red-soft); filter: brightness(
 .badge-green { background: var(--green-soft); color: var(--green); }
 .badge-teal { background: var(--teal-soft); color: var(--teal); }
 .badge-count { font-variant-numeric: tabular-nums; }
+
+/* Book category identity: a stable, per-category hue reusing the exact same
+   deterministic hash the book-cover component uses (cover_hue(), keyed off
+   the category string instead of the ISBN), so "Fiction" always reads as
+   the same color everywhere without a hand-maintained category->color map.
+   Light mode: a soft tint with saturated text, matching the other badge
+   variants' background/foreground pairing. The text lightness (26%) is
+   capped low enough to clear 4.5:1 at every hue in the wheel -- yellow's
+   the worst case at 4.66:1, verified by walking all 360 hues, the same
+   rigor the book-cover's own hue cap already documents. */
+.badge-category {
+    background: hsl(var(--hue, 210) 55% 95%);
+    color: hsl(var(--hue, 210) 75% 26%);
+    /* Badges are nowrap by design (a status pill should never break across
+       lines), but a category is free text up to its column limit. Cap it and
+       ellipsize so an unusually long one degrades to a truncated pill instead
+       of pushing the card wider than the phone. */
+    max-width: 22ch;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    /* inline-block rather than the base badge's inline-flex: ellipsis needs a
+       block formatting context to apply to the text. Safe here because a
+       category badge is text only, never text-plus-icon. */
+    display: inline-block;
+    vertical-align: middle;
+}
+@media (prefers-color-scheme: dark) {
+    /* Independently re-derived, not inverted (see DESIGN.md's Independent-
+       Mode Rule): a translucent hue wash over the dark panel plus bright
+       text, mirroring how --red-soft/--red etc. work in dark mode. Verified
+       >=4.5:1 (worst case ~6.16:1 at blue) against --bg-content dark. */
+    :root:not([data-appearance="light"]) .badge-category {
+        background: hsl(var(--hue, 210) 60% 45% / 0.18);
+        color: hsl(var(--hue, 210) 70% 78%);
+    }
+}
+:root[data-appearance="dark"] .badge-category {
+    background: hsl(var(--hue, 210) 60% 45% / 0.18);
+    color: hsl(var(--hue, 210) 70% 78%);
+}
 
 .text-red { color: var(--red); }
 .text-orange { color: var(--orange); }
@@ -1077,6 +1181,10 @@ table.data tr.row-alert:hover { background: var(--red-soft); filter: brightness(
     table.stacked td.cell-actions > * + * { margin-left: 0; }
     table.stacked td.cell-actions { gap: 8px; }
     table.stacked td.cell-actions::before { display: none; }
+    /* An em-dash standing in for "no action available" only reads as such
+       under its column header; once the row is a stacked card it is just a
+       stray character taking up a line. */
+    table.stacked .cell-dash { display: none; }
 
     .form-grid > * { grid-column: span 12 !important; }
     .toolbar h1 { font-size: var(--text-md); }

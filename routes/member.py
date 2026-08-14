@@ -241,12 +241,21 @@ def loan_calendar(borrowing_id):
 @bp.route('/history')
 @login_required
 def borrowing_history():
-    borrowings = Borrowing.query.options(
+    # Paginated rather than .all(): a long-standing member accumulates loans
+    # without limit, and this is the phone-first screen -- rendering every
+    # record ever borrowed sends a page that grows forever over mobile data.
+    page = request.args.get('page', 1, type=int)
+    pagination = Borrowing.query.options(
         db.joinedload(Borrowing.book)
     ).filter_by(user_id=current_user.id).order_by(
         Borrowing.borrow_date.desc()
-    ).all()
-    return render_template('member/history.html', borrowings=borrowings, now=datetime.utcnow())
+    ).paginate(page=page, per_page=20, error_out=False)
+    return render_template(
+        'member/history.html',
+        borrowings=pagination.items,
+        pagination=pagination,
+        now=datetime.utcnow(),
+    )
 
 
 @bp.route('/reservations')

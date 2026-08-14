@@ -155,12 +155,16 @@ The palette is desaturated and mostly neutral (window gray, content white, hairl
 - **Accessible Amber** (`#B54708` / dark: `#FFA02E`): due-soon warnings, warning alerts. Deliberately darker than a typical system orange in light mode — a straight system-orange fails WCAG AA as text on white; this value was picked to clear 4.5:1 first.
 - **Accessible Forest** (`#1E7A38` / dark: `#4CD97B`): success states, available/returned status. Same AA-first darkening as amber.
 - **Deep Teal** (`#0A6E82` / dark: `#5AC8E8`): reservation-related stats and badges — its own semantic lane, distinct from the red/amber/green urgency ladder.
-- **Muted Violet** (`#7A3DB8` / dark: `#C58AF9`): defined in the token set as a fifth semantic lane but not yet assigned a role in the UI. Available for a future category (e.g. a distinct "new" or "featured" marker) — don't repurpose it as a second brand accent.
+- **Muted Violet** (`#7A3DB8` / dark: `#C58AF9`): the **roster/people** lane — currently the Members count on the librarian's dashboard (`.stat-purple`). It exists so that "people" reads as a different kind of thing from the circulation ladder, not as urgency. Still not a second brand accent: it marks an entity class, never an action or a selection.
 
 ### Named Rules
 **The Text/Fill Split Rule.** Every semantic color that appears both as text-on-page and as a filled surface holding white text gets two tokens (`system-blue` vs. its fill variant), because a blue tuned to be legible as text in dark mode is too light to hold white text as a button fill. Never reuse the text variant as a background-with-white-text, or vice versa — this exact mix-up has caused real contrast failures in this codebase (breadcrumbs, tab-bar labels, badges).
 
 **The Independent-Mode Rule.** Dark appearance is never `filter: invert()` or a flat opacity dim — every single token is re-picked by hand for the dark surface it sits on, checked against the same WCAG math as light mode. Treat "add dark mode" as "derive a second, equally deliberate palette," not "darken the first one."
+
+**The Cool-Is-Inventory Rule.** In a row of summary tiles, the cool lanes (blue, teal, violet) carry counts of what exists — titles, loans, members — and colour only the number. Warm red is reserved for the count that means something is wrong, and is the one lane that also tints its label. A tile row where every value is warm, or where one value alone is left uncoloured, has stopped encoding anything.
+
+**The Tertiary-Is-Not-Data Rule.** `ink-tertiary` is for placeholders, disabled controls, and decorative icon fills — it measures ~3:1 and is deliberately below the body-text floor. A real value (a count of zero, an absent date) is data, however unremarkable, and takes `ink-secondary`. De-emphasis comes from the tone step, not from dropping under AA.
 
 ## Typography
 
@@ -190,7 +194,11 @@ Two responsive strategies apply below 860px depending on role:
 
 Grid helpers used throughout: `grid-stats` (auto-fit, 170px min, for stat tiles), `grid-2` (auto-fit, 320px min), `grid-cards` (auto-fill, 300px min, for book cards), and a `split` 1.65fr/1fr two-column layout for detail-plus-sidebar pages — all collapse to one column at 860px.
 
-Spacing follows a loose 4px-rooted rhythm rather than a strict multiplier scale: 4px hairline gaps, 8px between related controls, 12–16px internal padding for cards and form grids, 22px for page/toolbar edges.
+Spacing follows a loose 4px-rooted rhythm rather than a strict multiplier scale: 4px hairline gaps, 8px between related controls, 12–16px internal padding for cards and form grids, 22px for page/toolbar edges, and 28px between major page regions (`.region + .region`).
+
+That last step is the one that carries grouping. Regions on a page (an alert, a row of summary tiles, the detail panels) share one surface and have no divider between them, so the only thing separating them is the gap — and at a uniform 16px a summary tile sits exactly as close to the alert above it as to its own sibling tile, which flattens the page into one undifferentiated stack. Inter-region spacing must stay visibly larger than the intra-region gap.
+
+A third, content-driven breakpoint at **640px** governs the list-row component specifically (`.row-item`): below it, a row cannot hold a real book title and a status/actions column side by side, so the status group moves to its own line beneath the title. This threshold comes from the row's own content, not a device class — which is why it sits between the two shell breakpoints rather than replacing either.
 
 Touch targets expand under `@media (pointer: coarse)`: buttons and pagination controls grow from 30px to 44px minimum height, matching the platform guidance for phones.
 
@@ -242,6 +250,9 @@ Corner radius follows a five-step scale (4 / 6 / 8 / 12 / 16px) plus a full pill
 ### Book Cover (signature component)
 No cover-art pipeline exists, so every book gets a deterministic gradient identity plus its title's initial — the same trick Apple Music/Podcasts/Contacts use for items without real artwork. The hue is derived from the book's ISBN; lightness is capped at 30%/18% (not more vivid) specifically because the hue rotates through the full wheel including yellow, and WCAG's luminance weighting makes yellow read far "brighter" than blue or red at equal HSL lightness — this cap keeps white text at 4.7:1 or better across all 360 hues, verified, not assumed.
 
+### Category Badge
+A second use of the same deterministic-hue trick as Book Cover, this time keyed off the book's category string instead of its ISBN, so "Fiction" reads as the same color everywhere without a hand-maintained category→color map — this is the system's **data category** role (a role the semantic red/amber/forest/teal ladder doesn't cover, since that ladder means urgency, not subject matter). Soft tinted background, saturated text — the same visual grammar as the other badge variants (`badge-red`, `badge-green`, etc.), just hue-parametrized instead of fixed. Light-mode text lightness is capped at 26% and dark-mode text lightness floored at 78%, each independently walked across all 360 hues to guarantee ≥4.5:1 (worst case 4.66:1 light, 6.16:1 dark) — the same rigor as Book Cover's own cap. A book with no category gets the plain neutral `.badge`, not a colored one: color here means "this is a real category," so the absence of one should look like absence, not get an arbitrary hue.
+
 ### Sheet (signature component)
 A modal confirmation dialog styled after macOS's native sheet: centered near the top of the viewport (not vertically centered — it visually "drops from" the toolbar), scale+fade transition, always names the exact record being acted on rather than a generic "are you sure?" Reserved for destructive/consequential actions (delete, renew, cancel reservation).
 
@@ -259,7 +270,8 @@ A modal confirmation dialog styled after macOS's native sheet: centered near the
 - **Do** name the exact record in any destructive-action confirmation sheet.
 
 ### Don't:
-- **Don't** introduce a second brand accent alongside system blue — Muted Violet exists in the token set specifically as spare semantic capacity, not an invitation to add a second "brand" color.
+- **Don't** introduce a second brand accent alongside system blue — Muted Violet carries the roster/people lane and nothing else; it is not an invitation to add a second "brand" color.
+- **Don't** use `ink-tertiary` for a real value. It sits below the AA floor by design; see The Tertiary-Is-Not-Data Rule.
 - **Don't** use the fill-tuned accent token (`accent-fill`) as text color, or the text-tuned token (`accent`) as a background holding white text — they diverge in dark mode and this mix-up has already caused real contrast bugs (breadcrumbs, tab-bar labels).
 - **Don't** add heavy drop shadows, flat Material-style colorful cards, or ripple/elevation effects — depth here is either a soft ambient hint or frosted glass, never a loud statement.
 - **Don't** disable a control without explaining why next to it.

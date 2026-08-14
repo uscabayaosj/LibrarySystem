@@ -14,7 +14,7 @@
 {% endblock %}
 
 {% block content %}
-<form method="GET" action="{{ url_for('member.search') }}" class="panel" style="margin-bottom:16px">
+<form method="GET" action="{{ url_for('member.search') }}" class="panel region">
     <div class="panel-body">
         <div class="searchbar">
             <div class="field searchbar-scope">
@@ -42,7 +42,7 @@
 </form>
 
 {% if books %}
-    <div class="grid grid-cards">
+    <div class="grid grid-cards region">
         {% for book in books %}
         {% set my_loan = my_loans.get(book.id) %}
         {% set my_res = my_reservations.get(book.id) %}
@@ -54,7 +54,11 @@
                     {{ book.author }}{% if book.publication_year %} · {{ book.publication_year }}{% endif %}
                 </p>
                 <div class="book-meta">
-                    <span class="badge">{{ book.category or 'Uncategorised' }}</span>
+                    {% if book.category %}
+                        <span class="badge badge-category" style="--hue: {{ book.category|cover_hue }}" title="{{ book.category }}">{{ book.category }}</span>
+                    {% else %}
+                        <span class="badge">Uncategorised</span>
+                    {% endif %}
                     <span class="badge mono">{{ book.isbn }}</span>
                 </div>
                 {% if book.description %}
