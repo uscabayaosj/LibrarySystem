@@ -1,0 +1,22 @@
+{# Shared render macros. Keeping these in one place is what stops two screens
+   from drifting apart -- the borrower dashboard and My Loans previously mapped
+   the same due_state to different badge colors (a healthy loan read green on
+   one screen, blue on the other). One macro, one mapping, every surface. #}
+{% from "_icons.html" import icon %}
+
+{# The single due-state -> badge mapping. Color tracks urgency and nothing
+   else: red = overdue, orange = due today/soon, blue = on loan with time to
+   spare, green = returned (positive closure). Green is reserved for the
+   done state so it never also means "healthy active loan" -- that ambiguity
+   was the cross-screen inconsistency. #}
+{% macro due_badge(b) -%}
+    {%- if b.status == 'returned' -%}
+        <span class="badge badge-green">{{ icon('check', class='icon-sm') }} Returned</span>
+    {%- elif b.due_state == 'overdue' -%}
+        <span class="badge badge-red">{{ b.due_label }}</span>
+    {%- elif b.due_state in ['today', 'soon'] -%}
+        <span class="badge badge-orange">{{ b.due_label }}</span>
+    {%- else -%}
+        <span class="badge badge-accent">{{ b.due_label }}</span>
+    {%- endif -%}
+{%- endmacro %}

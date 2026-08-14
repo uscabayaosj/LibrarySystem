@@ -1038,6 +1038,16 @@ table.data tr.row-alert:hover { background: var(--red-soft); filter: brightness(
     display: grid; place-items: center; margin: 0 auto 12px;
     background: var(--red-soft); color: var(--red);
 }
+/* The circle carries two glyphs; JS sets data-kind on the backdrop to reveal
+   the right one. Danger keeps the red warning; a routine confirm gets a calm
+   accent-tinted info mark instead of an alarm for a borrow or renew. */
+.sheet-icon-danger, .sheet-icon-safe { display: grid; place-items: center; }
+.sheet-icon-safe { display: none; }
+.sheet-backdrop[data-kind="safe"] .sheet-icon {
+    background: var(--accent-soft); color: var(--accent);
+}
+.sheet-backdrop[data-kind="safe"] .sheet-icon-danger { display: none; }
+.sheet-backdrop[data-kind="safe"] .sheet-icon-safe { display: grid; }
 .sheet h2 { font-size: var(--text-md); margin-bottom: 5px; }
 .sheet p { font-size: var(--text-base); color: var(--fg-secondary); }
 .sheet-actions { display: flex; gap: 8px; margin-top: 18px; }

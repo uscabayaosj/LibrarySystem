@@ -101,7 +101,10 @@
                     <span class="badge badge-orange">{{ icon('calendar-check', class='icon-sm') }} In your queue</span>
                     <span class="hint">{{ my_res.expiry_label }}</span>
                 {% elif book.can_reserve() %}
-                    <form action="{{ url_for('member.reserve_book', book_id=book.id) }}" method="POST">
+                    <form action="{{ url_for('member.reserve_book', book_id=book.id) }}" method="POST"
+                          data-confirm="You'll join the queue. Once a copy is free, it's held for you for {{ config.RESERVATION_HOLD_DAYS }} days."
+                          data-confirm-title="Reserve “{{ book.title }}”?"
+                          data-confirm-label="Reserve">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button type="submit" class="btn btn-sm">{{ icon('calendar-plus', class='icon-sm') }} Reserve</button>
                     </form>

@@ -1,3 +1,5 @@
+import os
+
 from flask import current_app, g, has_app_context
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -40,6 +42,29 @@ class OrganizationSettings(db.Model):
             db.session.add(settings)
             db.session.commit()
         return settings
+
+    @property
+    def logo_ready(self):
+        """True only when a logo has been uploaded AND its file is actually
+        present on disk.
+
+        The database row and the files on disk can drift: a logo uploaded
+        before the persistent disk was mounted, or a disk wiped by a
+        redeploy, leaves logo_filename pointing at a file that no longer
+        exists. When that happens, trusting the bare filename renders a
+        broken-image icon in the sidebar and a stack of favicon/manifest
+        404s. Every template and the web manifest key off THIS instead, so a
+        missing file transparently falls back to the bundled book mark.
+
+        The uploaded logo and its generated icon set are written and cleared
+        together in the same directory (see logo_upload.py), so the presence
+        of the uploaded file is a faithful proxy for the whole set."""
+        if not self.logo_filename:
+            return False
+        path = os.path.join(
+            current_app.static_folder, 'uploads', 'branding', self.logo_filename
+        )
+        return os.path.isfile(path)
 
 
 class User(UserMixin, db.Model):

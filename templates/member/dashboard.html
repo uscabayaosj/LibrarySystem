@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from "_icons.html" import icon %}
+{% from "_macros.html" import due_badge %}
 
 {% block title %}Overview{% endblock %}
 {% block heading %}Welcome back, {{ current_user.username }}{% endblock %}
@@ -13,9 +14,9 @@
     </p>
 {% endblock %}
 
-{% block toolbar %}
-    <a href="{{ url_for('member.search') }}" class="btn btn-primary">{{ icon('search') }} Browse Books</a>
-{% endblock %}
+{# No Browse button here: Browse is navigation (the bottom tab on phones, the
+   sidebar link on desktop), not a page action. The toolbar is page-action
+   space; duplicating a nav destination in it was redundant on every viewport. #}
 
 {% block content %}
 {% if overdue_items %}
@@ -75,15 +76,7 @@
                             </div>
                         </div>
                         <div class="row-side">
-                            {% if b.due_state == 'overdue' %}
-                                <span class="badge badge-red">{{ b.due_label }}</span>
-                            {% elif b.due_state == 'today' %}
-                                <span class="badge badge-orange">{{ b.due_label }}</span>
-                            {% elif b.due_state == 'soon' %}
-                                <span class="badge badge-orange">{{ b.due_label }}</span>
-                            {% else %}
-                                <span class="badge badge-green">{{ b.due_label }}</span>
-                            {% endif %}
+                            {{ due_badge(b) }}
                             <div class="row-actions">
                                 {% if b.can_renew %}
                                     <form action="{{ url_for('member.renew_borrowing', borrowing_id=b.id) }}" method="POST"

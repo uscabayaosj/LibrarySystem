@@ -8,7 +8,7 @@
     <meta name="theme-color" content="#F6F6F8" media="(prefers-color-scheme: light)">
     <meta name="theme-color" content="#242427" media="(prefers-color-scheme: dark)">
 
-    {% set icon_dir = 'uploads/branding' if org_settings.logo_filename else 'icons' %}
+    {% set icon_dir = 'uploads/branding' if org_settings.logo_ready else 'icons' %}
     {# Installable app: manifest + icons, so "Add to Home Screen" gives a
        real app icon and standalone launch instead of a bare bookmark.
        Icons come from the org's uploaded logo when one is set, otherwise
@@ -52,7 +52,7 @@
         </div>
 
         <a class="sidebar-brand" href="{{ url_for('index') }}">
-            {% if org_settings.logo_filename %}
+            {% if org_settings.logo_ready %}
                 <img class="sidebar-brand-logo" alt=""
                      src="{{ url_for('static', filename='uploads/branding/' + org_settings.logo_filename) }}">
             {% else %}
@@ -218,7 +218,12 @@
 <div class="sheet-backdrop" id="confirm-sheet" data-open="false"
      role="dialog" aria-modal="true" aria-labelledby="sheet-title">
     <div class="sheet">
-        <div class="sheet-icon">{{ icon('warning', class='icon-lg') }}</div>
+        {# Two icons, one shown at a time: JS sets data-kind on the backdrop so a
+           routine borrow/renew shows a neutral question rather than an alarm. #}
+        <div class="sheet-icon">
+            <span class="sheet-icon-danger" aria-hidden="true">{{ icon('warning', class='icon-lg') }}</span>
+            <span class="sheet-icon-safe" aria-hidden="true">{{ icon('info', class='icon-lg') }}</span>
+        </div>
         <h2 id="sheet-title" data-sheet-title>Are you sure?</h2>
         <p data-sheet-body></p>
         <div class="sheet-actions">

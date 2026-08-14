@@ -221,3 +221,82 @@ def test_manifest_route_reflects_org_name(client, db):
     assert resp.status_code == 200
     assert resp.json['name'] == 'My Custom Org'
     assert resp.json['short_name'] == 'My Custom Org'[:12]
+
+
+# ---- logo_ready: the DB flag and the files on disk can drift -----------------
+# A logo uploaded before the persistent disk was mounted, or a disk wiped by a
+# redeploy, leaves logo_filename pointing at a file that no longer exists.
+# Nothing may trust the bare filename; everything keys off logo_ready.
+
+def _point_branding_dir_at(monkeypatch, app, tmp_path):
+    """Aim the app's static folder at a tmp dir and return the branding path
+    within it. The model resolves logo_ready against current_app.static_folder,
+    so this makes the on-disk state controllable per test."""
+    import os
+    monkeypatch.setattr(app, 'static_folder', str(tmp_path))
+    branding = tmp_path / 'uploads' / 'branding'
+    branding.mkdir(parents=True)
+    return branding
+
+
+def test_logo_ready_false_when_no_logo(app, db):
+    settings = OrganizationSettings.get()
+    assert settings.logo_filename is None
+    assert settings.logo_ready is False
+
+
+def test_logo_ready_false_when_file_missing(app, db, monkeypatch, tmp_path):
+    """The exact production drift: DB says there's a logo, disk disagrees."""
+    _point_branding_dir_at(monkeypatch, app, tmp_path)
+    settings = OrganizationSettings.get()
+    settings.logo_filename = 'logo.png'   # set, but no file written
+    db.session.commit()
+    assert settings.logo_ready is False
+
+
+def test_logo_ready_true_when_file_present(app, db, monkeypatch, tmp_path):
+    branding = _point_branding_dir_at(monkeypatch, app, tmp_path)
+    (branding / 'logo.png').write_bytes(_png_bytes().getvalue())
+    settings = OrganizationSettings.get()
+    settings.logo_filename = 'logo.png'
+    db.session.commit()
+    assert settings.logo_ready is True
+
+
+def test_pages_fall_back_to_default_mark_when_logo_file_missing(
+        client, db, app, monkeypatch, tmp_path):
+    """A stale logo reference must not render a broken <img>; the page shows
+    the bundled book mark instead."""
+    _point_branding_dir_at(monkeypatch, app, tmp_path)
+    settings = OrganizationSettings.get()
+    settings.logo_filename = 'logo.png'
+    db.session.commit()
+
+    body = client.get('/login').get_data(as_text=True)
+    # No <img> pointing at the missing upload; the inline SVG mark is used.
+    assert 'uploads/branding/logo.png' not in body
+
+
+def test_manifest_falls_back_to_bundled_icons_when_logo_missing(
+        client, db, app, monkeypatch, tmp_path):
+    _point_branding_dir_at(monkeypatch, app, tmp_path)
+    settings = OrganizationSettings.get()
+    settings.logo_filename = 'logo.png'
+    db.session.commit()
+
+    icons = client.get('/manifest.json').json['icons']
+    srcs = [i['src'] for i in icons]
+    assert all('/static/icons/' in s for s in srcs), srcs
+    assert not any('uploads/branding' in s for s in srcs), srcs
+
+
+def test_manifest_uses_uploaded_icons_when_present(
+        client, db, app, monkeypatch, tmp_path):
+    branding = _point_branding_dir_at(monkeypatch, app, tmp_path)
+    (branding / 'logo.png').write_bytes(_png_bytes().getvalue())
+    settings = OrganizationSettings.get()
+    settings.logo_filename = 'logo.png'
+    db.session.commit()
+
+    icons = client.get('/manifest.json').json['icons']
+    assert all('uploads/branding' in i['src'] for i in icons)
