@@ -487,7 +487,9 @@ table.data th,
     font-weight: 500;
     transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
 }
-.sidebar-link:hover { background: var(--rail-hover); color: var(--rail-fg); text-decoration: none; }
+@media (hover: hover) and (pointer: fine) {
+    .sidebar-link:hover { background: var(--rail-hover); color: var(--rail-fg); text-decoration: none; }
+}
 .sidebar-link svg { color: currentColor; }
 .sidebar-link[aria-current="page"] {
     background: var(--rail-active);
@@ -532,7 +534,9 @@ table.data th,
     cursor: pointer;
     transition: background var(--dur) var(--ease);
 }
-.account-btn:hover { background: var(--rail-hover); }
+@media (hover: hover) and (pointer: fine) {
+    .account-btn:hover { background: var(--rail-hover); }
+}
 .avatar {
     width: 30px; height: 30px; border-radius: 50%;
     background: var(--rail-marker);
@@ -578,8 +582,10 @@ table.data th,
     color: var(--fg); font: inherit; font-size: var(--text-base);
     text-align: left; cursor: pointer;
 }
-.menu-item:hover { background: var(--accent-fill); color: var(--fg-on-accent); text-decoration: none; }
-.menu-item:hover svg { color: var(--fg-on-accent); }
+@media (hover: hover) and (pointer: fine) {
+    .menu-item:hover { background: var(--accent-fill); color: var(--fg-on-accent); text-decoration: none; }
+    .menu-item:hover svg { color: var(--fg-on-accent); }
+}
 .menu-item svg { color: var(--fg-secondary); }
 .menu-sep { height: 1px; background: var(--separator); margin: 6px 4px; }
 .menu-label {
@@ -828,7 +834,9 @@ a.stat:hover { text-decoration: none; }
     cursor: pointer;
     transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
 }
-.segmented a:hover, .segmented button:hover { text-decoration: none; background: var(--bg-hover); color: var(--fg); }
+@media (hover: hover) and (pointer: fine) {
+    .segmented a:hover, .segmented button:hover { text-decoration: none; background: var(--bg-hover); color: var(--fg); }
+}
 .segmented [aria-current="true"], .segmented .is-selected {
     background: var(--accent-fill);
     color: var(--fg-on-accent);
@@ -940,7 +948,9 @@ table.data td {
 }
 table.data tbody tr:last-child td { border-bottom: none; }
 table.data tbody tr { transition: background 120ms var(--ease); }
-table.data tbody tr:hover { background: var(--bg-hover); }
+@media (hover: hover) and (pointer: fine) {
+    table.data tbody tr:hover { background: var(--bg-hover); }
+}
 table.data td.cell-primary { font-weight: 600; }
 
 /* An overdue row is flagged at its leading edge in coral as well as by the
@@ -986,7 +996,9 @@ table.data tr.row-alert td:first-child { box-shadow: inset 3px 0 0 var(--red); }
     border-bottom: 1px solid var(--separator);
 }
 .row-item:last-child { border-bottom: none; }
-.row-item:hover { background: var(--bg-hover); }
+@media (hover: hover) and (pointer: fine) {
+    .row-item:hover { background: var(--bg-hover); }
+}
 .row-main { min-width: 0; }
 .row-title { font-weight: 600; font-size: var(--text-base); letter-spacing: -0.006em; }
 .row-sub { font-size: var(--text-sm); color: var(--fg-secondary); margin-top: 2px; }
@@ -1398,7 +1410,9 @@ table.data tr.row-alert td:first-child { box-shadow: inset 3px 0 0 var(--red); }
     color: var(--fg);
     font-variant-numeric: tabular-nums;
 }
-.pagination a:hover { background: var(--bg-hover); text-decoration: none; }
+@media (hover: hover) and (pointer: fine) {
+    .pagination a:hover { background: var(--bg-hover); text-decoration: none; }
+}
 .pagination .is-current { background: var(--accent-fill); color: var(--fg-on-accent); font-weight: 600; }
 .pagination .is-disabled { color: var(--fg-tertiary); pointer-events: none; }
 
