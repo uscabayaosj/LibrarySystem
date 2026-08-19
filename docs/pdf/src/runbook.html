@@ -120,25 +120,26 @@ h3 {
 
 <h2><span class="num">0</span>What this app needs from a host</h2>
 
-<p>Two requirements drive every choice in this document:</p>
+<p>One requirement drives every choice in this document:</p>
 
 <ol>
 <li><strong>A real database.</strong> SQLite is a single file. It works locally, but on a host
 with an ephemeral filesystem it is wiped on every deploy and not shared between instances.
-Use managed Postgres in production.</li>
-<li><strong>A persistent disk.</strong> <em>Admin → Settings</em> writes the uploaded logo and its
-generated icon set to <code>static/uploads/branding/</code>. Without a persistent volume, the logo
-disappears on the next deploy.</li>
+Use managed Postgres in production — Render's own, Neon, or any other <code>postgresql://</code> URL.</li>
 </ol>
+
+<p>The uploaded organization logo and its generated icon set are stored as bytes on the
+<code>organization_settings</code> row, not as files on a mounted disk, so there's no separate
+persistent-filesystem requirement — whatever already holds the database holds the logo too.</p>
 
 <div class="callout c-info">
     <span class="label">Host compatibility</span>
-    <p><strong>Container/VM hosts (Render, Railway, Fly.io) fit as-is.</strong>
-    <strong>Serverless platforms (Vercel, Netlify, Lambda) do not</strong> — their filesystem is
-    read-only apart from a temp directory that doesn't survive between invocations, which breaks
-    both requirements. Running there would need Postgres <em>and</em> logo storage moved to an
-    object store (S3, Vercel Blob, R2) — a code change to <code>logo_upload.py</code>, not just
-    configuration.</p>
+    <p><strong>Container/VM hosts (Render, Railway, Fly.io)</strong> run <code>gunicorn</code> as a
+    long-running process; migrations run once at boot, before traffic arrives.
+    <strong>Serverless platforms (Vercel and similar)</strong> wrap the same Flask app as a function
+    per request instead — there's no boot hook to run migrations in, so that becomes an explicit
+    one-off step run against the database directly. Both fit now; see the Vercel + Neon section
+    below for the one thing that's genuinely different about that path.</p>
 </div>
 
 <h3>The two commands a host needs</h3>
@@ -162,8 +163,8 @@ instead — it splits the same work into a <code>release</code> and a <code>web<
 
 <h2><span class="num">1</span>First deploy — Render</h2>
 
-<p>The repo ships <code>render.yaml</code>, which declares the web service, the Postgres database,
-and the persistent disk together.</p>
+<p>The repo ships <code>render.yaml</code>, which declares the web service and the Postgres database
+together.</p>
 
 <h3>Blueprint (recommended)</h3>
 <p>Dashboard → <strong>New → Blueprint</strong> → pick this repo → Apply. Then set
@@ -193,8 +194,6 @@ Everything else is already declared.</p>
 <ol>
 <li><strong>New → Postgres.</strong> Create the database, copy its <strong>Internal Database URL</strong>.</li>
 <li><strong>Environment tab</strong> — add the variables in the table below.</li>
-<li><strong>Disks tab</strong> — add a disk, mount path
-<code>/opt/render/project/src/static/uploads</code>, 1&nbsp;GB.</li>
 </ol>
 
 <table>
@@ -208,10 +207,40 @@ Everything else is already declared.</p>
 </tbody>
 </table>
 
-<div class="callout c-danger">
-    <span class="label">Most common mistake</span>
-    <p>Skipping the persistent disk. Everything appears to work until the first redeploy, when the
-    uploaded logo vanishes.</p>
+<h2><span class="num">1b</span>First deploy — Vercel + Neon</h2>
+
+<p>Vercel's Python runtime runs the same Flask app as a serverless function rather than a
+long-running gunicorn process — zero config, no wrapper files: the Flask framework preset detects
+the top-level <code>app</code> in <code>app.py</code> directly. Three repo-level details exist for
+its <code>uv</code>-based build, all already in place: a PEP 621 <code>[project]</code> table in
+<code>pyproject.toml</code> (uv requires one and does not fall back to
+<code>requirements.txt</code>), <code>[tool.uv] package = false</code> (this is an app, not a
+package to build), and <code>.python-version</code> pinned as major.minor (<code>3.12</code>).
+There's no build-time disk to configure (see section 0), and no <code>startCommand</code> hook to
+run migrations in — that becomes an explicit step run once per schema change instead of something
+that happens automatically on every deploy.</p>
+
+<ol>
+<li><strong>Create the Neon project.</strong> neon.tech → New Project. Copy the pooled connection
+string (starts <code>postgresql://</code>, already includes <code>?sslmode=require</code>).</li>
+<li><strong>Run migrations against it, before the first deploy:</strong>
+<pre>pip install -r requirements.txt
+DATABASE_URL="&lt;neon-connection-string&gt;" FLASK_APP=app.py flask db upgrade</pre></li>
+<li><strong>Seed the admin account</strong> — run <code>init_db()</code> locally against the same
+<code>DATABASE_URL</code> (migrates and seeds; safe to run more than once):
+<pre>DATABASE_URL="&lt;neon-connection-string&gt;" ADMIN_PASSWORD="&lt;a-real-password&gt;" \
+  python -c "from app import init_db; init_db()"</pre></li>
+<li><strong>Deploy.</strong> <code>vercel link</code> once, set <code>DATABASE_URL</code>,
+<code>SECRET_KEY</code>, and <code>FLASK_ENV=production</code> as environment variables
+(dashboard or <code>vercel env add</code>), then <code>vercel deploy --prod</code>.</li>
+</ol>
+
+<div class="callout c-warn">
+    <span class="label">Every later schema change</span>
+    <p>Run step 2 again with the same <code>DATABASE_URL</code> before or right after the deploy
+    that needs it. Render's start command self-heals on the next boot if a migration was missed;
+    this host has no equivalent — a deploy that ships a model change without its migration applied
+    will start fine and fail at runtime on the missing column.</p>
 </div>
 
 <h2><span class="num">2</span>First boot</h2>
@@ -293,8 +322,8 @@ with app.app_context():
 <h3>Back up the database</h3>
 <p>Run locally, with the <em>External</em> database URL:</p>
 <pre><code>pg_dump "$EXTERNAL_DATABASE_URL" &gt; backup-$(date +%F).sql</code></pre>
-<p>The persistent disk holds only logo files, which can be re-uploaded, so the database is the thing
-that actually needs backing up.</p>
+<p>The uploaded logo lives in this same database (see section 0), so there's nothing else to back up
+separately.</p>
 
 <div class="callout c-info">
     <span class="label">Free-tier caveat</span>
@@ -342,11 +371,6 @@ that actually needs backing up.</p>
 <td><code>ModuleNotFoundError: No module named 'psycopg2'</code></td>
 <td>Build didn't install requirements</td>
 <td>Check the Build Command is <code>pip install -r requirements.txt</code></td>
-</tr>
-<tr>
-<td>Uploaded logo disappears after a deploy</td>
-<td>No persistent disk</td>
-<td>Mount a disk at <code>/opt/render/project/src/static/uploads</code></td>
 </tr>
 <tr>
 <td><code>no such table</code> / <code>column ... does not exist</code> at runtime</td>

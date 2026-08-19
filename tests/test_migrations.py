@@ -53,9 +53,19 @@ def test_legacy_create_all_database_is_stamped_not_recreated(tmp_path, monkeypat
     exist, and must leave existing rows alone."""
     flask_app = _build_app(tmp_path, monkeypatch, 'legacy.db')
 
-    # Simulate a deployment from before migrations existed.
+    # Simulate a deployment from before migrations existed: build the schema
+    # by actually running the baseline migration (never db.create_all() --
+    # that reflects whatever models.py declares *right now*, which drifts
+    # from the baseline the instant a second migration adds a column, and
+    # would make this "legacy" fixture silently describe the current schema
+    # instead of the historical one), then drop alembic_version -- a
+    # pre-Alembic install never had that table to begin with.
+    from flask_migrate import upgrade as migrate_upgrade
     with flask_app.app_context():
-        db.create_all()
+        migrate_upgrade(revision=app_module._BASELINE_REVISION)
+        db.session.execute(sa.text('DROP TABLE alembic_version'))
+        db.session.commit()
+
         user = User(username='existing', email='existing@example.com', is_admin=True)
         user.set_password('pw123456')
         db.session.add(user)

@@ -8,15 +8,14 @@
     <meta name="theme-color" content="#292168" media="(prefers-color-scheme: light)">
     <meta name="theme-color" content="#1f1950" media="(prefers-color-scheme: dark)">
 
-    {% set icon_dir = 'uploads/branding' if org_settings.logo_ready else 'icons' %}
     {# Installable app: manifest + icons, so "Add to Home Screen" gives a
        real app icon and standalone launch instead of a bare bookmark.
-       Icons come from the org's uploaded logo when one is set, otherwise
-       from the library's bundled default. #}
+       icon_url()/favicon_url fall back to the library's bundled default
+       themselves when no logo is uploaded. #}
     <link rel="manifest" href="{{ url_for('manifest') }}">
-    <link rel="icon" href="{{ url_for('static', filename=icon_dir + '/favicon.ico') }}" sizes="any">
-    <link rel="icon" href="{{ url_for('static', filename=icon_dir + '/icon-192.png') }}" type="image/png" sizes="192x192">
-    <link rel="apple-touch-icon" href="{{ url_for('static', filename=icon_dir + '/apple-touch-icon.png') }}">
+    <link rel="icon" href="{{ org_settings.favicon_url }}" sizes="any">
+    <link rel="icon" href="{{ org_settings.icon_url('icon-192') }}" type="image/png" sizes="192x192">
+    <link rel="apple-touch-icon" href="{{ org_settings.icon_url('apple-touch-icon') }}">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="{{ org_settings.org_name }}">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -51,8 +50,7 @@
 
         <a class="sidebar-brand" href="{{ url_for('index') }}">
             {% if org_settings.logo_ready %}
-                <img class="sidebar-brand-logo" alt=""
-                     src="{{ url_for('static', filename='uploads/branding/' + org_settings.logo_filename) }}">
+                <img class="sidebar-brand-logo" alt="" src="{{ org_settings.logo_url }}">
             {% else %}
                 {{ brand_mark() }}
             {% endif %}

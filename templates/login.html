@@ -8,8 +8,7 @@
     <div class="auth-card">
         <div class="auth-head">
             {% if org_settings.logo_ready %}
-                <img class="hero-mark-logo" alt=""
-                     src="{{ url_for('static', filename='uploads/branding/' + org_settings.logo_filename) }}">
+                <img class="hero-mark-logo" alt="" src="{{ org_settings.logo_url }}">
             {% else %}
                 <img class="hero-mark-logo" alt=""
                      src="{{ url_for('static', filename='brand/seal.png') }}">
