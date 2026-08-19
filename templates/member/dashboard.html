@@ -3,7 +3,7 @@
 {% from "_macros.html" import due_badge %}
 
 {% block title %}Overview{% endblock %}
-{% block heading %}Welcome back, {{ current_user.username }}{% endblock %}
+{% block heading %}Overview{% endblock %}
 {% block subheading %}
     <p class="toolbar-sub">
         {% if overdue_count %}
@@ -65,19 +65,25 @@
         </div>
         <div class="panel-body flush">
             {% if active_borrowings %}
-                <div class="rows">
+                <div class="slips">
                     {% for b in active_borrowings %}
-                    <div class="row-item {{ 'is-alert' if b.due_state == 'overdue' }}">
-                        <div class="book-cover-sm" style="--hue: {{ b.book.isbn|cover_hue }}" aria-hidden="true">{{ b.book.title[0]|upper }}</div>
-                        <div class="row-main">
-                            <div class="row-title">{{ b.book.title }}</div>
-                            <div class="row-sub">
-                                {{ b.book.author }} · Due {{ b.due_date|localdate('%b %d, %Y') }}
-                            </div>
+                    <div class="slip {% if b.due_state == 'overdue' %}is-overdue{% elif b.due_state in ['today', 'soon'] %}is-soon{% endif %}">
+                        {# The stub reads in library-local time like every other
+                           date on the page -- a stub showing UTC beside a local
+                           due date would be the same bug in two typefaces. #}
+                        <div class="slip-stub">
+                            <span class="slip-stub-label">Due</span>
+                            <span class="slip-stub-day">{{ b.due_date|localdate('%d') }}</span>
+                            <span class="slip-stub-month">{{ b.due_date|localdate('%b') }}</span>
                         </div>
-                        <div class="row-side">
-                            {{ due_badge(b) }}
-                            <div class="row-actions">
+                        <div class="slip-body">
+                            <div class="slip-title">{{ b.book.title }}</div>
+                            <div class="slip-author">{{ b.book.author }}</div>
+                            <div class="slip-meta">
+                                {{ due_badge(b) }}
+                                <span class="slip-accession">ISBN {{ b.book.isbn }}</span>
+                            </div>
+                            <div class="slip-actions">
                                 {% if b.can_renew %}
                                     <form action="{{ url_for('member.renew_borrowing', borrowing_id=b.id) }}" method="POST"
                                           data-confirm="This will extend the due date by {{ config.LOAN_PERIOD_DAYS }} days from today."

@@ -13,62 +13,66 @@
 
 {% block content %}
 {% if reservations %}
-    <div class="grid grid-cards">
+    <div class="slips">
         {% for r in reservations %}
-        <article class="book">
-            <div class="book-cover" style="--hue: {{ r.book.isbn|cover_hue }}" aria-hidden="true">{{ r.book.title[0]|upper }}</div>
-            <div class="book-body">
-                <div style="display:flex;align-items:flex-start;gap:10px">
-                    <div style="flex:1;min-width:0">
-                        <h2 class="book-title">{{ r.book.title }}</h2>
-                        <p class="book-author">{{ r.book.author }}</p>
-                    </div>
+        {# The stub never goes coral here. An overdue *loan* is the member's to
+           fix; a hold lapsing is conditional on a copy freeing up, so alarm
+           red would blame them for something they don't control. Apricot on
+           the last day, neutral before that. #}
+        <article class="slip {% if r.days_until_expiry is not none and 0 <= r.days_until_expiry <= 1 %}is-soon{% endif %}">
+            <div class="slip-stub">
+                <span class="slip-stub-label">Hold to</span>
+                <span class="slip-stub-day">{{ r.expiration_date|localdate('%d') }}</span>
+                <span class="slip-stub-month">{{ r.expiration_date|localdate('%b') }}</span>
+            </div>
+            <div class="slip-body">
+                <h2 class="slip-title">{{ r.book.title }}</h2>
+                <p class="slip-author">{{ r.book.author }}</p>
+                <div class="slip-meta">
                     {% if r.queue_position == 1 %}
                         <span class="badge badge-green">{{ icon('check', class='icon-sm') }} {{ r.queue_label }}</span>
                     {% else %}
                         <span class="badge badge-orange">{{ icon('clock', class='icon-sm') }} {{ r.queue_label }}</span>
                     {% endif %}
+                    <span class="slip-accession">ISBN {{ r.book.isbn }}</span>
                 </div>
-
-                <div class="book-status" style="display:block">
-                    <div class="small text-secondary">
-                        Reserved {{ r.reservation_date|localdate('%b %d, %Y') }}
-                        {% if r.queue_length > 1 %}
-                            · {{ r.queue_length }} members waiting for this title
-                        {% endif %}
-                    </div>
-                    {# The hold has an outer deadline, but for someone still in line
-                       an alarm-red countdown reads as imminent personal loss. Stay
-                       calm until the last day, and say plainly that the lapse is
-                       conditional on a copy freeing up -- not on the member. #}
-                    {% if r.days_until_expiry is not none and r.days_until_expiry < 0 %}
-                        <div class="small text-secondary" style="margin-top:2px">Reservation expired</div>
-                    {% elif r.days_until_expiry is not none and r.days_until_expiry <= 1 %}
-                        <div class="small text-orange" style="margin-top:2px">
-                            Expires {{ r.expiration_date|localdate('%b %d') }} unless a copy frees up
-                        </div>
-                    {% else %}
-                        <div class="small text-secondary" style="margin-top:2px">
-                            Held until {{ r.expiration_date|localdate('%b %d, %Y') }}
-                        </div>
+                <div class="small text-secondary" style="margin-top:7px">
+                    Reserved {{ r.reservation_date|localdate('%b %d, %Y') }}
+                    {% if r.queue_length > 1 %}
+                        · {{ r.queue_length }} members waiting for this title
                     {% endif %}
                 </div>
-            </div>
-            <div class="book-foot">
-                <form action="{{ url_for('member.cancel_reservation', reservation_id=r.id) }}" method="POST"
-                      data-confirm="You'll lose your place in the queue for this title."
-                      data-confirm-title="Cancel this reservation?"
-                      data-confirm-label="Cancel Reservation"
-                      data-confirm-cancel="Keep Reservation"
-                      data-confirm-kind="danger">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <button type="submit" class="btn btn-danger btn-sm">{{ icon('x', class='icon-sm') }} Cancel</button>
-                </form>
-                <a href="{{ url_for('member.reservation_calendar', reservation_id=r.id) }}"
-                   class="btn btn-sm btn-icon btn-glass" title="Add expiry to calendar"
-                   aria-label="Add “{{ r.book.title }}” expiry to calendar">
-                    {{ icon('calendar', class='icon-sm') }}
-                </a>
+                {# The hold has an outer deadline, but for someone still in line
+                   an alarm-red countdown reads as imminent personal loss. Stay
+                   calm until the last day, and say plainly that the lapse is
+                   conditional on a copy freeing up -- not on the member. #}
+                {% if r.days_until_expiry is not none and r.days_until_expiry < 0 %}
+                    <div class="small text-secondary">Reservation expired</div>
+                {% elif r.days_until_expiry is not none and r.days_until_expiry <= 1 %}
+                    <div class="small text-orange">
+                        Expires {{ r.expiration_date|localdate('%b %d') }} unless a copy frees up
+                    </div>
+                {% else %}
+                    <div class="small text-secondary">
+                        Held until {{ r.expiration_date|localdate('%b %d, %Y') }}
+                    </div>
+                {% endif %}
+                <div class="slip-actions">
+                    <form action="{{ url_for('member.cancel_reservation', reservation_id=r.id) }}" method="POST"
+                          data-confirm="You'll lose your place in the queue for this title."
+                          data-confirm-title="Cancel this reservation?"
+                          data-confirm-label="Cancel Reservation"
+                          data-confirm-cancel="Keep Reservation"
+                          data-confirm-kind="danger">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-danger btn-sm">{{ icon('x', class='icon-sm') }} Cancel</button>
+                    </form>
+                    <a href="{{ url_for('member.reservation_calendar', reservation_id=r.id) }}"
+                       class="btn btn-sm btn-icon btn-glass" title="Add expiry to calendar"
+                       aria-label="Add “{{ r.book.title }}” expiry to calendar">
+                        {{ icon('calendar', class='icon-sm') }}
+                    </a>
+                </div>
             </div>
         </article>
         {% endfor %}

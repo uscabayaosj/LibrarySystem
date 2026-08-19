@@ -28,9 +28,9 @@ A Flask-based library management system with separate **Librarian (Admin)** and 
 - **Search** — Find books by title, author, ISBN, or category, and members by name or email, from a single search bar with a one-tap clear
 - **Status Filters** — Filter borrowing history by active/overdue/returned
 - **Colour-Coded Alerts** — Overdue items highlighted in red, due-soon in orange, meeting WCAG AA contrast in both light and dark appearance
-- **Confirmation Sheets** — Destructive or consequential actions (delete, renew, cancel reservation) show a macOS-style sheet naming the exact record
+- **Confirmation Dialogs** — Destructive or consequential actions (delete, renew, cancel reservation) show a dialog naming the exact record
 - **Flash Messages** — Clear success/warning/danger/info feedback; errors and warnings stay until dismissed
-- **Responsive Design** — A source-list sidebar on desktop collapses to a drawer on mobile, and data tables become stacked cards so row actions stay reachable
+- **Responsive Design** — The indigo navigation rail on desktop collapses to a drawer on mobile, and data tables become stacked cards so row actions stay reachable
 - **Self-contained UI** — Hand-written CSS, vanilla JS, and inline SVG icons; no CDN, so the app renders identically offline
 
 ### 📱 Phone-First for Members
@@ -338,7 +338,7 @@ request against `main`, on Python 3.11 and 3.12.
 ## Tech Stack
 
 - **Backend:** Flask 3.x, Flask-SQLAlchemy, Flask-Login, Flask-WTF (CSRF)
-- **Frontend:** a self-contained macOS-style design system — hand-written CSS
+- **Frontend:** a self-contained design system — hand-written CSS
   and vanilla JS, inline SVG icons. **No CSS/JS frameworks and no CDN**, so the
   UI renders identically offline and on restricted networks.
 - **Database:** SQLite (default) / PostgreSQL
@@ -346,9 +346,18 @@ request against `main`, on Python 3.11 and 3.12.
 
 ## Interface
 
-The UI follows macOS conventions: a source-list sidebar, a translucent sticky
-toolbar, SF system typography, hairline separators, and macOS-style sheets for
-confirmations. It ships with **light and dark appearance** — following the OS
+The interface is built on the department's own visual language — the accession
+slip. A call number, an ISBN, and a due date are real identifying data, so they
+are set in a monospace face and aligned in fixed columns rather than flowing
+with the prose around them; a member's loan renders as a date-due card with a
+stamped stub.
+
+The brand palette doubles as the status system: **indigo** `#292168` for
+identity and primary actions (and the navigation rail, the one large saturated
+field in the product), **coral** `#f7636e` for overdue, **apricot** `#f9b78a`
+for due soon, and **aqua** `#5dcbd1` for available/returned. Type is Fraunces
+for display, Archivo for the interface, and IBM Plex Mono for data, all served
+from `static/fonts` so nothing depends on a CDN. It ships with **light and dark appearance** — following the OS
 by default, with a manual override in the account menu (remembered per browser).
 
 | | |
@@ -358,14 +367,18 @@ by default, with a manual override in the account menu (remembered per browser).
 
 Design notes:
 
-- **Colour** — text colours use Apple's accessible palette variants. Every
-  foreground/background pair in the app meets WCAG AA, verified from rendered
-  pixels in both appearances.
+- **Colour** — the brand tints are too light to carry body text, so each has a
+  darkened variant derived and checked with the same WCAG math as
+  `theming.py`. Every foreground/background pair meets AA in both appearances.
 - **Layout** — tables become stacked cards below 860px so row actions stay
   reachable on a phone; touch targets are 44px on coarse pointers.
-- **Motion** — all transitions collapse under `prefers-reduced-motion`.
-- **Keyboard** — skip link, visible focus rings, Escape closes menus and
-  sheets, and ⌘K / Ctrl-K jumps to the search field.
+- **Motion** — entering and exiting elements use one strong ease-out curve;
+  hover lifts are gated behind `(hover: hover)` so they don't latch on touch.
+  Under `prefers-reduced-motion` movement is dropped and the opacity and colour
+  transitions are kept, since those aid comprehension without causing
+  motion sickness.
+- **Keyboard** — skip link, visible focus rings (light-on-indigo inside the
+  rail), Escape closes menus and dialogs, and ⌘K / Ctrl-K jumps to search.
 
 ## What Changed (v3.4 — database migrations + deployment)
 
@@ -468,10 +481,10 @@ itself deployable for a different organization without touching code.
   `poetry install` — the README's own alternate install command — would fail
   on a clean checkout. Regenerated.
 
-## What Changed (v3.0 — macOS-style interface)
+## What Changed (v3.0 — interface rebuild)
 
 - **New design system.** Bootstrap and its CDN are gone, replaced by a
-  self-contained macOS-flavoured stylesheet, vanilla JS, and inline SVG icons.
+  self-contained stylesheet, vanilla JS, and inline SVG icons.
   Sidebar navigation, translucent toolbar, and native-feeling controls.
 - **Light and dark appearance**, following the OS with a manual override.
 - **Due dates are now consistent.** All due/overdue copy derives from one
@@ -483,7 +496,7 @@ itself deployable for a different organization without touching code.
   buttons, and AA-compliant contrast throughout both appearances.
 - **Mobile**: tables become stacked cards, so Edit / Delete / Check In are
   reachable on a phone instead of scrolling off-screen.
-- **Interaction**: `confirm()` replaced by a macOS-style sheet naming the exact
+- **Interaction**: `confirm()` replaced by a dialog naming the exact
   record; the overdue dashboard tile now filters to overdue; browse results
   show what you already have on loan instead of offering a doomed Borrow button.
 

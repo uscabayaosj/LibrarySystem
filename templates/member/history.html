@@ -39,14 +39,14 @@
                                 </div>
                             </div>
                         </td>
-                        <td data-label="Borrowed">{{ b.borrow_date|localdate('%b %d, %Y') }}</td>
+                        <td class="num" data-label="Borrowed">{{ b.borrow_date|localdate('%b %d, %Y') }}</td>
                         <td data-label="Due">
-                            {{ b.due_date|localdate('%b %d, %Y') }}
+                            <span class="num">{{ b.due_date|localdate('%b %d, %Y') }}</span>
                             {% if b.renewal_count %}
                                 <div class="xs text-tertiary">Renewed {{ b.renewal_count }}×</div>
                             {% endif %}
                         </td>
-                        <td data-label="Returned">
+                        <td class="num" data-label="Returned">
                             {% if b.return_date %}{{ b.return_date|localdate('%b %d, %Y') }}
                             {% else %}<span class="text-tertiary">—</span>{% endif %}
                         </td>

@@ -13,25 +13,21 @@ body { font-size: 9.4pt; }
 .masthead {
     display: flex; align-items: center; gap: 13px;
     padding-bottom: 13px;
-    border-bottom: 2px solid #0069D9;
+    border-bottom: 2px solid var(--indigo);
 }
 .mark {
-    width: 46px; height: 46px; border-radius: 11px;
-    background: linear-gradient(145deg, #0f7bef, #0055b4);
-    display: flex; align-items: center; justify-content: center;
-    flex: none;
-    box-shadow: 0 2px 5px rgba(0,60,140,0.28);
+    width: 52px; height: 52px; flex: none;
 }
-.mark svg { width: 27px; height: 27px; }
+.mark img { width: 52px; height: 52px; object-fit: contain; display: block; }
 .masthead .name { font-size: 16pt; font-weight: 700; letter-spacing: -0.028em; }
-.masthead .tag { font-size: 9pt; color: #55555f; margin-top: 1px; }
+.masthead .tag { font-size: 9pt; color: var(--ink-secondary); margin-top: 1px; }
 .masthead .right {
     margin-left: auto; text-align: right;
-    font-size: 7.6pt; color: #77777f; line-height: 1.45;
+    font-size: 7.6pt; color: var(--ink-tertiary); line-height: 1.45;
 }
 .badge-os {
-    display: inline-block; background: #e8f1fd; color: #0059B8;
-    border: 0.5px solid #b9d5f5; border-radius: 20px;
+    display: inline-block; background: #eceaf5; color: var(--indigo-mid);
+    border: 0.5px solid #c9c4e2; border-radius: 20px;
     padding: 2px 9px; font-size: 7.4pt; font-weight: 600;
     letter-spacing: 0.03em;
 }
@@ -42,9 +38,9 @@ body { font-size: 9.4pt; }
     font-size: 21pt; letter-spacing: -0.032em; line-height: 1.14;
     max-width: 94%;
 }
-.hero h1 em { font-style: normal; color: #0069D9; }
+.hero h1 em { font-style: normal; color: var(--indigo); }
 .hero .lede {
-    font-size: 10.2pt; color: #44444d; margin-top: 8px;
+    font-size: 10.2pt; color: var(--ink-secondary); margin-top: 8px;
     line-height: 1.5; max-width: 96%;
 }
 
@@ -53,8 +49,8 @@ body { font-size: 9.4pt; }
     display: flex; gap: 9px; margin: 15px 0 4px;
 }
 .aud {
-    flex: 1; border: 0.5px solid #dcdce3; border-radius: 8px;
-    padding: 10px 11px; background: #fbfbfc;
+    flex: 1; border: 0.5px solid var(--hairline); border-radius: 8px;
+    padding: 10px 11px; background: var(--sunken);
 }
 .aud .icon {
     width: 22px; height: 22px; border-radius: 6px;
@@ -62,14 +58,14 @@ body { font-size: 9.4pt; }
     margin-bottom: 6px; color: #fff; font-size: 10pt; font-weight: 700;
 }
 .aud h3 { font-size: 9.2pt; margin-bottom: 3px; }
-.aud p { font-size: 8.2pt; color: #55555f; margin: 0; line-height: 1.45; }
+.aud p { font-size: 8.2pt; color: var(--ink-secondary); margin: 0; line-height: 1.45; }
 
 /* ---- Section headings ---- */
 h2.sec {
     font-size: 8pt; font-weight: 700; letter-spacing: 0.1em;
-    text-transform: uppercase; color: #0069D9;
+    text-transform: uppercase; color: var(--indigo);
     margin: 18px 0 8px;
-    padding-bottom: 4px; border-bottom: 0.5px solid #dcdce3;
+    padding-bottom: 4px; border-bottom: 0.5px solid var(--hairline);
 }
 /* Page 2 carries more sections than page 1, so it runs tighter. */
 .page2 ~ h2.sec { margin: 10px 0 6px; }
@@ -79,42 +75,42 @@ h2.sec {
    closing contact band stays on the same page. */
 .steps { display: flex; gap: 9px; page-break-inside: avoid; }
 .step {
-    flex: 1; border: 0.5px solid #e0e0e6; border-radius: 7px;
-    padding: 9px 11px; background: #fbfbfc;
+    flex: 1; border: 0.5px solid var(--hairline); border-radius: 7px;
+    padding: 9px 11px; background: var(--sunken);
 }
 .step .n {
     display: inline-block; width: 17px; height: 17px; line-height: 17px;
     text-align: center; border-radius: 50%;
-    background: #0069D9; color: #fff;
+    background: var(--indigo); color: #fff;
     font-size: 7.6pt; font-weight: 700; margin-bottom: 5px;
 }
 .step h4 { font-size: 8.8pt; margin-bottom: 3px; }
-.step p { font-size: 8pt; color: #55555f; margin: 0; line-height: 1.42; }
+.step p { font-size: 8pt; color: var(--ink-secondary); margin: 0; line-height: 1.42; }
 
 /* ---- Feature grid ---- */
 .features { display: flex; flex-wrap: wrap; gap: 9px; }
 .feat {
     width: calc(50% - 4.5px);
-    border: 0.5px solid #e0e0e6; border-radius: 7px;
+    border: 0.5px solid var(--hairline); border-radius: 7px;
     padding: 9px 11px;
     page-break-inside: avoid;
 }
-.feat h4 { font-size: 9pt; margin-bottom: 3px; color: #16161a; }
-.feat p { font-size: 8.2pt; color: #55555f; margin: 0; line-height: 1.45; }
+.feat h4 { font-size: 9pt; margin-bottom: 3px; color: var(--ink); }
+.feat p { font-size: 8.2pt; color: var(--ink-secondary); margin: 0; line-height: 1.45; }
 
 /* ---- Phone callout ---- */
 .phone-band {
     margin-top: 14px;
-    background: linear-gradient(135deg, #f4f8fe, #eef4fd);
-    border: 0.5px solid #cfe0f7; border-radius: 9px;
+    background: linear-gradient(135deg, #f0fbfb, #eceaf5);
+    border: 0.5px solid #bfe6e8; border-radius: 9px;
     padding: 13px 15px;
     page-break-inside: avoid;
 }
 .phone-band h3 { font-size: 11pt; margin-bottom: 5px; letter-spacing: -0.02em; }
-.phone-band p { font-size: 8.6pt; color: #44444d; margin: 0 0 7px; }
+.phone-band p { font-size: 8.6pt; color: var(--ink-secondary); margin: 0 0 7px; }
 .pills { display: flex; flex-wrap: wrap; gap: 5px; }
 .pill {
-    background: #fff; border: 0.5px solid #c4d8f2; color: #0059B8;
+    background: #fff; border: 0.5px solid #bfe6e8; color: var(--indigo-mid);
     border-radius: 20px; padding: 2.5px 9px;
     font-size: 7.6pt; font-weight: 600;
 }
@@ -129,21 +125,23 @@ h2.sec {
     flex: 1; border-radius: 8px; padding: 11px 12px;
     border: 0.5px solid;
 }
-.fit-yes { background: #f1faf3; border-color: #bfe3c8; }
-.fit-no  { background: #fafafb; border-color: #dcdce3; }
+.fit-yes { background: #f0fbfb; border-color: #bfe6e8; }
+.fit-no  { background: var(--sunken); border-color: var(--hairline); }
 .fit h4 { font-size: 9pt; margin-bottom: 5px; }
-.fit-yes h4 { color: #1a6b32; }
-.fit-no  h4 { color: #5c5c66; }
+.fit-yes h4 { color: var(--aqua-ink); }
+.fit-no  h4 { color: var(--ink-tertiary); }
 .fit ul { margin: 0; padding-left: 15px; }
-.fit li { font-size: 8.2pt; margin: 2px 0; color: #44444d; }
+.fit li { font-size: 8.2pt; margin: 2px 0; color: var(--ink-secondary); }
 
 /* ---- Cover-art motif (echoes the app's generated book covers) ---- */
 .covers { display: flex; gap: 5px; margin-top: 3px; flex: none; }
+.cov { font-family: 'Fraunces', Georgia, serif;
+       font-variation-settings: 'opsz' 96, 'SOFT' 30, 'WONK' 1; font-weight: 600; }
 .cover-note {
     display: flex; align-items: center; gap: 12px; margin-top: 12px;
     page-break-inside: avoid;
 }
-.cover-note p { font-size: 8.4pt; color: #55555f; margin: 0; }
+.cover-note p { font-size: 8.4pt; color: var(--ink-secondary); margin: 0; }
 
 /* Four-across variant for the shorter maintenance cards. */
 .features.quad .feat { width: calc(25% - 6.75px); padding: 8px 10px; }
@@ -157,16 +155,16 @@ h2.sec {
 
 /* ---- Contact ---- */
 .contact {
-    margin-top: 13px; border-top: 2px solid #0069D9; padding-top: 10px;
+    margin-top: 13px; border-top: 2px solid var(--indigo); padding-top: 10px;
     display: flex; gap: 16px; align-items: flex-start;
     page-break-inside: avoid;
 }
 .contact .blk { flex: 1; }
 .contact h4 { font-size: 8pt; letter-spacing: 0.08em; text-transform: uppercase;
-              color: #0069D9; margin-bottom: 4px; }
-.contact p { font-size: 8.4pt; margin: 2px 0; color: #44444d; }
+              color: var(--indigo); margin-bottom: 4px; }
+.contact p { font-size: 8.4pt; margin: 2px 0; color: var(--ink-secondary); }
 .placeholder {
-    color: #8a8a93; background: #f4f4f6; border: 0.5px dashed #c8c8d0;
+    color: var(--ink-tertiary); background: var(--sunken); border: 0.5px dashed var(--hairline);
     border-radius: 3px; padding: 0 4px; font-size: 8pt;
 }
 .page2 { page-break-before: always; }
@@ -177,11 +175,7 @@ h2.sec {
 <!-- ============================ PAGE 1 ============================ -->
 <div class="masthead">
     <div class="mark">
-        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.7"
-             stroke-linecap="round" stroke-linejoin="round">
-            <path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H9a3 3 0 0 1 3 3v13a2.5 2.5 0 0 0-2.5-2.5H4z"/>
-            <path d="M20 5.5A1.5 1.5 0 0 0 18.5 4H15a3 3 0 0 0-3 3v13a2.5 2.5 0 0 1 2.5-2.5H20z"/>
-        </svg>
+        <img src="../../../static/brand/seal.png" alt="">
     </div>
     <div>
         <div class="name">Library System</div>
@@ -204,17 +198,17 @@ h2.sec {
 
 <div class="audience">
     <div class="aud">
-        <div class="icon" style="background:#0069D9">D</div>
+        <div class="icon" style="background:var(--indigo)">D</div>
         <h3>Department libraries</h3>
         <p>A few hundred to a few thousand titles, one or two staff, students borrowing between classes.</p>
     </div>
     <div class="aud">
-        <div class="icon" style="background:#0A6E82">P</div>
+        <div class="icon" style="background:var(--aqua-ink)">P</div>
         <h3>Private collections</h3>
         <p>Personal or family libraries you actually lend from, and want returned.</p>
     </div>
     <div class="aud">
-        <div class="icon" style="background:#7A3DB8">S</div>
+        <div class="icon" style="background:var(--coral-ink)">S</div>
         <h3>Small organizations</h3>
         <p>Churches, clinics, studios, NGOs, research groups — any shared collection with a sign-out sheet today.</p>
     </div>
@@ -281,10 +275,10 @@ h2.sec {
 
 <div class="cover-note">
     <div class="covers">
-        <div class="cov" style="background:linear-gradient(135deg,hsl(210 55% 30%),hsl(242 55% 18%))">A</div>
-        <div class="cov" style="background:linear-gradient(135deg,hsl(28 55% 30%),hsl(60 55% 18%))">M</div>
-        <div class="cov" style="background:linear-gradient(135deg,hsl(150 55% 30%),hsl(182 55% 18%))">G</div>
-        <div class="cov" style="background:linear-gradient(135deg,hsl(320 55% 30%),hsl(352 55% 18%))">T</div>
+        <div class="cov" style="background:linear-gradient(135deg,hsl(188 55% 30%),hsl(206 55% 18%))">A</div>
+        <div class="cov" style="background:linear-gradient(135deg,hsl(248 55% 30%),hsl(266 55% 18%))">M</div>
+        <div class="cov" style="background:linear-gradient(135deg,hsl(217 55% 30%),hsl(235 55% 18%))">G</div>
+        <div class="cov" style="background:linear-gradient(135deg,hsl(224 55% 30%),hsl(242 55% 18%))">T</div>
     </div>
     <p>
         <strong>And books without a cover photo still look like books.</strong> Each title gets a

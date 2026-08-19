@@ -51,12 +51,12 @@
                 <label for="theme_color">Theme color</label>
                 <div style="display:flex; align-items:center; gap:10px; margin-top:4px">
                     <input type="color" id="theme_color_picker"
-                           value="{{ (form_values.theme_color if form_values else org_settings.theme_color) or '#0069D9' }}"
+                           value="{{ (form_values.theme_color if form_values else org_settings.theme_color) or '#292168' }}"
                            style="width:44px;height:32px;padding:2px;border-radius:var(--r-sm);border:1px solid var(--separator-strong);cursor:pointer"
                            aria-hidden="true" tabindex="-1"
                            onchange="document.getElementById('theme_color').value=this.value">
                     <input type="text" id="theme_color" name="theme_color" maxlength="7"
-                           placeholder="#0069D9" pattern="^#?[0-9A-Fa-f]{6}$"
+                           placeholder="#292168" pattern="^#?[0-9A-Fa-f]{6}$"
                            value="{{ (form_values.theme_color if form_values else org_settings.theme_color) or '' }}"
                            style="max-width:120px"
                            oninput="if(/^#[0-9A-Fa-f]{6}$/.test(this.value)) document.getElementById('theme_color_picker').value=this.value">
@@ -64,7 +64,7 @@
                 <span class="xs text-secondary">
                     Replaces the accent color app-wide. A light and dark variant of this
                     color is generated automatically so text and buttons stay readable.
-                    Leave blank to use the default library blue.
+                    Leave blank to use the department indigo.
                 </span>
             </div>
 
