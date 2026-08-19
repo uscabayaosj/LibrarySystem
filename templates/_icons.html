@@ -90,3 +90,27 @@
 {%- endif -%}
 </svg>
 {%- endmacro -%}
+
+{# The department seal reduces to its own structure: the 3x3 grid of portraits
+   at its centre, in the brand's four colours. The full seal is illustrated
+   line art and turns to mush below about 64px, so anywhere small -- the
+   navigation rail, the phone's tab bar -- uses this instead. Ordered so no
+   two tiles of the same colour touch edge-on. The indigo tiles read as
+   holes when the mark sits on the indigo rail, so they take a token the
+   rail overrides to white. #}
+{%- macro brand_mark(class='brand-mark', label=None) -%}
+<svg class="{{ class }}" viewBox="0 0 24 24" fill="none"
+     {% if label %}role="img" aria-label="{{ label }}"{% else %}aria-hidden="true" focusable="false"{% endif %}>
+  <g>
+    <rect x="1.5"  y="1.5"  width="6" height="6" rx="1.6" fill="#f7636e"/>
+    <rect x="9"    y="1.5"  width="6" height="6" rx="1.6" fill="var(--mark-ink, #292168)"/>
+    <rect x="16.5" y="1.5"  width="6" height="6" rx="1.6" fill="#5dcbd1"/>
+    <rect x="1.5"  y="9"    width="6" height="6" rx="1.6" fill="var(--mark-ink, #292168)"/>
+    <rect x="9"    y="9"    width="6" height="6" rx="1.6" fill="#f9b78a"/>
+    <rect x="16.5" y="9"    width="6" height="6" rx="1.6" fill="#f7636e"/>
+    <rect x="1.5"  y="16.5" width="6" height="6" rx="1.6" fill="#5dcbd1"/>
+    <rect x="9"    y="16.5" width="6" height="6" rx="1.6" fill="#f7636e"/>
+    <rect x="16.5" y="16.5" width="6" height="6" rx="1.6" fill="var(--mark-ink, #292168)"/>
+  </g>
+</svg>
+{%- endmacro -%}

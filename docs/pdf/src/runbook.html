@@ -6,7 +6,7 @@
 <link rel="stylesheet" href="base.css">
 <style>
 .cover {
-    border-bottom: 2px solid #0069D9;
+    border-bottom: 2px solid var(--indigo);
     padding-bottom: 14px;
     margin-bottom: 18px;
 }
@@ -15,13 +15,13 @@
     font-weight: 600;
     letter-spacing: 0.09em;
     text-transform: uppercase;
-    color: #0069D9;
+    color: var(--indigo);
     margin-bottom: 6px;
 }
 .cover h1 { font-size: 23pt; letter-spacing: -0.028em; }
-.cover .sub { font-size: 10.5pt; color: #55555f; margin-top: 5px; }
+.cover .sub { font-size: 10.5pt; color: var(--ink-secondary); margin-top: 5px; }
 .cover .meta {
-    margin-top: 11px; font-size: 8pt; color: #77777f;
+    margin-top: 11px; font-size: 8pt; color: var(--ink-tertiary);
     display: flex; gap: 18px; flex-wrap: wrap;
 }
 
@@ -30,14 +30,14 @@ h2 {
     margin-top: 20px;
     margin-bottom: 7px;
     padding-bottom: 4px;
-    border-bottom: 0.5px solid #dcdce3;
+    border-bottom: 0.5px solid var(--hairline);
     page-break-after: avoid;
 }
 h2 .num {
     display: inline-block;
     min-width: 22px; height: 22px; line-height: 22px;
     text-align: center;
-    background: #0069D9; color: #fff;
+    background: var(--indigo); color: #fff;
     border-radius: 5px;
     font-size: 9.5pt; font-weight: 600;
     margin-right: 8px;
@@ -64,12 +64,12 @@ h3 {
 }
 .callout p:first-of-type { margin-top: 0; }
 .callout p:last-child { margin-bottom: 0; }
-.c-warn   { background: #fff6ed; border-color: #f0c9a0; }
-.c-warn   .label { color: #9a4b06; }
-.c-danger { background: #fff1f1; border-color: #f2bcbc; }
-.c-danger .label { color: #a3121f; }
-.c-info   { background: #eff6fe; border-color: #b9d5f5; }
-.c-info   .label { color: #0059B8; }
+.c-warn   { background: #fdf1e6; border-color: #f0c9a0; }
+.c-warn   .label { color: #9c5116; }
+.c-danger { background: #fdeef0; border-color: #f2b6bc; }
+.c-danger .label { color: var(--coral-ink); }
+.c-info   { background: #eceaf5; border-color: #c9c4e2; }
+.c-info   .label { color: var(--indigo-mid); }
 
 .checklist { list-style: none; padding-left: 0; }
 .checklist li {
@@ -79,7 +79,7 @@ h3 {
     content: "";
     position: absolute; left: 0; top: 2.5px;
     width: 10px; height: 10px;
-    border: 1.2px solid #9a9aa5;
+    border: 1.2px solid var(--ink-tertiary);
     border-radius: 2.5px;
 }
 
@@ -90,18 +90,18 @@ h3 {
 .two-col > * { flex: 1; }
 
 .card {
-    border: 0.5px solid #dcdce3;
+    border: 0.5px solid var(--hairline);
     border-radius: 7px;
     padding: 10px 12px;
-    background: #fbfbfc;
+    background: var(--sunken);
     page-break-inside: avoid;
 }
 .card h4 { font-size: 9pt; margin-bottom: 4px; }
 
 .footnote {
     margin-top: 22px; padding-top: 9px;
-    border-top: 0.5px solid #dcdce3;
-    font-size: 7.8pt; color: #77777f;
+    border-top: 0.5px solid var(--hairline);
+    font-size: 7.8pt; color: var(--ink-tertiary);
 }
 .avoid-break { page-break-inside: avoid; }
 </style>

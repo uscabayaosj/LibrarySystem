@@ -55,7 +55,7 @@
                 </p>
                 <div class="book-meta">
                     <span class="badge">{{ book.category or 'Uncategorised' }}</span>
-                    <span class="badge mono">{{ book.isbn }}</span>
+                    <span class="slip-accession">ISBN {{ book.isbn }}</span>
                 </div>
                 {% if book.description %}
                     <p class="book-desc">{{ book.description }}</p>

@@ -15,50 +15,46 @@
 
 {% block content %}
 {% if reservations %}
-    <div class="grid grid-cards">
+    <div class="slips">
         {% for r in reservations %}
-        <article class="book">
-            <div class="book-cover" style="--hue: {{ r.book.isbn|cover_hue }}" aria-hidden="true">{{ r.book.title[0]|upper }}</div>
-            <div class="book-body">
-                <div style="display:flex;align-items:flex-start;gap:10px">
-                    <div style="flex:1;min-width:0">
-                        <h2 class="book-title">{{ r.book.title }}</h2>
-                        <p class="book-author">{{ r.book.author }}</p>
-                    </div>
+        <article class="slip {% if r.days_until_expiry is not none and r.days_until_expiry < 1 %}is-overdue{% else %}is-soon{% endif %}">
+            <div class="slip-stub">
+                <span class="slip-stub-label">Hold to</span>
+                <span class="slip-stub-day">{{ r.expiration_date.strftime('%d') }}</span>
+                <span class="slip-stub-month">{{ r.expiration_date.strftime('%b') }}</span>
+            </div>
+            <div class="slip-body">
+                <h2 class="slip-title">{{ r.book.title }}</h2>
+                <p class="slip-author">{{ r.book.author }}</p>
+                <div class="slip-meta">
                     {% if r.queue_position == 1 %}
                         <span class="badge badge-green">{{ icon('check', class='icon-sm') }} {{ r.queue_label }}</span>
                     {% else %}
                         <span class="badge badge-orange">{{ icon('clock', class='icon-sm') }} {{ r.queue_label }}</span>
                     {% endif %}
+                    <span class="slip-accession">ISBN {{ r.book.isbn }}</span>
                 </div>
-
-                <div class="book-status" style="display:block">
-                    <div class="small text-secondary">
-                        Reserved {{ r.reservation_date.strftime('%b %d, %Y') }}
-                        {% if r.queue_length > 1 %}
-                            · {{ r.queue_length }} members waiting for this title
-                        {% endif %}
-                    </div>
-                    <div class="small {{ 'text-red' if r.days_until_expiry is not none and r.days_until_expiry < 1 else 'text-orange' }}"
-                         style="margin-top:2px">
-                        Expires {{ r.expiration_date.strftime('%b %d, %Y') }} · {{ r.expiry_label }}
-                    </div>
+                <p class="small text-secondary" style="margin-top:7px">
+                    Reserved {{ r.reservation_date.strftime('%b %d, %Y') }} · {{ r.expiry_label }}
+                    {% if r.queue_length > 1 %}
+                        · {{ r.queue_length }} members waiting
+                    {% endif %}
+                </p>
+                <div class="slip-actions">
+                    <form action="{{ url_for('member.cancel_reservation', reservation_id=r.id) }}" method="POST"
+                          data-confirm="You'll lose your place in the queue for this title."
+                          data-confirm-title="Cancel this reservation?"
+                          data-confirm-label="Cancel Reservation"
+                          data-confirm-kind="danger">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-danger btn-sm">{{ icon('x', class='icon-sm') }} Cancel</button>
+                    </form>
+                    <a href="{{ url_for('member.reservation_calendar', reservation_id=r.id) }}"
+                       class="btn btn-sm btn-icon btn-glass" title="Add expiry to calendar"
+                       aria-label="Add “{{ r.book.title }}” expiry to calendar">
+                        {{ icon('calendar', class='icon-sm') }}
+                    </a>
                 </div>
-            </div>
-            <div class="book-foot">
-                <form action="{{ url_for('member.cancel_reservation', reservation_id=r.id) }}" method="POST"
-                      data-confirm="You'll lose your place in the queue for this title."
-                      data-confirm-title="Cancel this reservation?"
-                      data-confirm-label="Cancel Reservation"
-                      data-confirm-kind="danger">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <button type="submit" class="btn btn-danger btn-sm">{{ icon('x', class='icon-sm') }} Cancel</button>
-                </form>
-                <a href="{{ url_for('member.reservation_calendar', reservation_id=r.id) }}"
-                   class="btn btn-sm btn-icon btn-glass" title="Add expiry to calendar"
-                   aria-label="Add “{{ r.book.title }}” expiry to calendar">
-                    {{ icon('calendar', class='icon-sm') }}
-                </a>
             </div>
         </article>
         {% endfor %}

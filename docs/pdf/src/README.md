@@ -9,8 +9,11 @@ folder, rendered through headless Chromium's print engine.
 | `library-system-overview.pdf` | `salesheet.html` | Prospective users evaluating the system |
 
 `base.css` holds the shared print styling — it mirrors the app's own design
-system (system typography, `#0069D9` brand blue, hairline separators) so the
-documents look like the product they describe.
+system (Fraunces, Archivo, and IBM Plex Mono loaded from `static/fonts`, the
+department indigo `#292168`, hairline separators) so the documents look like
+the product they describe. The cover-art swatches on the overview sheet are
+generated with the app's own `cover_hue()`, so they show the real colours a
+given ISBN produces rather than invented ones.
 
 ## Regenerating
 

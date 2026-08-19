@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_icons.html" import icon %}
+{% from "_icons.html" import icon, brand_mark %}
 
 {% block title %}Sign In{% endblock %}
 
@@ -11,7 +11,8 @@
                 <img class="hero-mark-logo" alt=""
                      src="{{ url_for('static', filename='uploads/branding/' + org_settings.logo_filename) }}">
             {% else %}
-                <div class="hero-mark">{{ icon('book', class='icon-lg') }}</div>
+                <img class="hero-mark-logo" alt=""
+                     src="{{ url_for('static', filename='brand/seal.png') }}">
             {% endif %}
             <h1>Sign in to {{ org_settings.org_name }}</h1>
         </div>

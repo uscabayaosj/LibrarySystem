@@ -10,14 +10,22 @@ from models import User, OrganizationSettings
 from theming import build_theme_css
 
 
+# The generated covers stay inside the brand's own arc -- aqua (184) through
+# to indigo (250) -- rather than rotating the full colour wheel. A full-wheel
+# hue is more varied, but it puts olive and mustard spines next to a coral
+# status tag, which reads as a rendering accident rather than a palette.
+_COVER_HUE_MIN = 184
+_COVER_HUE_SPAN = 66
+
+
 def cover_hue(seed):
-    """A stable hue (0-359) derived from a book's ISBN (or any string), so
-    every book gets a consistent 'cover' colour across requests and process
-    restarts -- unlike Python's built-in hash(), which is randomised per
-    process and would make covers flicker to a different colour on every
-    server restart."""
+    """A stable hue derived from a book's ISBN (or any string), so every book
+    gets a consistent 'cover' colour across requests and process restarts --
+    unlike Python's built-in hash(), which is randomised per process and would
+    make covers flicker to a different colour on every server restart. The
+    value is confined to the brand arc; see _COVER_HUE_MIN above."""
     digest = hashlib.md5(str(seed or '').encode('utf-8')).hexdigest()
-    return int(digest, 16) % 360
+    return _COVER_HUE_MIN + int(digest, 16) % _COVER_HUE_SPAN
 
 
 def create_app(config_object=Config):
@@ -89,8 +97,8 @@ def create_app(config_object=Config):
             'scope': '/',
             'display': 'standalone',
             'orientation': 'portrait-primary',
-            'background_color': '#E8E8EA',
-            'theme_color': settings.theme_color or '#0069D9',
+            'background_color': '#ececec',
+            'theme_color': settings.theme_color or '#292168',
             'icons': icons,
         }
         response = jsonify(manifest_data)

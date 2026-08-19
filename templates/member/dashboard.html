@@ -2,7 +2,7 @@
 {% from "_icons.html" import icon %}
 
 {% block title %}Overview{% endblock %}
-{% block heading %}Welcome back, {{ current_user.username }}{% endblock %}
+{% block heading %}Overview{% endblock %}
 {% block subheading %}
     <p class="toolbar-sub">
         {% if overdue_count %}
@@ -64,27 +64,28 @@
         </div>
         <div class="panel-body flush">
             {% if active_borrowings %}
-                <div class="rows">
+                <div class="slips">
                     {% for b in active_borrowings %}
-                    <div class="row-item {{ 'is-alert' if b.due_state == 'overdue' }}">
-                        <div class="book-cover-sm" style="--hue: {{ b.book.isbn|cover_hue }}" aria-hidden="true">{{ b.book.title[0]|upper }}</div>
-                        <div class="row-main">
-                            <div class="row-title">{{ b.book.title }}</div>
-                            <div class="row-sub">
-                                {{ b.book.author }} · Due {{ b.due_date.strftime('%b %d, %Y') }}
-                            </div>
+                    <div class="slip {% if b.due_state == 'overdue' %}is-overdue{% elif b.due_state in ['today', 'soon'] %}is-soon{% endif %}">
+                        <div class="slip-stub">
+                            <span class="slip-stub-label">Due</span>
+                            <span class="slip-stub-day">{{ b.due_date.strftime('%d') }}</span>
+                            <span class="slip-stub-month">{{ b.due_date.strftime('%b') }}</span>
                         </div>
-                        <div class="row-side">
-                            {% if b.due_state == 'overdue' %}
-                                <span class="badge badge-red">{{ b.due_label }}</span>
-                            {% elif b.due_state == 'today' %}
-                                <span class="badge badge-orange">{{ b.due_label }}</span>
-                            {% elif b.due_state == 'soon' %}
-                                <span class="badge badge-orange">{{ b.due_label }}</span>
-                            {% else %}
-                                <span class="badge badge-green">{{ b.due_label }}</span>
-                            {% endif %}
-                            <div style="display:flex; gap:6px; align-items:center">
+                        <div class="slip-body">
+                            <div class="slip-title">{{ b.book.title }}</div>
+                            <div class="slip-author">{{ b.book.author }}</div>
+                            <div class="slip-meta">
+                                {% if b.due_state == 'overdue' %}
+                                    <span class="badge badge-red">{{ b.due_label }}</span>
+                                {% elif b.due_state in ['today', 'soon'] %}
+                                    <span class="badge badge-orange">{{ b.due_label }}</span>
+                                {% else %}
+                                    <span class="badge badge-green">{{ b.due_label }}</span>
+                                {% endif %}
+                                <span class="slip-accession">ISBN {{ b.book.isbn }}</span>
+                            </div>
+                            <div class="slip-actions">
                                 {% if b.can_renew %}
                                     <form action="{{ url_for('member.renew_borrowing', borrowing_id=b.id) }}" method="POST"
                                           data-confirm="This will extend the due date by {{ config.LOAN_PERIOD_DAYS }} days from today."
@@ -95,7 +96,7 @@
                                         <button type="submit" class="btn btn-sm">{{ icon('refresh', class='icon-sm') }} Renew</button>
                                     </form>
                                 {% elif b.renew_blocked_reason %}
-                                    <span class="xs text-tertiary" style="max-width:130px">{{ b.renew_blocked_reason }}</span>
+                                    <span class="xs text-tertiary">{{ b.renew_blocked_reason }}</span>
                                 {% endif %}
                                 <a href="{{ url_for('member.loan_calendar', borrowing_id=b.id) }}"
                                    class="btn btn-sm btn-icon btn-glass" title="Add due date to calendar"
