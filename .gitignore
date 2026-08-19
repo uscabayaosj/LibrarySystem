@@ -9,3 +9,5 @@ instance/
 # Per-deployment org branding uploads (logo). Not source -- each install's
 # own logo shouldn't be committed or overwrite another install's via git.
 static/uploads/
+.vercel
+.env*

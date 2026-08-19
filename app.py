@@ -93,10 +93,11 @@ def create_app(config_object=Config):
             pass
 
     with app.app_context():
-        from routes import auth, admin, member
+        from routes import auth, admin, member, branding
         app.register_blueprint(auth.bp)
         app.register_blueprint(admin.bp)
         app.register_blueprint(member.bp)
+        app.register_blueprint(branding.bp)
 
     @app.route('/')
     def index():
@@ -127,18 +128,16 @@ def create_app(config_object=Config):
         # has set in Settings -- an org that uploads its own logo gets its
         # own home-screen icon, not the library's default book mark.
         settings = OrganizationSettings.get()
-        # logo_ready, not logo_filename: if the uploaded icons are missing from
-        # disk, point the manifest at the bundled defaults so an installed app
-        # gets the book mark instead of four broken icon references.
-        icon_dir = 'uploads/branding' if settings.logo_ready else 'icons'
+        # icon_url() falls back to the bundled defaults itself when no logo
+        # is uploaded, so there's no branching here between the two cases.
         icons = [
-            {'src': url_for('static', filename=f'{icon_dir}/icon-192.png'),
+            {'src': settings.icon_url('icon-192'),
              'sizes': '192x192', 'type': 'image/png', 'purpose': 'any'},
-            {'src': url_for('static', filename=f'{icon_dir}/icon-512.png'),
+            {'src': settings.icon_url('icon-512'),
              'sizes': '512x512', 'type': 'image/png', 'purpose': 'any'},
-            {'src': url_for('static', filename=f'{icon_dir}/icon-192-maskable.png'),
+            {'src': settings.icon_url('icon-192-maskable'),
              'sizes': '192x192', 'type': 'image/png', 'purpose': 'maskable'},
-            {'src': url_for('static', filename=f'{icon_dir}/icon-512-maskable.png'),
+            {'src': settings.icon_url('icon-512-maskable'),
              'sizes': '512x512', 'type': 'image/png', 'purpose': 'maskable'},
         ]
         manifest_data = {

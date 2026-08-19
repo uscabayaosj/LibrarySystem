@@ -319,8 +319,8 @@ h2.sec {
 <div class="features quad">
     <div class="feat">
         <h4>Deploys from a link</h4>
-        <p>Connect the repository to a host like Render, Railway, or Fly.io. A blueprint file
-        declares the app, database, and storage together.</p>
+        <p>Connect the repository to a host like Render or Vercel. A blueprint file (or a couple
+        of environment variables) is the whole setup — no storage to provision separately.</p>
     </div>
     <div class="feat">
         <h4>Upgrades apply themselves</h4>
@@ -342,9 +342,9 @@ h2.sec {
 <h2 class="sec">What you need to run it</h2>
 
 <table class="spec">
-<tr><td>Hosting</td><td>Any container or VM host — Render, Railway, Fly.io. Free tiers are fine for evaluation.</td></tr>
-<tr><td>Database</td><td>Managed PostgreSQL (SQLite for local trials).</td></tr>
-<tr><td>Storage</td><td>A small persistent disk (1&nbsp;GB) for the uploaded logo.</td></tr>
+<tr><td>Hosting</td><td>Any container/VM host (Render, Railway, Fly.io) or serverless (Vercel). Free tiers are fine for evaluation.</td></tr>
+<tr><td>Database</td><td>Managed PostgreSQL (SQLite for local trials) — Render's own, or Neon.</td></tr>
+<tr><td>Storage</td><td>None needed beyond the database. The uploaded logo lives there too.</td></tr>
 <tr><td>Maintenance</td><td>Push to deploy. Back up the database on your own schedule.</td></tr>
 <tr><td>Licensing</td><td>Self-hosted and open source. No per-seat fees, no vendor lock-in, and the data stays in your database.</td></tr>
 </table>

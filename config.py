@@ -59,8 +59,12 @@ class Config:
     REMEMBER_COOKIE_SECURE = SESSION_COOKIE_SECURE
 
     # Hard ceiling on any request body, at the WSGI layer -- defense in depth
-    # around the logo upload's own (stricter) size check in logo_upload.py.
-    MAX_CONTENT_LENGTH = 5 * 1024 * 1024
+    # around the logo upload's own (stricter) size check in branding_images.py.
+    # Kept under Vercel's 4.5 MB hard limit on serverless function request
+    # bodies, so an oversized upload gets this app's own friendly error
+    # instead of a platform-level rejection on hosts where that limit
+    # applies; the limit itself is simply unused on hosts without it.
+    MAX_CONTENT_LENGTH = 4 * 1024 * 1024
 
     # Flask's default for static files is `no-cache`, which makes the browser
     # revalidate the stylesheet and script on every single navigation. This is

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_icons.html" import icon %}
+{% from "_icons.html" import icon, brand_mark %}
 
 {% block title %}Settings{% endblock %}
 {% block heading %}Settings{% endblock %}
@@ -25,11 +25,11 @@
                 <label>Logo</label>
                 <div style="display:flex; align-items:center; gap:14px; margin-top:4px">
                     {% if org_settings.logo_ready %}
-                        <img src="{{ url_for('static', filename='uploads/branding/' + org_settings.logo_filename) }}"
+                        <img src="{{ org_settings.logo_url }}"
                              alt="Current logo" style="width:56px;height:56px;object-fit:contain;
                              border-radius:var(--r-md);background:var(--bg-sunken);border:1px solid var(--separator)">
                     {% else %}
-                        <div class="hero-mark" style="width:56px;height:56px;margin:0">{{ icon('book', class='icon-lg') }}</div>
+                        <div class="hero-mark" style="width:56px;height:56px;margin:0">{{ brand_mark() }}</div>
                     {% endif %}
                     <div style="flex:1">
                         <input type="file" id="logo" name="logo" accept="image/png,image/jpeg,image/webp">

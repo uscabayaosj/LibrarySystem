@@ -129,23 +129,30 @@ own page on the Render dashboard for the current URL rather than assuming it.
 
 ### 0. What this app needs from a host
 
-Two requirements drive every choice below:
+One requirement drives everything below:
 
 1. **A real database.** SQLite is a single file. It works locally, but on a
    host with an ephemeral filesystem it is wiped on every deploy and not shared
-   between instances. Use managed Postgres in production.
-2. **A persistent disk.** `Admin → Settings` writes the uploaded logo and its
-   generated icon set to `static/uploads/branding/`. Without a persistent
-   volume, the logo disappears on the next deploy.
+   between instances. Use managed Postgres in production — Render's own
+   Postgres, [Neon](https://neon.tech), or any other `postgresql://` URL.
 
-**Container/VM hosts (Render, Railway, Fly.io) fit as-is.** **Serverless
-platforms (Vercel, Netlify, Lambda) do not** — their filesystem is read-only
-apart from a temp directory that doesn't survive between invocations, which
-breaks both requirements. Running there would need Postgres *and* logo storage
-moved to an object store (S3, Vercel Blob, R2) — a code change to
-`logo_upload.py`, not just configuration.
+That's the only one. The uploaded organization logo and its generated icon set
+are stored as bytes on the `organization_settings` row (see
+`branding_images.py`'s module docstring), not as files on a mounted disk, so
+there is no persistent-filesystem requirement to satisfy separately — whatever
+already holds the database holds the logo too.
 
-The two commands a host needs:
+**This means the app now runs on both kinds of host:**
+
+- **Container/VM hosts** (Render, Railway, Fly.io) — the two commands below,
+  a long-running process, migrations run once at boot before traffic arrives.
+- **Serverless platforms** (Vercel and similar) — zero config: Vercel's
+  Flask preset detects the top-level `app` in `app.py` and runs it as a
+  function per request. There is no boot hook to run migrations in, so
+  they're applied as an explicit one-off step instead — see
+  [1b. First deploy — Vercel + Neon](#1b-first-deploy--vercel--neon).
+
+The two commands a container/VM host needs:
 
 | | |
 |---|---|
@@ -168,8 +175,8 @@ root instead — it splits the same work into a `release` and a `web` step.
 
 ### 1. First deploy — Render
 
-The repo ships `render.yaml`, which declares the web service, the Postgres
-database, and the persistent disk together.
+The repo ships `render.yaml`, which declares the web service and the Postgres
+database together.
 
 **Blueprint (recommended).** Dashboard → **New → Blueprint** → pick this repo →
 Apply. Then set `ADMIN_PASSWORD` in the service's Environment tab before the
@@ -202,10 +209,80 @@ Then, before deploying:
    - `FLASK_ENV` — `production`.
    - `ADMIN_PASSWORD` — the password for the seeded admin account.
    - `PYTHON_VERSION` — `3.12`.
-3. **Disks tab** — add a disk, mount path
-   `/opt/render/project/src/static/uploads`, 1 GB. **Skipping this is the most
-   common mistake** — everything appears to work until the first redeploy, when
-   the uploaded logo vanishes.
+
+No disk to configure — see [0](#0-what-this-app-needs-from-a-host).
+
+---
+
+### 1b. First deploy — Vercel + Neon
+
+Vercel's Python runtime runs the same Flask app as a serverless function
+rather than a long-running gunicorn process. No wrapper files are needed —
+the Flask framework preset finds the top-level `app` in `app.py` on its own —
+but three repo-level details exist specifically for its build, all already in
+place: `pyproject.toml` carries a PEP 621 `[project]` table (Vercel resolves
+dependencies with `uv`, which requires one and does not fall back to
+`requirements.txt`), `[tool.uv] package = false` (the uv equivalent of
+Poetry's `package-mode = false` — without it `uv sync` tries to build the app
+itself as a wheel and fails), and `.python-version` pins `3.12` as
+major.minor only (uv has no interpreter for an exact patch like `3.12.9`).
+
+What changes operationally from the Render flow: there's no build-time disk
+to worry about (see [0](#0-what-this-app-needs-from-a-host)), and there's no
+`startCommand` hook to run migrations in, so that becomes an explicit step
+you run once per schema change rather than something that happens
+automatically on every deploy.
+
+1. **Create the Neon project.** [neon.tech](https://neon.tech) → New Project.
+   Copy the pooled connection string from the dashboard (starts
+   `postgresql://` and already includes `?sslmode=require` — nothing to edit).
+
+2. **Run migrations against it, before the first deploy:**
+
+   ```bash
+   pip install -r requirements.txt
+   DATABASE_URL="<neon-connection-string>" FLASK_APP=app.py flask db upgrade
+   ```
+
+   This creates every table (`_apply_migrations()`'s brand-new-database case —
+   see [Database migrations](#database-migrations)). Run it again, the same
+   way, after any future migration — it's the one manual step this host adds.
+
+3. **Seed the admin account.** Either run `init_db()` locally against the same
+   `DATABASE_URL` (it migrates *and* seeds, and does nothing if an admin
+   already exists — safe to run more than once):
+
+   ```bash
+   DATABASE_URL="<neon-connection-string>" ADMIN_PASSWORD="<a-real-password>" \
+     python -c "from app import init_db; init_db()"
+   ```
+
+   or sign up through `/register` on the deployed site once it's live and
+   promote that account to admin directly in Neon's SQL editor
+   (`UPDATE "user" SET is_admin = true WHERE username = '...'`).
+
+4. **Deploy.** `vercel link` once to connect the project, then set the
+   environment variables Vercel needs (Project → Settings → Environment
+   Variables, or `vercel env add <NAME>`):
+
+   | Variable | Value |
+   |---|---|
+   | `DATABASE_URL` | the same Neon connection string |
+   | `SECRET_KEY` | `python -c "import secrets; print(secrets.token_urlsafe(48))"` — refuses to start without it |
+   | `FLASK_ENV` | `production` |
+
+   Then `vercel deploy --prod`.
+
+5. **Every later schema change:** run step 2 again with the same
+   `DATABASE_URL` *before* (or right after) pushing the deploy that needs it —
+   there's no automatic equivalent of Render's `startCommand` migrate-then-
+   serve here. A deploy that ships a model change without its migration having
+   been applied will start fine and fail at runtime on the missing column,
+   exactly as noted in [4. Subsequent deploys](#4-subsequent-deploys) — it
+   just can't self-heal on the next boot the way Render's flow does, so don't
+   skip the step.
+
+---
 
 ### 2. First boot
 
@@ -245,24 +322,33 @@ Then in a browser:
 
 ### 4. Subsequent deploys
 
-Push to `main`. The host rebuilds and re-runs the start command, which applies
-any new migrations before serving. Nothing manual.
+**Render:** push to `main`. The host rebuilds and re-runs the start command,
+which applies any new migrations before serving. Nothing manual.
 
-After changing a model, generate the migration locally and commit it with the
-code — see [Database migrations](#database-migrations). A deploy whose
-migration file is missing will start fine and then fail at runtime on the
-missing column, so treat the migration as part of the change, not a follow-up.
+**Vercel:** push, or `vercel deploy --prod`. Migrations are **not** applied
+automatically — there's no start-command hook to do it in — so run
+[step 1b.2](#1b-first-deploy--vercel--neon) against the same `DATABASE_URL`
+before or right after any deploy that includes a schema change.
+
+Either host: after changing a model, generate the migration locally and commit
+it with the code — see [Database migrations](#database-migrations). A deploy
+whose migration file is missing will start fine and then fail at runtime on
+the missing column, so treat the migration as part of the change, not a
+follow-up.
 
 ### 5. Rollback
 
-Render → **Deploys** tab → pick the last good deploy → **Redeploy**.
+**Render:** **Deploys** tab → pick the last good deploy → **Redeploy**.
 
-Note that this rolls back *code*, not the *database*. Migrations don't
+**Vercel:** **Deployments** tab → pick the last good one → **Promote to
+Production** (or `vercel rollback`).
+
+Either way, this rolls back *code*, not the *database*. Migrations don't
 auto-revert: if the bad deploy added a column, the rollback leaves it in place,
 which is harmless. If it *dropped* or rewrote one, restore the database from a
-backup instead (Render Postgres keeps daily backups on paid plans) and consider
-`flask db downgrade` locally against a copy first to confirm the down-migration
-is correct.
+backup instead (Render Postgres keeps daily backups on paid plans; Neon keeps
+point-in-time restore) and consider `flask db downgrade` locally against a
+copy first to confirm the down-migration is correct.
 
 ### 6. Operations
 
@@ -292,8 +378,9 @@ with app.app_context():
 pg_dump "$EXTERNAL_DATABASE_URL" > backup-$(date +%F).sql
 ```
 
-The persistent disk holds only regenerable-by-re-upload logo files, so the
-database is the thing that actually needs backing up.
+The uploaded logo lives in this same database (see
+[0](#0-what-this-app-needs-from-a-host)), so there's nothing else to back up
+separately.
 
 **Free-tier caveat.** Render's free web services spin down after inactivity, so
 the first request after an idle period takes ~30s. Free Postgres instances also
@@ -310,7 +397,6 @@ expire after 90 days. Fine for evaluation; move to a paid instance for real use.
 | Build fails: `The current project could not be installed: No file/folder found for package library-system` | The host autodetected `poetry.lock` and ran a bare `poetry install`, which tries to install the app as a package | Already handled — `package-mode = false` in `pyproject.toml`. Confirm you're on current `main`. Setting the Build Command to `pip install -r requirements.txt` also avoids it |
 | Build uses an unexpected Python version | No version pinned, so the host picks its default (Render currently defaults to 3.14) | Already handled — `.python-version` pins 3.12. `PYTHON_VERSION` in the environment overrides it |
 | `ModuleNotFoundError: No module named 'psycopg2'` | Build didn't install requirements | Check the Build Command is `pip install -r requirements.txt` |
-| Uploaded logo disappears after a deploy | No persistent disk | Mount a disk at `/opt/render/project/src/static/uploads` |
 | `no such table` / `column ... does not exist` at runtime | A migration wasn't committed, or the start command doesn't migrate | Confirm the start command includes the `init_db()` prefix; generate and commit the missing migration |
 | Sign-in appears to succeed but bounces back to `/login` | Cookie marked secure while served over plain HTTP | Serve over HTTPS (Render does this by default), or unset `SESSION_COOKIE_SECURE` for a non-TLS test host |
 | Startup logs a `WARNING: running in production on SQLite` banner, or migrations log `Context impl SQLiteImpl` | `DATABASE_URL` isn't set, so the app is writing to a local file that the next deploy destroys | Attach a managed Postgres instance and set `DATABASE_URL`. Any data created in the meantime is lost on the next deploy |
@@ -379,6 +465,49 @@ Design notes:
   motion sickness.
 - **Keyboard** — skip link, visible focus rings (light-on-indigo inside the
   rail), Escape closes menus and dialogs, and ⌘K / Ctrl-K jumps to search.
+
+## What Changed (v3.5 — logo storage moved off the filesystem; Vercel + Neon)
+
+- **The uploaded organization logo is now stored as bytes in the database**
+  (`organization_settings.logo_data`), not as a file under
+  `static/uploads/branding/`. `branding_images.py`'s module docstring has the
+  full reasoning; the short version is that this app hit two hosts where "the
+  app process has a persistent, writable disk" turned out not to hold — a
+  Render disk that was declared in `render.yaml` but incompatible with the
+  free plan it was paired with (persistent disks require a paid instance
+  type, so it was never actually mounted), and Vercel's serverless functions,
+  which have no persistent disk on any plan. A database column has no such
+  dependency, and it fixes both at once rather than requiring a paid Render
+  plan or a separate object-storage service.
+- The six derived icons (favicon, apple-touch-icon, the manifest's
+  `any`/`maskable` variants) are no longer pre-generated and written to disk
+  either. They're rendered on request from the stored logo bytes by a new
+  `/branding/*` route, so there's exactly one thing that can go stale (the
+  logo row) instead of a set of files that could drift out of sync with it.
+  Every response is cached hard (`Cache-Control: immutable`, one year) and
+  invalidated by URL — a `?v=` stamp derived from the upload timestamp — the
+  same pattern the app already used for ordinary static assets.
+- `logo_upload.py` is replaced by `branding_images.py` (pure image
+  validation/rendering, no filesystem I/O) and `routes/branding.py` (serves
+  the bytes). `OrganizationSettings.logo_filename` is gone; `logo_ready` no
+  longer has a "database and disk drifted apart" failure mode to guard
+  against, because there's only one place the logo lives now.
+- **`render.yaml`'s disk declaration is removed** — it's not just unnecessary
+  now, it was never actually usable where it was declared (see above), which
+  is the direct cause of an earlier problem where an uploaded logo would
+  silently vanish on the next deploy.
+- **Vercel support**, zero-config: the Flask preset detects `app.py`'s
+  top-level `app` directly, so there are no wrapper files. `pyproject.toml`
+  gained a PEP 621 `[project]` table and `[tool.uv] package = false` for
+  Vercel's uv-based build, and `.python-version` is pinned as `3.12`
+  (major.minor) rather than an exact patch. Since there's no host-provided
+  hook to run migrations before traffic arrives the way Render's start
+  command does, they're an explicit one-off step instead — see
+  [1b. First deploy — Vercel + Neon](#1b-first-deploy--vercel--neon).
+- `MAX_CONTENT_LENGTH` lowered from 5 MB to 4 MB, under Vercel's 4.5 MB hard
+  limit on serverless function request bodies — the logo upload's own cap is
+  2 MB regardless, so this only affects hosts where the platform limit
+  applies and changes nothing for anyone else.
 
 ## What Changed (v3.4 — database migrations + deployment)
 

@@ -1,9 +1,17 @@
 # Render Blueprint — https://render.com/docs/blueprint-spec
 #
 # Optional: Render's dashboard can configure all of this by hand instead. The
-# value of keeping it here is that the two things easy to forget when clicking
-# through the UI -- the persistent disk for logo uploads, and pointing
-# DATABASE_URL at the managed Postgres -- are declared rather than remembered.
+# value of keeping it here is that the one thing easy to forget when clicking
+# through the UI -- pointing DATABASE_URL at the managed Postgres -- is
+# declared rather than remembered.
+#
+# No persistent disk: the uploaded org logo and its generated icon set are
+# stored as bytes in the database (see branding_images.py's module
+# docstring), not as files on a mounted volume, specifically so the app has
+# no filesystem-persistence requirement at all -- a disk previously declared
+# here was never actually usable on the free plan Render pairs it with
+# (persistent disks require a paid instance type), which meant an uploaded
+# logo silently vanished on every deploy.
 #
 # To use: Render Dashboard -> New -> Blueprint -> pick this repo.
 
@@ -22,12 +30,6 @@ services:
     # the app serves its first request.
     startCommand: python -c "from app import init_db; init_db()" && gunicorn app:app --bind 0.0.0.0:$PORT --timeout 60
     healthCheckPath: /login
-    disk:
-      # Uploaded org logos and their generated icon set live here. Without a
-      # persistent disk they'd be wiped on every deploy.
-      name: uploads
-      mountPath: /opt/render/project/src/static/uploads
-      sizeGB: 1
     envVars:
       - key: DATABASE_URL
         fromDatabase:

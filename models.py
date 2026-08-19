@@ -1,6 +1,4 @@
-import os
-
-from flask import current_app, g, has_app_context
+from flask import current_app, g, has_app_context, url_for
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta
@@ -30,8 +28,23 @@ class OrganizationSettings(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     org_name = db.Column(db.String(80), nullable=False, default='Library System')
-    logo_filename = db.Column(db.String(120))
     theme_color = db.Column(db.String(7))  # '#rrggbb', or None for the default palette
+
+    # The logo itself, stored as bytes rather than a filename on disk. See
+    # branding_images.py's module docstring for why: a filename column only
+    # works if the app process has a writable, *persistent* filesystem, and
+    # this app has hit two hosts where that assumption fails (a Render disk
+    # that turned out incompatible with its own plan, and Vercel's
+    # serverless functions, which have no persistent disk on any plan). A
+    # database column behaves the same everywhere Flask-SQLAlchemy already
+    # runs, so there is nothing host-specific left to configure.
+    logo_data = db.Column(db.LargeBinary)
+    logo_content_type = db.Column(db.String(32))
+    # Drives the cache-busting ?v= on every branding URL (see routes/branding.py)
+    # -- the same role app.py's _stamp_static_url mtime stamp plays for
+    # ordinary static files, which doesn't apply here since there's no file
+    # to stat().
+    logo_updated_at = db.Column(db.DateTime)
 
     @classmethod
     def get(cls):
@@ -45,26 +58,39 @@ class OrganizationSettings(db.Model):
 
     @property
     def logo_ready(self):
-        """True only when a logo has been uploaded AND its file is actually
-        present on disk.
+        """True once a logo has been uploaded. Unlike the old file-on-disk
+        check this replaced, there is no drift to guard against: the bytes
+        and the pointer are the same row, updated in the same transaction,
+        so they cannot go out of sync with each other the way a database
+        pointer and a separately-written file could."""
+        return self.logo_data is not None
 
-        The database row and the files on disk can drift: a logo uploaded
-        before the persistent disk was mounted, or a disk wiped by a
-        redeploy, leaves logo_filename pointing at a file that no longer
-        exists. When that happens, trusting the bare filename renders a
-        broken-image icon in the sidebar and a stack of favicon/manifest
-        404s. Every template and the web manifest key off THIS instead, so a
-        missing file transparently falls back to the bundled book mark.
+    @property
+    def logo_cache_key(self):
+        return int(self.logo_updated_at.timestamp()) if self.logo_updated_at else 0
 
-        The uploaded logo and its generated icon set are written and cleared
-        together in the same directory (see logo_upload.py), so the presence
-        of the uploaded file is a faithful proxy for the whole set."""
-        if not self.logo_filename:
-            return False
-        path = os.path.join(
-            current_app.static_folder, 'uploads', 'branding', self.logo_filename
-        )
-        return os.path.isfile(path)
+    @property
+    def logo_url(self):
+        """Absolute URL for the <img> tag in the sidebar/hero mark, or None
+        when there's no uploaded logo -- callers fall back to the bundled
+        seal/brand mark in that case, the same way they always have."""
+        if not self.logo_ready:
+            return None
+        return url_for('branding.logo', v=self.logo_cache_key)
+
+    def icon_url(self, variant):
+        """URL for one derived icon (see branding_images.ICON_SPECS for
+        valid names), falling back to the bundled default icon of the same
+        name when no logo is uploaded."""
+        if not self.logo_ready:
+            return url_for('static', filename='icons/%s.png' % variant)
+        return url_for('branding.icon', variant=variant, v=self.logo_cache_key)
+
+    @property
+    def favicon_url(self):
+        if not self.logo_ready:
+            return url_for('static', filename='icons/favicon.ico')
+        return url_for('branding.favicon', v=self.logo_cache_key)
 
 
 class User(UserMixin, db.Model):

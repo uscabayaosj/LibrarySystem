@@ -1,11 +1,9 @@
-import os
-
 from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app
 from flask_login import login_required, current_user
 from models import db, Book, User, Borrowing, Reservation, OrganizationSettings
 from datetime import datetime, timedelta
 from theming import normalize_hex
-from logo_upload import validate_and_save, remove_saved_logo, LogoValidationError
+from branding_images import validate_and_reencode, LogoValidationError
 from validation import length_errors
 
 bp = Blueprint('admin', __name__, url_prefix='/admin')
@@ -368,10 +366,6 @@ def check_reservations():
     return redirect(url_for('admin.dashboard'))
 
 
-def _branding_upload_dir():
-    return os.path.join(current_app.root_path, 'static', 'uploads', 'branding')
-
-
 @bp.route('/settings', methods=['GET', 'POST'])
 def settings():
     org_settings = OrganizationSettings.get()
@@ -394,10 +388,10 @@ def settings():
             if not normalized_color:
                 errors.append('Theme color must be a valid hex color, e.g. #292168.')
 
-        new_logo_filename = None
+        new_logo_data = new_logo_content_type = None
         if logo_file and logo_file.filename:
             try:
-                new_logo_filename = validate_and_save(logo_file, _branding_upload_dir())
+                new_logo_data, new_logo_content_type = validate_and_reencode(logo_file)
             except LogoValidationError as e:
                 errors.append(str(e))
 
@@ -412,15 +406,14 @@ def settings():
 
         org_settings.org_name = org_name
         org_settings.theme_color = normalized_color
-        if new_logo_filename:
-            org_settings.logo_filename = new_logo_filename
+        if new_logo_data:
+            org_settings.logo_data = new_logo_data
+            org_settings.logo_content_type = new_logo_content_type
+            org_settings.logo_updated_at = datetime.utcnow()
         elif remove_logo:
-            # Clear the files too, not just the pointer -- otherwise the logo
-            # and its generated icon set stay on the persistent disk, and stay
-            # publicly reachable at their static URLs, after the organization
-            # has asked for them to be removed.
-            remove_saved_logo(_branding_upload_dir())
-            org_settings.logo_filename = None
+            org_settings.logo_data = None
+            org_settings.logo_content_type = None
+            org_settings.logo_updated_at = None
         db.session.commit()
         flash('Branding updated.', 'success')
         return redirect(url_for('admin.settings'))
