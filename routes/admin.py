@@ -5,7 +5,7 @@ from flask_login import login_required, current_user
 from models import db, Book, User, Borrowing, Reservation, OrganizationSettings
 from datetime import datetime, timedelta
 from theming import normalize_hex
-from logo_upload import validate_and_save, LogoValidationError
+from logo_upload import validate_and_save, remove_saved_logo, LogoValidationError
 from validation import length_errors
 
 bp = Blueprint('admin', __name__, url_prefix='/admin')
@@ -415,6 +415,11 @@ def settings():
         if new_logo_filename:
             org_settings.logo_filename = new_logo_filename
         elif remove_logo:
+            # Clear the files too, not just the pointer -- otherwise the logo
+            # and its generated icon set stay on the persistent disk, and stay
+            # publicly reachable at their static URLs, after the organization
+            # has asked for them to be removed.
+            remove_saved_logo(_branding_upload_dir())
             org_settings.logo_filename = None
         db.session.commit()
         flash('Branding updated.', 'success')
