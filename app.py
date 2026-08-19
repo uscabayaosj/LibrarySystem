@@ -12,14 +12,25 @@ from localtime import to_local
 from validation import max_length
 
 
+# Generated colour -- book covers and category badges alike -- stays inside the
+# brand's own arc, aqua (184) through indigo (250), rather than rotating the
+# full wheel. A full-wheel hue is more varied, but it puts olive and mustard
+# spines next to a coral status tag, and the palette here is a status system:
+# coral means overdue, apricot due soon, aqua available. Decorative colour that
+# wanders into those hues competes with meaning. Narrowing the range also
+# strictly improves the contrast floor both call sites already verify.
+_COVER_HUE_MIN = 184
+_COVER_HUE_SPAN = 66
+
+
 def cover_hue(seed):
-    """A stable hue (0-359) derived from a book's ISBN (or any string), so
+    """A stable hue derived from a book's ISBN or category (or any string), so
     every book gets a consistent 'cover' colour across requests and process
     restarts -- unlike Python's built-in hash(), which is randomised per
     process and would make covers flicker to a different colour on every
-    server restart."""
+    server restart. Confined to the brand arc; see _COVER_HUE_MIN above."""
     digest = hashlib.md5(str(seed or '').encode('utf-8')).hexdigest()
-    return int(digest, 16) % 360
+    return _COVER_HUE_MIN + int(digest, 16) % _COVER_HUE_SPAN
 
 
 def localdate(dt, fmt='%b %d, %Y'):
@@ -138,8 +149,8 @@ def create_app(config_object=Config):
             'scope': '/',
             'display': 'standalone',
             'orientation': 'portrait-primary',
-            'background_color': '#E8E8EA',
-            'theme_color': settings.theme_color or '#0069D9',
+            'background_color': '#ececec',
+            'theme_color': settings.theme_color or '#292168',
             'icons': icons,
         }
         response = jsonify(manifest_data)

@@ -50,7 +50,7 @@
                         </td>
                         <td data-label="Email"><span class="text-secondary">{{ member.email }}</span></td>
                         <td data-label="Joined">
-                            {{ member.member_since|localdate('%b %d, %Y') if member.member_since else '—' }}
+                            <span class="num">{{ member.member_since|localdate('%b %d, %Y') if member.member_since else '—' }}</span>
                         </td>
                         <td data-label="On loan" class="num">
                             {% if active %}<span class="badge badge-accent">{{ active }}</span>

@@ -1,12 +1,12 @@
-{% from "_icons.html" import icon %}
+{% from "_icons.html" import icon, brand_mark %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="color-scheme" content="light dark">
-    <meta name="theme-color" content="#F6F6F8" media="(prefers-color-scheme: light)">
-    <meta name="theme-color" content="#242427" media="(prefers-color-scheme: dark)">
+    <meta name="theme-color" content="#292168" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#1f1950" media="(prefers-color-scheme: dark)">
 
     {% set icon_dir = 'uploads/branding' if org_settings.logo_ready else 'icons' %}
     {# Installable app: manifest + icons, so "Add to Home Screen" gives a
@@ -47,16 +47,14 @@
     <div class="scrim" id="scrim"></div>
 
     <aside class="sidebar" id="sidebar" data-open="false" aria-label="Navigation">
-        <div class="sidebar-head">
-            <span class="traffic-lights" aria-hidden="true"><span></span><span></span><span></span></span>
-        </div>
+        <div class="sidebar-head" aria-hidden="true"></div>
 
         <a class="sidebar-brand" href="{{ url_for('index') }}">
             {% if org_settings.logo_ready %}
                 <img class="sidebar-brand-logo" alt=""
                      src="{{ url_for('static', filename='uploads/branding/' + org_settings.logo_filename) }}">
             {% else %}
-                {{ icon('book', class='icon-lg') }}
+                {{ brand_mark() }}
             {% endif %}
             <span class="sidebar-brand-name">{{ org_settings.org_name }}</span>
         </a>

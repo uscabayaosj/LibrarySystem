@@ -392,7 +392,7 @@ def settings():
         if theme_color_input:
             normalized_color = normalize_hex(theme_color_input)
             if not normalized_color:
-                errors.append('Theme color must be a valid hex color, e.g. #0069D9.')
+                errors.append('Theme color must be a valid hex color, e.g. #292168.')
 
         new_logo_filename = None
         if logo_file and logo_file.filename:

@@ -69,8 +69,8 @@
                         <td data-label="Member">
                             <a href="{{ url_for('admin.member_detail', id=b.user.id) }}">{{ b.user.username }}</a>
                         </td>
-                        <td data-label="Borrowed">{{ b.borrow_date|localdate('%b %d') }}</td>
-                        <td data-label="Due">{{ b.due_date|localdate('%b %d') }}</td>
+                        <td class="num" data-label="Borrowed">{{ b.borrow_date|localdate('%b %d') }}</td>
+                        <td class="num" data-label="Due">{{ b.due_date|localdate('%b %d') }}</td>
                         <td data-label="Status">
                             {% if b.status == 'returned' %}
                                 <span class="badge badge-green">Returned</span>

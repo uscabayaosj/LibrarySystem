@@ -1,5 +1,44 @@
-/* Shared print styling — mirrors the app's own design system
-   (Apple-ish system type, brand blue #0069D9, hairline separators). */
+/* Shared print styling — mirrors the app's own design system: the department
+   indigo #292168, Fraunces for display and Archivo for text (the same
+   self-hosted files the app serves), and hairline separators. Fonts are
+   referenced relative to this file so the print renderer picks them up from
+   static/fonts without a network fetch. */
+
+@font-face {
+    font-family: 'Fraunces';
+    font-weight: 300 800;
+    src: url('../../../static/fonts/fraunces-latin-300_800.woff2') format('woff2');
+}
+@font-face {
+    font-family: 'Archivo';
+    font-weight: 300 800;
+    src: url('../../../static/fonts/archivo-latin-300_800.woff2') format('woff2');
+}
+@font-face {
+    font-family: 'IBM Plex Mono';
+    font-weight: 400;
+    src: url('../../../static/fonts/plexmono-latin-400.woff2') format('woff2');
+}
+@font-face {
+    font-family: 'IBM Plex Mono';
+    font-weight: 600;
+    src: url('../../../static/fonts/plexmono-latin-600.woff2') format('woff2');
+}
+
+:root {
+    --indigo: #292168;
+    --indigo-mid: #4a3fa8;
+    --coral: #f7636e;
+    --coral-ink: #c0303c;
+    --apricot: #f9b78a;
+    --aqua: #5dcbd1;
+    --aqua-ink: #0f6c72;
+    --ink: #1a1541;
+    --ink-secondary: #5b5480;
+    --ink-tertiary: #6f6892;
+    --hairline: #ddd9ea;
+    --sunken: #f7f5f4;
+}
 
 @page {
     size: A4;
@@ -15,37 +54,43 @@ html {
 
 body {
     margin: 0;
-    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue",
-                 "Segoe UI", Roboto, system-ui, sans-serif;
+    font-family: 'Archivo', -apple-system, "Segoe UI", Roboto, system-ui, sans-serif;
     font-size: 9.6pt;
-    line-height: 1.5;
-    color: #16161a;
+    line-height: 1.55;
+    color: var(--ink);
     -webkit-font-smoothing: antialiased;
 }
 
 h1, h2, h3, h4 {
     margin: 0;
-    letter-spacing: -0.018em;
+    letter-spacing: -0.014em;
     line-height: 1.2;
 }
 
+/* The display face carries page-level titles only, as in the app. */
+h1 {
+    font-family: 'Fraunces', Georgia, serif;
+    font-variation-settings: 'opsz' 72, 'SOFT' 22, 'WONK' 1;
+    font-weight: 600;
+}
+
 code, pre, .mono {
-    font-family: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+    font-family: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
 code {
     font-size: 0.88em;
-    background: #f1f1f4;
+    background: #efedf6;
     padding: 1px 4px;
     border-radius: 3px;
-    color: #1b1b20;
+    color: var(--indigo);
     word-break: break-word;
 }
 
 pre {
-    background: #f7f7f9;
-    border: 0.5px solid #d9d9e0;
-    border-left: 2.5px solid #0069D9;
+    background: var(--sunken);
+    border: 0.5px solid var(--hairline);
+    border-left: 2.5px solid var(--indigo);
     border-radius: 5px;
     padding: 9px 11px;
     margin: 8px 0;
@@ -58,7 +103,7 @@ pre {
 
 pre code { background: none; padding: 0; font-size: inherit; }
 
-a { color: #0059B8; text-decoration: none; }
+a { color: var(--indigo-mid); text-decoration: none; }
 
 table {
     width: 100%;
@@ -70,16 +115,20 @@ table {
 
 th {
     text-align: left;
-    font-weight: 600;
-    background: #f2f2f5;
-    border-bottom: 1px solid #d0d0d8;
+    font-size: 7.4pt;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-tertiary);
+    background: var(--sunken);
+    border-bottom: 1px solid var(--hairline);
     padding: 6px 8px;
     vertical-align: top;
 }
 
 td {
     padding: 6px 8px;
-    border-bottom: 0.5px solid #e3e3e9;
+    border-bottom: 0.5px solid var(--hairline);
     vertical-align: top;
 }
 
