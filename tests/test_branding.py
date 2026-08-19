@@ -9,7 +9,9 @@ from theming import (
     normalize_hex, build_theme, build_theme_css, contrast_ratio, hex_to_rgb,
     WHITE, DARK_BG_CONTENT,
 )
-from logo_upload import validate_and_save, LogoValidationError, MAX_UPLOAD_BYTES
+from logo_upload import (
+    validate_and_save, remove_saved_logo, LogoValidationError, MAX_UPLOAD_BYTES,
+)
 from tests.conftest import login
 
 
@@ -210,6 +212,59 @@ def test_settings_route_uploads_logo(client, db, admin, tmp_path, monkeypatch):
     settings = OrganizationSettings.get()
     assert settings.logo_filename == 'logo.png'
     assert (tmp_path / 'logo.png').exists()
+
+
+# ---- removal has to reach the disk, not just the database -------------------
+# Clearing logo_filename alone left the logo and its whole generated icon set
+# on the persistent disk, still served at their static URLs, after the
+# organization had asked for them to be removed.
+
+def test_remove_saved_logo_deletes_logo_and_generated_icons(tmp_path):
+    validate_and_save(_FakeFileStorage(_png_bytes()), str(tmp_path))
+    assert (tmp_path / 'logo.png').exists()
+    generated = sorted(p.name for p in tmp_path.iterdir())
+    assert len(generated) > 1, 'expected icons alongside the logo'
+
+    removed = remove_saved_logo(str(tmp_path))
+
+    assert sorted(p.name for p in tmp_path.iterdir()) == []
+    assert 'logo.png' in removed
+
+
+def test_remove_saved_logo_leaves_unrelated_files_alone(tmp_path):
+    validate_and_save(_FakeFileStorage(_png_bytes()), str(tmp_path))
+    stray = tmp_path / 'notes.txt'
+    stray.write_text('put here by an administrator')
+
+    remove_saved_logo(str(tmp_path))
+
+    assert stray.exists(), 'removal must delete by name, never sweep the folder'
+
+
+def test_remove_saved_logo_is_safe_when_nothing_is_saved(tmp_path):
+    assert remove_saved_logo(str(tmp_path)) == []
+    assert remove_saved_logo(str(tmp_path / 'does-not-exist')) == []
+
+
+def test_settings_route_removal_clears_the_files(client, db, admin, tmp_path, monkeypatch):
+    import routes.admin as admin_routes
+    monkeypatch.setattr(admin_routes, '_branding_upload_dir', lambda: str(tmp_path))
+    login(client, 'admin', 'adminpass')
+
+    client.post('/admin/settings', data={
+        'org_name': 'Test Org', 'theme_color': '',
+        'logo': (_png_bytes(), 'mylogo.png'),
+    }, content_type='multipart/form-data', follow_redirects=True)
+    assert (tmp_path / 'logo.png').exists()
+
+    resp = client.post('/admin/settings', data={
+        'org_name': 'Test Org', 'theme_color': '', 'remove_logo': 'on',
+    }, content_type='multipart/form-data', follow_redirects=True)
+
+    assert resp.status_code == 200
+    assert OrganizationSettings.get().logo_filename is None
+    assert sorted(p.name for p in tmp_path.iterdir()) == [], \
+        'removal left orphaned files on the persistent disk'
 
 
 def test_manifest_route_reflects_org_name(client, db):

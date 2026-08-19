@@ -136,12 +136,47 @@ def generate_app_icons(image, upload_dir):
     )
 
 
-def _clear_generated_icons(upload_dir):
+def _generated_icon_names():
+    """Every filename generate_app_icons() writes."""
     names = ['apple-touch-icon.png', 'favicon.ico']
     for size in _ICON_SIZES:
         names.append('icon-%d.png' % size)
         names.append('icon-%d-maskable.png' % size)
+    return names
+
+
+def _remove_named(upload_dir, names):
+    """Delete the given files from upload_dir if present, returning the ones
+    actually removed. Deletion is always by explicit filename from this
+    module's own output -- never a directory sweep -- so a stray file an
+    administrator put in the branding folder is left alone."""
+    removed = []
     for name in names:
         path = os.path.join(upload_dir, name)
         if os.path.exists(path):
             os.remove(path)
+            removed.append(name)
+    return removed
+
+
+def _clear_generated_icons(upload_dir):
+    _remove_named(upload_dir, _generated_icon_names())
+
+
+def remove_saved_logo(upload_dir):
+    """Delete a saved logo and every icon derived from it.
+
+    Clearing the database pointer on its own leaves the files behind: around
+    450 KB per removal on a 1 GB persistent disk, still publicly served at
+    their static URLs after the organization has stopped using them. A later
+    upload only overwrites the ones whose names happen to collide -- switch
+    from a PNG logo to a JPEG and the old logo.png is orphaned for good.
+
+    Returns the filenames removed, so the caller can log or ignore them.
+    Missing files are not an error: the point is to end with them gone.
+    """
+    if not os.path.isdir(upload_dir):
+        return []
+    names = ['logo.%s' % ext for ext in _EXT_FOR_FORMAT.values()]
+    names += _generated_icon_names()
+    return _remove_named(upload_dir, names)
