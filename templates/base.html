@@ -163,6 +163,13 @@
             <h2 class="large-title" aria-hidden="true">{{ page_heading }}</h2>
             {% include "_flashes.html" %}
             {% block content %}{% endblock %}
+            {# Inside <main>, not after it: .content already reserves space
+               below itself for the member phone's fixed tab bar (see
+               .app-member .content in app.css). A footer placed as a
+               sibling after </main> sits outside that reserved space and
+               renders underneath the tab bar, invisible without a second,
+               duplicate padding rule to chase it. #}
+            <footer class="footer">Library Management System © 2026 Ulysses Cabayao</footer>
         </main>
     </div>
 
@@ -205,7 +212,7 @@
             {% include "_flashes.html" %}
             {% block content_public %}{{ self.content() }}{% endblock %}
         </main>
-        <footer class="footer">Library Management System — {{ org_settings.org_name }} — © 2026 Ulysses Cabayao</footer>
+        <footer class="footer">Library Management System © 2026 Ulysses Cabayao</footer>
     </div>
 </div>
 {% endif %}
