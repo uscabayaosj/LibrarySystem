@@ -1,9 +1,9 @@
 """Regression tests for the four confirmed 500s from the audit, plus the
 security and data-integrity fixes."""
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import models
-from localtime import to_local
+from localtime import to_local, local_now
 from models import User, Book, Borrowing, Reservation
 from tests.conftest import login
 
@@ -100,9 +100,16 @@ def test_due_labels_agree_in_both_directions(db, member, book):
     """The old code subtracted timestamps in opposite orders in different
     templates, so one loan rendered as both '7 days overdue' and '8 days
     overdue'. Every label now derives from one calendar-date property."""
-    now = datetime.utcnow()
+    # Anchored in the library's own timezone, not UTC. days_until_due compares
+    # *local calendar dates*, so a UTC-relative "7 days and 6 hours ago" lands
+    # 7 or 8 local days back depending on the hour the suite happens to run --
+    # it failed for 6 of every 24 UTC hours. Building the date in local time
+    # and placing it at local midday keeps it clear of either boundary.
+    local_due = (local_now() - timedelta(days=7)).replace(hour=12, minute=0,
+                                                          second=0, microsecond=0)
     b = Borrowing(user_id=member.id, book_id=book.id,
-                  due_date=now - timedelta(days=7, hours=6), status='active')
+                  due_date=local_due.astimezone(timezone.utc).replace(tzinfo=None),
+                  status='active')
     db.session.add(b)
     db.session.commit()
 
