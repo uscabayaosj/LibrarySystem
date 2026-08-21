@@ -37,7 +37,7 @@
         })();
     </script>
 </head>
-<body>
+<body{% if current_user.is_authenticated and not current_user.is_admin %} data-badge-count="{{ current_user.overdue_borrowings }}"{% endif %}>
 <a class="skip-link" href="#main">Skip to content</a>
 
 {% if current_user.is_authenticated %}

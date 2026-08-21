@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, Response, abort
+from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, Response, abort, jsonify
 from flask_login import login_required, current_user
 from models import db, Book, Borrowing, Reservation
 from datetime import datetime, timedelta
@@ -6,6 +6,16 @@ from calendar_export import build_ics
 from localtime import to_local
 
 bp = Blueprint('member', __name__)
+
+
+@bp.route('/badge-count')
+@login_required
+def badge_count():
+    # Drives the PWA home-screen icon badge (navigator.setAppBadge, see
+    # app.js) -- overdue loans are the one thing on the member dashboard
+    # that actually demands action, so that's what the badge counts rather
+    # than every active loan/reservation.
+    return jsonify({'count': current_user.overdue_borrowings})
 
 
 @bp.route('/dashboard')

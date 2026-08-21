@@ -7,6 +7,49 @@
     'use strict';
 
     /* ---------------------------------------------------------------
+       PWA install plumbing + home-screen badge
+       The badge counts overdue loans (see /badge-count) -- the one thing
+       on the member dashboard that actually needs the member's attention,
+       same signal the "Loans" tab-bar badge already shows. Badging API
+       support is still Chromium/iOS-Safari-16.4+ only, so everything here
+       is feature-detected and a silent no-op elsewhere.
+       --------------------------------------------------------------- */
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function () {
+            navigator.serviceWorker.register('/sw.js').catch(function () {
+                // Registration failing (e.g. served over plain HTTP in dev)
+                // shouldn't block the rest of the app.
+            });
+        });
+    }
+
+    if ('setAppBadge' in navigator) {
+        var applyBadge = function (count) {
+            if (count > 0) { navigator.setAppBadge(count).catch(function () {}); }
+            else { navigator.clearAppBadge().catch(function () {}); }
+        };
+
+        var refreshBadge = function () {
+            fetch('/badge-count', { credentials: 'same-origin' })
+                .then(function (res) { return res.ok ? res.json() : null; })
+                .then(function (data) { if (data) { applyBadge(data.count); } })
+                .catch(function () {});
+        };
+
+        document.addEventListener('DOMContentLoaded', function () {
+            var initial = document.body.getAttribute('data-badge-count');
+            if (initial === null) { navigator.clearAppBadge().catch(function () {}); return; }
+            applyBadge(parseInt(initial, 10) || 0);
+
+            // Refresh whenever the installed app is brought back to the
+            // foreground, so the badge doesn't go stale between launches.
+            document.addEventListener('visibilitychange', function () {
+                if (document.visibilityState === 'visible') { refreshBadge(); }
+            });
+        });
+    }
+
+    /* ---------------------------------------------------------------
        Appearance (auto / light / dark), persisted in localStorage
        --------------------------------------------------------------- */
     var STORE_KEY = 'ls-appearance';

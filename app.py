@@ -156,6 +156,15 @@ def create_app(config_object=Config):
         response.headers['Content-Type'] = 'application/manifest+json'
         return response
 
+    @app.route('/sw.js')
+    def service_worker():
+        # Served from the root path (not /static/js/sw.js) so its default
+        # scope covers the whole app ('/') rather than just /static/js/ --
+        # a service worker can only control pages under its own scope.
+        response = app.send_static_file('js/sw.js')
+        response.headers['Content-Type'] = 'application/javascript'
+        return response
+
     @app.errorhandler(403)
     def forbidden(error):
         return render_template('errors/403.html'), 403
