@@ -1,278 +1,312 @@
 ---
 name: Library System
-description: A self-contained macOS-flavoured circulation desk — source-list sidebar, translucent toolbar, native sheets, light and dark appearance
+description: An accession-slip circulation desk for a self-hosted academic library — indigo identity rail, brand color as a status system, Fraunces/Archivo/Plex Mono type, offline-first by construction
 colors:
-  window-gray: "#E8E8EA"
-  content-white: "#FFFFFF"
-  surface-raised: "#FFFFFF"
-  sunken-gray: "#F2F2F4"
-  ink: "rgba(0, 0, 0, 0.88)"
-  ink-secondary: "rgba(0, 0, 0, 0.56)"
-  ink-tertiary: "rgba(0, 0, 0, 0.42)"
-  hairline: "rgba(0, 0, 0, 0.11)"
-  system-blue: "#0069D9"
-  system-blue-hover: "#0059B8"
-  system-blue-soft: "rgba(0, 105, 217, 0.11)"
-  system-red: "#D70015"
-  system-red-soft: "rgba(215, 0, 21, 0.10)"
-  accessible-amber: "#B54708"
-  accessible-amber-soft: "rgba(181, 71, 8, 0.11)"
-  accessible-forest: "#1E7A38"
-  accessible-forest-soft: "rgba(30, 122, 56, 0.11)"
-  deep-teal: "#0A6E82"
-  deep-teal-soft: "rgba(10, 110, 130, 0.11)"
-  muted-violet: "#7A3DB8"
+  indigo: "#292168"
+  indigo-deep: "#1f1950"
+  coral: "#c0303c"
+  coral-vivid: "#f7636e"
+  coral-fill: "#c0303c"
+  apricot: "#f9b78a"
+  apricot-ink: "#9c5116"
+  aqua: "#5dcbd1"
+  aqua-ink: "#0f6c72"
+  violet: "#4a3fa8"
+  bg-window: "#ececec"
+  bg-content: "#ffffff"
+  bg-raised: "#ffffff"
+  bg-sunken: "#f7f5f4"
+  ink: "#1a1541"
+  ink-secondary: "#5b5480"
+  ink-tertiary: "#6f6892"
+  separator: "rgba(41, 33, 104, 0.13)"
+  separator-strong: "rgba(41, 33, 104, 0.22)"
+  apricot-stub-ink: "#4a2408"
+  coral-badge-ink: "#45060b"
 typography:
+  scale:
+    micro: "9.5px"
+    book-cover-sm: "17px"
+    avatar: "22px"
+    figure-sm: "26px"
+    hero-sm: "28px"
+    figure: "30px"
+    hero: "33px"
   display:
-    fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', 'Segoe UI', Roboto, system-ui, sans-serif"
-    fontSize: "28px"
+    fontFamily: "Fraunces, 'Iowan Old Style', Georgia, serif"
+    fontSize: "24px"
+    fontWeight: 600
+    lineHeight: 1.14
+    letterSpacing: "-0.014em"
+  headline:
+    fontFamily: "Archivo, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui, sans-serif"
+    fontSize: "19px"
     fontWeight: 600
     lineHeight: 1.2
-    letterSpacing: "normal"
-  headline:
-    fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', 'Segoe UI', Roboto, system-ui, sans-serif"
-    fontSize: "17px"
-    fontWeight: 600
-    lineHeight: 1.3
-    letterSpacing: "-0.01em"
+    letterSpacing: "-0.011em"
   title:
-    fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', 'Segoe UI', Roboto, system-ui, sans-serif"
-    fontSize: "15px"
+    fontFamily: "Archivo, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui, sans-serif"
+    fontSize: "16px"
     fontWeight: 600
-    lineHeight: 1.3
-    letterSpacing: "-0.01em"
+    lineHeight: 1.2
+    letterSpacing: "-0.011em"
   body:
-    fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', 'Segoe UI', Roboto, system-ui, sans-serif"
-    fontSize: "13px"
+    fontFamily: "Archivo, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui, sans-serif"
+    fontSize: "14px"
     fontWeight: 400
-    lineHeight: 1.5
+    lineHeight: 1.55
     letterSpacing: "normal"
   label:
-    fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', 'Segoe UI', Roboto, system-ui, sans-serif"
+    fontFamily: "Archivo, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui, sans-serif"
     fontSize: "11px"
     fontWeight: 600
     lineHeight: 1.3
-    letterSpacing: "0.02em"
+    letterSpacing: "0.09em"
+  mono:
+    fontFamily: "'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
+    fontSize: "12.5px"
+    fontWeight: 400
+    lineHeight: 1.3
+    letterSpacing: "-0.01em"
 rounded:
-  xs: "4px"
-  sm: "6px"
+  xxs: "2px"
+  xs: "3px"
+  sm: "5px"
   md: "8px"
   lg: "12px"
-  xl: "16px"
+  xl: "18px"
   pill: "999px"
 spacing:
-  xs: "4px"
-  sm: "8px"
-  md: "12px"
-  lg: "16px"
-  xl: "22px"
+  unit: "4px"
 components:
   button-primary:
-    backgroundColor: "{colors.system-blue}"
-    textColor: "#FFFFFF"
+    backgroundColor: "{colors.indigo}"
+    textColor: "#ffffff"
     rounded: "{rounded.sm}"
-    padding: "6px 13px"
-    height: "30px"
+    padding: "7px 15px"
+    height: "34px"
   button-primary-hover:
-    backgroundColor: "{colors.system-blue-hover}"
+    backgroundColor: "#3d3490"
   button-secondary:
-    backgroundColor: "{colors.surface-raised}"
+    backgroundColor: "{colors.bg-raised}"
     textColor: "{colors.ink}"
     rounded: "{rounded.sm}"
-    padding: "6px 13px"
-    height: "30px"
+    padding: "7px 15px"
+    height: "34px"
   button-secondary-hover:
-    backgroundColor: "rgba(0, 0, 0, 0.045)"
-  card:
-    backgroundColor: "{colors.content-white}"
-    textColor: "{colors.ink}"
-    rounded: "{rounded.lg}"
-    padding: "16px"
-  badge-accent:
-    backgroundColor: "{colors.system-blue-soft}"
-    textColor: "{colors.system-blue}"
-    rounded: "{rounded.pill}"
-    padding: "2px 8px"
-    typography: "{typography.label}"
+    backgroundColor: "rgba(41, 33, 104, 0.045)"
   input-field:
-    backgroundColor: "{colors.content-white}"
+    backgroundColor: "{colors.bg-content}"
     textColor: "{colors.ink}"
     rounded: "{rounded.sm}"
-    padding: "6px 10px"
-    height: "30px"
-  sheet:
-    backgroundColor: "{colors.surface-raised}"
+    padding: "8px 12px"
+    height: "38px"
+  badge-status:
+    backgroundColor: "rgba(247, 99, 110, 0.16)"
+    textColor: "{colors.coral}"
+    rounded: "{rounded.pill}"
+    padding: "3px 9px"
+    typography: "{typography.label}"
+  panel:
+    backgroundColor: "{colors.bg-content}"
     textColor: "{colors.ink}"
     rounded: "{rounded.lg}"
-    padding: "20px 22px 16px"
-    width: "400px"
+    padding: "18px"
+  slip:
+    backgroundColor: "{colors.bg-content}"
+    textColor: "{colors.ink}"
+    rounded: "{rounded.md}"
   sidebar-link-active:
-    backgroundColor: "{colors.system-blue}"
-    textColor: "#FFFFFF"
+    backgroundColor: "rgba(255, 255, 255, 0.16)"
+    textColor: "#ffffff"
     rounded: "{rounded.sm}"
-    padding: "6px 8px"
+    padding: "8px 10px"
 ---
 
 # Design System: Library System
 
 ## Overview
 
-**Creative North Star: "The Circulation Desk as Finder"**
+**Creative North Star: "The Accession Slip"**
 
-The interface is built around the librarian's actual desk: a source-list sidebar stands in for the shelf of collections (Dashboard, Books, Members, History), a translucent sticky toolbar holds the tools for whatever's open, and content panels behave like folders and documents — flat, hairline-bordered, quiet until you act on them. This isn't a library app wearing macOS chrome for polish; the desk metaphor is the actual information architecture. Everything native-feeling about it (traffic-light dots, SF-style type, frosted-glass overlays, sheet-style confirmations) exists to make that metaphor legible rather than as decoration for its own sake.
+The whole system is built out of one physical object: a specimen tag, a hand-assigned accession number, a due-date card tucked in a paper pocket. That vernacular is structurally true here, not a skin over generic UI — a call number, an ISBN, a due date are real identifying data, so they are set in a fixed-width monospace face and aligned in columns rather than left to flow with surrounding prose. The system's signature component, the `.slip`, is this object made literal: a perforated indigo stub holding a stamped date on the left, the record itself on the right, exactly like a due-date card in a library pocket.
 
-The system is self-contained by construction — hand-written CSS, vanilla JS, inline SVG icons, no CDN — so the desk metaphor renders identically offline and on restricted campus networks, which matters because the primary audience is a school library where that constraint is real, not aspirational.
+Color works as a status system, not decoration. Indigo (`#292168`) is the department's own identity color — it owns the navigation rail in both light and dark appearance, so the app is recognizable at a glance regardless of theme. Coral marks overdue, apricot marks due-soon, aqua marks available/returned: three brand tints doing the job a generic red/yellow/green traffic light would do elsewhere, except these three are the institution's own palette, reused rather than invented. Every one of these pairings — and every neutral pairing beside it — was checked against real WCAG contrast math, in both appearances independently.
 
-Two sibling experiences share this system without diverging from it: the librarian's desk is desktop-only and dense; the borrower's side collapses to an iOS-style phone shell (bottom tab bar, large-title header) using the exact same tokens, just recomposed. One design system, two native-feeling shells.
+The system is self-contained by construction: Fraunces, Archivo, and IBM Plex Mono are all served from `static/fonts`, every icon is inline SVG, and nothing depends on a CDN. This isn't an aesthetic choice — it's what lets the accession-slip vernacular render identically on a restricted campus network or fully offline, which is the actual operating condition for a school library. Two sibling shells share this one system without diverging from it: the librarian's circulation desk stays dense on desktop but now adapts down through a tablet icon-rail and a phone bottom-tab-bar of its own, while the borrower's side runs the same four-tier structure the other way — phone-first, with a tablet hybrid and a desktop ceiling — both built from the same rail tokens.
 
 **Key Characteristics:**
-- Source-list sidebar + translucent sticky toolbar as the primary navigation grammar
-- Flat, hairline-bordered panels; shadows are soft and ambient, never heavy
-- Frosted-glass translucency reserved for floating/overlay chrome (sidebar, toolbar, glass icon buttons, sheets)
-- A restrained accent (system blue) used only to mark selection, primary action, and links — never as page-level decoration
-- Full light/dark appearance parity, with every token re-tuned per mode rather than just dimmed
-- macOS-style confirmation sheets for anything destructive, naming the exact record being acted on
+- The accession slip (`.slip`/`.slip-stub`) as the system's signature component and the source of its whole vernacular — monospace data in fixed columns, brand color as status
+- A single saturated indigo field (the rail) that never changes between light and dark appearance, anchoring identity
+- Brand color used as meaning only: coral/apricot/aqua map to overdue/due-soon/available, never to decoration
+- Two depth languages: soft ambient ink-tinted shadows for resting content, frosted glass strictly for floating chrome
+- Full light/dark appearance parity, every token independently re-picked and re-verified against WCAG, never inverted or dimmed
+- Fraunces at large optical sizes for numbers and page titles — the one place display type is allowed to be expressive; Archivo and Plex Mono keep everything else quiet and legible
 
 ## Colors
 
-The palette is desaturated and mostly neutral (window gray, content white, hairline separators); color is reserved for meaning — selection, status, and alerts — never for atmosphere. Every value below is the light-appearance canonical; the dark appearance re-derives each one independently rather than just inverting or dimming it (see Named Rules).
+The palette pairs one saturated brand identity (indigo) with three brand-tint status colors (coral, apricot, aqua) against a warm, near-neutral paper ground — color is reserved for identity and meaning, never used to decorate a resting surface.
 
 ### Primary
-- **System Blue** (`#0069D9` / dark: `#4C9DFF` text, `#0F6CDB` fill): the one accent in the system. Marks the active sidebar link, primary buttons, links, focus rings, and selected states. Used sparingly — its rarity is what makes "selected" and "primary" legible at a glance.
+- **Indigo** (`#292168`, dark accent text `#9d94ef` / dark accent fill `#4a3fa8`): the department's identity color. Owns the navigation rail solidly in both appearances (`--rail-bg`/`--rail-bg-deep`), and is the system's one accent — primary buttons, links, focus rings, selected states, segmented-control selection. Light mode uses one token for both text and fill (indigo clears 12.8:1 on white either way); dark mode splits into a lighter text tone and a deeper fill tone (see Named Rules).
 
-### Neutral
-- **Window Gray** (`#E8E8EA` / dark: `#1A1A1C`): the outermost app background, one step behind every panel.
-- **Content White** (`#FFFFFF` / dark: `#232326`): the base surface for panels, cards, and book covers.
-- **Surface Raised** (`#FFFFFF` / dark: `#2A2A2E`): buttons, sheets, and menus — one step lighter than Content White in dark mode so floating chrome reads as sitting above the page.
-- **Sunken Gray** (`#F2F2F4` / dark: `#1E1E21`): table headers, segmented-control tracks, book-card footers — surfaces that sit *behind* their content rather than holding it.
-- **Ink** (`rgba(0,0,0,0.88)` / dark: `rgba(255,255,255,0.92)`): primary text.
-- **Ink Secondary** (`rgba(0,0,0,0.56)` / dark: `rgba(255,255,255,0.60)`): metadata, sub-labels, secondary copy.
-- **Ink Tertiary** (`rgba(0,0,0,0.42)` / dark: `rgba(255,255,255,0.42)`): placeholders, disabled/de-emphasized text, decorative icon fills.
-- **Hairline** (`rgba(0,0,0,0.11)` / dark: `rgba(255,255,255,0.12)`): every panel border, table rule, and toolbar divider in the system.
+### Secondary
+- **Apricot** (`#f9b78a`): the rail's own marker color (`--rail-marker`) — the leading-edge rule on the active sidebar link, the top-edge rule on the active phone tab, the avatar background. Doubles as the due-soon status color (`--orange`, darkened to `#9c5116` for light-mode text).
 
 ### Status & Semantic
-- **System Red** (`#D70015` / dark: `#FF6961`): overdue items, destructive actions, error alerts, required-field marks.
-- **Accessible Amber** (`#B54708` / dark: `#FFA02E`): due-soon warnings, warning alerts. Deliberately darker than a typical system orange in light mode — a straight system-orange fails WCAG AA as text on white; this value was picked to clear 4.5:1 first.
-- **Accessible Forest** (`#1E7A38` / dark: `#4CD97B`): success states, available/returned status. Same AA-first darkening as amber.
-- **Deep Teal** (`#0A6E82` / dark: `#5AC8E8`): reservation-related stats and badges — its own semantic lane, distinct from the red/amber/green urgency ladder.
-- **Muted Violet** (`#7A3DB8` / dark: `#C58AF9`): the **roster/people** lane — currently the Members count on the librarian's dashboard (`.stat-purple`). It exists so that "people" reads as a different kind of thing from the circulation ladder, not as urgency. Still not a second brand accent: it marks an entity class, never an action or a selection.
+- **Coral** (`--red`: `#c0303c` light / `#f7636e` dark, `--red-fill`: `#c0303c` both modes): overdue items, destructive actions, error alerts, required-field marks, the overdue slip's restamped stub. `--red-fill` stays the same darker value in both appearances specifically because it always carries white text (a filled danger button, an overdue stub) — see the Text/Fill Split Rule.
+- **Apricot** (`--orange`: `#9c5116` light / `#f9b78a` dark): due-soon warnings, warning alerts, the due-soon slip's restamped stub. The due-soon stub is the one place apricot fills a whole surface — it's too light to carry white text, so the stub re-points its foreground tokens at **Apricot Ink** (`#4a2408`) instead, verified at 7.9:1 for the date and 4.6:1 for the smallest caption.
+- **Aqua** (`--green`/`--teal`: `#0f6c72` light / `#5dcbd1` dark): success states, available/returned status, reservation-related stats and badges. Aqua covers two semantic roles (success and info/reservation) that happen to share one hue in this palette.
+- **Coral Badge Ink** (`#45060b`): the count text inside the coral tab-bar/nav count badge — coral at full saturation is a fill color, not a text color (see the Text/Fill Split Rule), so its badge text drops to this near-black coral-tinted ink rather than white, the same "restamp to a dark ink" move Apricot Ink makes on the due-soon stub.
+- **Muted Violet** (`--purple`: `#4a3fa8` light / `#b3a9f5` dark): the roster/people lane — the Members count on the librarian's dashboard. An entity class, not an urgency signal; see the Cool-Is-Inventory Rule.
+
+### Neutral
+- **Window** (`--bg-window`: `#ececec` light / `#12102a` dark): the outermost app background, one step behind every panel. In dark mode this is indigo taken down to near-black, not a neutral grey — the rail still belongs to the page it sits beside.
+- **Content** (`--bg-content`: `#ffffff` light / `#191634` dark): the base surface for panels, cards, book covers, slips.
+- **Raised** (`--bg-raised`: `#ffffff` light / `#221e47` dark): buttons, menus, sheets — one step lighter than Content in dark mode so floating chrome reads as sitting above the page.
+- **Sunken** (`--bg-sunken`: `#f7f5f4` light / `#14122f` dark): table headers, book-card footers, segmented-control tracks — surfaces that sit behind their content rather than holding it.
+- **Ink** (`--fg`: `#1a1541` light / `#e9e6f5` dark): primary text.
+- **Ink Secondary** (`--fg-secondary`: `#5b5480` light / `#a49dc8` dark): metadata, sub-labels, secondary copy, row explanations.
+- **Ink Tertiary** (`--fg-tertiary`: `#6f6892` light / `#8f89bd` dark): placeholders, disabled controls, decorative icon fills — below the body-text floor by design. Nudged from an earlier `#8b83b8` (4.49:1, a hairline AA miss caught by audit) to `#8f89bd` (4.82:1).
+- **Separator** (`rgba(41,33,104,0.13)` light / `rgba(255,255,255,0.11)` dark): panel borders, table rules, toolbar dividers — all tinted indigo rather than neutral black/white.
 
 ### Named Rules
-**The Text/Fill Split Rule.** Every semantic color that appears both as text-on-page and as a filled surface holding white text gets two tokens (`system-blue` vs. its fill variant), because a blue tuned to be legible as text in dark mode is too light to hold white text as a button fill. Never reuse the text variant as a background-with-white-text, or vice versa — this exact mix-up has caused real contrast failures in this codebase (breadcrumbs, tab-bar labels, badges).
+**The Text/Fill Split Rule.** `--accent`/`--accent-fill` (and `--red`/`--red-fill`) are two separate tokens because a value tuned to be legible as text on a dark surface is too light to hold white text as a button or stub fill. In light mode both halves of a pair share one value; in dark mode they diverge (`--accent` `#9d94ef`, `--accent-fill` `#4a3fa8`; `--red` `#f7636e`, `--red-fill` `#c0303c`). Never use the text-tuned token as a background holding white text, or the fill-tuned token as page text — this exact mix-up is called out by name in the CSS as a source of real contrast bugs (breadcrumbs, tab-bar labels).
 
-**The Independent-Mode Rule.** Dark appearance is never `filter: invert()` or a flat opacity dim — every single token is re-picked by hand for the dark surface it sits on, checked against the same WCAG math as light mode. Treat "add dark mode" as "derive a second, equally deliberate palette," not "darken the first one."
+**The Independent-Mode Rule.** Dark appearance ("midnight") is never `filter: invert()` or a flat opacity dim — every token is re-derived by hand for the indigo-toned dark ground it sits on and checked against the same WCAG math as light mode ("paper"). Treat "add dark mode" as deriving a second, equally deliberate palette.
 
-**The Cool-Is-Inventory Rule.** In a row of summary tiles, the cool lanes (blue, teal, violet) carry counts of what exists — titles, loans, members — and colour only the number. Warm red is reserved for the count that means something is wrong, and is the one lane that also tints its label. A tile row where every value is warm, or where one value alone is left uncoloured, has stopped encoding anything.
+**The Cool-Is-Inventory Rule.** In a row of summary tiles, the cool lanes (indigo, aqua, violet) color only the number — they carry counts of what exists. Coral is the one lane that also tints its label, because it's the count that means something is wrong. A tile row where every value is coral, or where one cool value alone is left uncolored, has stopped encoding anything.
 
-**The Tertiary-Is-Not-Data Rule.** `ink-tertiary` is for placeholders, disabled controls, and decorative icon fills — it measures ~3:1 and is deliberately below the body-text floor. A real value (a count of zero, an absent date) is data, however unremarkable, and takes `ink-secondary`. De-emphasis comes from the tone step, not from dropping under AA.
+**The Tertiary-Is-Not-Data Rule.** `--fg-tertiary` is for placeholders, disabled controls, and decorative icon fills. A real value — a zero count, an absent date, a row explanation — is data however unremarkable, and takes `--fg-secondary` instead; the CSS itself corrects this in the row-note comment, noting tertiary measures 2.96:1 on an alert row and fails AA.
 
 ## Typography
 
-**Display Font:** -apple-system / SF Pro Display, with Helvetica Neue → Segoe UI → Roboto → system-ui fallbacks
-**Body Font:** -apple-system / SF Pro Text (same stack, text-optical-sized variant)
-**Label/Mono Font:** ui-monospace / SF Mono, for ISBNs and other tabular/code-like data
+**Display Font:** Fraunces, with 'Iowan Old Style' → Georgia → serif fallbacks
+**Body Font:** Archivo, with the system sans-serif stack as fallback
+**Label/Mono Font:** IBM Plex Mono, for call numbers, ISBNs, accession lines, and every date/count that needs to align in a column
 
-**Character:** SF's native system stack end to end — the type never announces itself as a web font choice. Sizes run smaller than typical web defaults (13px body, matching "macOS control size") because the audience is reading dense tabular and list data at a desk or on a phone, not long-form prose.
+**Character:** Fraunces carries the display voice — its SOFT and WONK variable-font axes give large numerals and page titles a warmth a system face can't — while Archivo does the quiet interface work everywhere else. Plex Mono is reserved for genuine identifying data: it's what makes a call number or a due date read as a record rather than as prose.
 
 ### Hierarchy
-- **Display** (600, 28px, 1.2): hero/marketing headline only (login, register, landing) — the single largest text in the system.
-- **Headline** (600, 17px, 1.3, -0.01em): the toolbar page title — one real `<h1>` per page, and on the member phone shell it's echoed by a large 30px/700 decorative title above the fold.
-- **Title** (600, 15px, 1.3, -0.01em): panel/section headings (`h2`, `h3`), book titles.
-- **Body** (400–500, 13px, 1.5): every control, table cell, form field, and paragraph — the system's true base size.
-- **Label** (600, 11px, 1.3, 0.02em uppercase): sidebar section headers, badges, tiny metadata tags.
+- **Display** (600, `--text-xl` 24px, 1.14, Fraunces at `opsz 72 / SOFT 22 / WONK 1`): the toolbar `<h1>` and hero/auth headlines — the one real heading per page.
+- **Headline** (600, `--text-lg` 19px, 1.2, Archivo): panel/section headings (`h2`), the member phone shell's decorative large-title (`aria-hidden`, purely visual — see the One-Heading Rule).
+- **Title** (600, `--text-md` 16px, 1.2, Archivo): `h3`, book titles, slip titles.
+- **Body** (400–550, `--text-base` 14px, 1.55, Archivo): every control, table cell, form field, paragraph — the system's true base size.
+- **Label** (600, `--text-xs` 11px, 1.3, 0.09em uppercase, Archivo): the "eyebrow" class — column headers, sidebar section headings, field labels, badge text.
+- **Data/Mono** (400–600, `--text-sm` 12.5px, tabular-nums, IBM Plex Mono): ISBNs, accession numbers, dates, counts — anything that must align in a fixed column rather than flow.
+
+A large Fraunces treatment (`opsz 110/SOFT 24/WONK 1`, `--text-2xl` 34px) is reserved specifically for stat-tile values — numerals are the one place a figure is allowed to be beautiful rather than merely aligned.
+
+A handful of further sizes exist outside the six named roles, each reused deliberately rather than a one-off:
+- **Figure** (30px, 26px at the ≤520px compact breakpoint): the slip-stub's stamped day and the book-cover initial — both a step down from the stat-tile's 34px because they sit inside a much smaller card, not a full tile.
+- **Hero** (33px, 28px at the ≤520px compact breakpoint): the marketing/auth landing `h1`, a Display-family size reserved for the one page that isn't the app shell.
+- **Book Cover (small)** (17px): the compact 42px book-cover variant used in list rows, scaled down from Figure to fit.
+- **Avatar** (22px): the member-detail avatar's initial, sized to its 56px circle.
+- **Micro** (9.5px): the tab-bar count badge's digit — smaller than Label (11px) because it sits inside an already-tiny chip and reads as a single glance, not running text. The slip-stub's month/label caption and the tab-bar's nav labels were raised to the Label floor (11px, `--text-xs`) after a phone-legibility review found the smaller step sitting below a readable minimum on persistent chrome.
 
 ### Named Rules
-**The One-Heading Rule.** Exactly one real `<h1>` exists per page (the toolbar title); any larger decorative title (the member phone's large-title header) is `aria-hidden` and purely visual, so assistive tech and page structure never see two headings for one page.
+**The One-Heading Rule.** Exactly one real `<h1>` exists per page (the toolbar title); the member phone shell's larger decorative title is `aria-hidden` and purely visual, so assistive tech never sees two headings for one page.
+
+**The Data-Is-Monospace Rule.** Any string that is a real identifier — an ISBN, a call number, an accession line, a due date, a count — is set in `--font-mono` with `font-variant-numeric: tabular-nums`, never left in the body face. This is what makes a ledger of loans read as aligned data instead of ragged prose.
 
 ## Layout
 
-The shell is a two-column grid: a fixed 232px sidebar plus a fluid content column, collapsing at 860px into a single column with the sidebar becoming a fixed overlay drawer (with scrim) on top of content rather than pushing it. Content padding steps down with viewport: 22px desktop → 16px mobile. A 52px sticky toolbar caps every page.
+The shell is a two-column grid: a fixed 244px indigo rail (`--sidebar-w`) plus a fluid content column. Content padding steps from 26px desktop to 20px tablet to 16px phone. A 60px sticky, frosted toolbar caps every page.
 
-Two responsive strategies apply below 860px depending on role:
-- **Data tables** collapse from `<table>` layout into stacked cards — each row becomes a block with `data-label`-prefixed fields and actions moved to their own row, so touch targets never get clipped off-screen.
-- **The member (borrower) shell** additionally swaps the sidebar's page navigation for a fixed iOS-style bottom tab bar, and crossfades a large decorative title into the compact toolbar title as the page scrolls. The librarian (admin) shell never gets this treatment — it stays desktop-only by design.
+Four responsive tiers apply, each triggered by a different threshold — both shells are now fully responsive across phone/tablet/desktop, sharing this same tier structure rather than one shell freezing at desktop:
+- **1024px+ (desktop):** the full 244px rail is always visible; both shells run their densest layout (admin's multi-column tables and forms, member's `split` dashboard).
+- **768–1023px (tablet):** the rail collapses to a **persistent 72px icon rail** (not a hidden drawer) — the librarian and the borrower both keep one-tap access to every section without losing horizontal space to a full label rail; each icon carries its label as a native `title` tooltip plus visually-hidden text for screen readers, so nothing is unlabeled, just visually compact. Data tables stay as real `<table>` layout (a 768px iPad-portrait content column still fits them) rather than dropping to stacked cards early. This tier is genuinely hybrid, not a shrunk desktop or a stretched phone — it's deliberately the boundary a real tablet in portrait lands inside, not on top of.
+- **<768px (phone, shell breakpoint):** the icon rail collapses to a fixed overlay drawer (with a `rgba(18,16,42,0.44)` scrim); data tables switch from `<table>` layout to stacked cards (`table.stacked`), each row becoming a block with `data-label`-prefixed fields so actions stay reachable. Both shells now get a persistent bottom tab bar below this width (the librarian's carries Dashboard/Books/Members/Circulation; the borrower's is unchanged) — the member shell additionally crossfades a large decorative title into the compact toolbar title as the page scrolls, a treatment the admin shell doesn't need since it has no equivalent hero header.
+- **640px (row-stack, content-driven):** the `.row-item` list component specifically — below this width a row can't hold a real book title and a status/actions column side by side, so the status group drops to its own line under the title. This threshold comes from the row's own content, not a device class, which is why it sits inside the phone tier rather than replacing it.
+- **520px (compact):** the stat grid drops to 2 columns, hero padding tightens, the searchbar stacks vertically, and the slip's stub column narrows from 92px to 78px.
 
-Grid helpers used throughout: `grid-stats` (auto-fit, 170px min, for stat tiles), `grid-2` (auto-fit, 320px min), `grid-cards` (auto-fill, 300px min, for book cards), and a `split` 1.65fr/1fr two-column layout for detail-plus-sidebar pages — all collapse to one column at 860px.
+Grid helpers used throughout: `grid-stats` (auto-fit, 178px min), `grid-2` (auto-fit, 320px min), `grid-cards` (auto-fill, 300px min, for book cards), and a `split` 1.65fr/1fr layout for detail-plus-sidebar pages — all collapse to one column at 860px. Within the 768–1023px tablet tier specifically, a standalone `.slips` list that sits directly in the content column (the borrower's Reservations page, not nested inside a narrower `.split` panel like the dashboard's Currently Borrowed list) becomes a two-column grid — one full-width slip card at the ~748px tablet content width leaves as much empty space as content, so two holds run side by side instead, the hybrid two-column pattern a tablet calls for.
 
-Spacing follows a loose 4px-rooted rhythm rather than a strict multiplier scale: 4px hairline gaps, 8px between related controls, 12–16px internal padding for cards and form grids, 22px for page/toolbar edges, and 28px between major page regions (`.region + .region`).
+Spacing is rooted in a 4px unit rather than a named scale: hairline gaps, 7–9px between related controls, 14–18px internal panel/card padding, 26px page/toolbar edges. The one deliberate exception is inter-region spacing: `.region + .region` gets 28px specifically because page regions (an alert, a row of stat tiles, detail panels) share one background and have no divider between them — the gap alone has to carry the grouping, so it must read as visibly larger than the intra-region gap or the page flattens into one undifferentiated stack.
 
-That last step is the one that carries grouping. Regions on a page (an alert, a row of summary tiles, the detail panels) share one surface and have no divider between them, so the only thing separating them is the gap — and at a uniform 16px a summary tile sits exactly as close to the alert above it as to its own sibling tile, which flattens the page into one undifferentiated stack. Inter-region spacing must stay visibly larger than the intra-region gap.
-
-A third, content-driven breakpoint at **640px** governs the list-row component specifically (`.row-item`): below it, a row cannot hold a real book title and a status/actions column side by side, so the status group moves to its own line beneath the title. This threshold comes from the row's own content, not a device class — which is why it sits between the two shell breakpoints rather than replacing either.
-
-Touch targets expand under `@media (pointer: coarse)`: buttons and pagination controls grow from 30px to 44px minimum height, matching the platform guidance for phones.
+Touch targets expand under `@media (pointer: coarse)`: buttons, badges, and pagination controls grow from 34px to 44px minimum height.
 
 ## Elevation & Depth
 
-Layered with native depth: two distinct depth languages for two different jobs, not one shadow scale used everywhere. Resting surfaces (panels, cards, stat tiles, book cards) use soft, ambient shadows that barely lift them off the window background — depth is a hint, not a statement. Floating/overlay chrome (the sidebar, the sticky toolbar, the account menu popover, confirmation sheets, and the glass icon buttons for calendar/reminder actions) instead uses `backdrop-filter: saturate(180%) blur(...)` frosted-glass translucency, tinting and blurring whatever scrolls behind it rather than sitting as an opaque layer on top.
+**Ink-on-paper.** This is a two-depth-language system, not one shadow scale reused everywhere. Resting surfaces — panels, stat tiles, book cards, slips — use shadows that are warm and indigo-tinted rather than neutral black (`rgba(26,21,65,...)` in light mode, still colored rather than pure black in dark mode), reading as ink bleeding softly into paper rather than an object physically lifted off it. Floating/overlay chrome — the sticky toolbar, the account menu popover, confirmation sheets, the frosted glass icon buttons — instead uses `backdrop-filter: saturate(...) blur(...)`, a true material effect that tints and blurs whatever scrolls behind it. This is the one place depth stops being an ambient hint and becomes an actual physical material.
 
 ### Shadow Vocabulary
-- **shadow-sm** (`0 1px 2px rgba(0,0,0,0.07), 0 0 0 0.5px rgba(0,0,0,0.05)`): resting panels, cards, stat tiles, book cards.
-- **shadow-md** (`0 2px 8px rgba(0,0,0,0.09), 0 0 0 0.5px rgba(0,0,0,0.05)`): hover-lifted cards/stats, the auth card.
-- **shadow-lg** (`0 12px 40px rgba(0,0,0,0.20), 0 0 0 0.5px rgba(0,0,0,0.10)`): menus, confirmation sheets, the open mobile sidebar drawer.
-- **shadow-btn** (`0 1px 1.5px rgba(0,0,0,0.10), inset 0 0.5px 0 rgba(255,255,255,0.35)`): every default button — a hairline highlight on top plus a whisper of drop shadow, the thing that makes a flat control read as physically pressable.
+- **shadow-sm** (`0 1px 2px rgba(26,21,65,0.07), 0 0 0 1px rgba(41,33,104,0.06)` light / `0 1px 2px rgba(0,0,0,0.40), 0 0 0 1px rgba(255,255,255,0.06)` dark): resting panels, cards, stat tiles, book cards, slips.
+- **shadow-md** (`0 3px 12px rgba(26,21,65,0.10), 0 0 0 1px rgba(41,33,104,0.06)` light / `0 3px 14px rgba(0,0,0,0.48), 0 0 0 1px rgba(255,255,255,0.07)` dark): hover-lifted cards, stat tiles, slips, the auth card.
+- **shadow-lg** (`0 18px 48px rgba(26,21,65,0.22), 0 0 0 1px rgba(41,33,104,0.08)` light / `0 18px 52px rgba(0,0,0,0.62), 0 0 0 1px rgba(255,255,255,0.10)` dark): menus, confirmation sheets, the open mobile drawer.
+- **shadow-btn** (`0 1px 1.5px rgba(26,21,65,0.08)` light / `0 1px 1.5px rgba(0,0,0,0.35)` dark): every default button.
+- **glass-shadow** (`0 1px 3px rgba(26,21,65,0.12), 0 0 0 1px rgba(41,33,104,0.06), inset 0 1px 0 rgba(255,255,255,0.85)` light, analogous inset-white-line in dark): the frosted glass icon button only.
 
 ### Named Rules
-**The Glass-Is-Chrome Rule.** Frosted-glass blur is reserved for floating navigational/overlay chrome — sidebar, toolbar, menus, sheets, the round glass icon buttons — never for resting content surfaces. A panel or card is always opaque; only things that float over content get to blur it.
-**The No-Blur Fallback Rule.** Every `backdrop-filter` use ships an `@supports not` fallback to a flat, opaque surface color — never a transparent layer with no blur, which would read as a rendering bug rather than a deliberate flat state.
+**The Ink-on-Paper Shadow Rule.** Every shadow value is tinted with the brand indigo (or, in dark mode, deepened toward black but still paired with a subtle white-tinted 1px ring) rather than neutral black — a stacked surface should read as belonging to this palette even in its shadow, not as a generic Material elevation.
+
+**The Glass-Is-Chrome Rule.** Frosted-glass blur is reserved for floating navigational/overlay chrome — the sticky toolbar, the account menu, confirmation-sheet backdrops, the round glass icon buttons — never for resting content surfaces. A panel, card, or slip is always opaque; only things that float over content get to blur it.
+
+**The No-Blur Fallback Rule.** Every `backdrop-filter` use ships an `@supports not` fallback to a flat, opaque surface color (e.g. the toolbar falls back to `--bg-content`, the glass button falls back to `--bg-raised`) — never a transparent layer with no blur, which would read as a rendering bug rather than a deliberate flat state.
 
 ## Shapes
 
-Corner radius follows a five-step scale (4 / 6 / 8 / 12 / 16px) plus a full pill (999px) for badges and count indicators — the macOS Big Sur+ geometry of rounder-than-web-default but never fully rounded except on true pills and circular controls (avatar, glass icon buttons, the traffic-light dots). Borders are hairline (0.5–1px) and low-contrast, used to separate rather than to frame — most surfaces rely on background-color and shadow to read as distinct, not a border.
+Corner radius follows a five-step scale (`--r-xs` 3px / `--r-sm` 5px / `--r-md` 8px / `--r-lg` 12px / `--r-xl` 18px) plus a full pill (999px) for badges, tags, and count indicators, with one micro-step (2px) below the floor for the rounded end-caps on the rail's thin 3px "you are here" marker rule — a detail too small to read as a real corner, just enough to keep a hard-edged sliver from looking clipped. The geometry is "cut-paper": slips and panels stay close to square, not fully rounded — only genuinely pill-shaped things (status badges, the count bubble on sidebar links) go fully round, matching the accession-slip's own cut-card silhouette. Borders are hairline (1px), colored with the indigo-tinted separator tokens rather than neutral grey, and used to separate rather than frame — most surfaces rely on background color and shadow to read as distinct.
 
 ## Components
 
 ### Buttons
-- **Shape:** 6px radius by default (`--r-sm`), 8px on large buttons (`--r-lg` variant), fully round only for icon-only glass buttons.
-- **Primary:** system blue fill (`#0069D9`), white text, `shadow-btn`. Hover darkens to `#0059B8`.
-- **Secondary (default `.btn`):** Surface Raised background, hairline border, `shadow-btn` — the same physical button shape as primary, just neutral instead of filled.
-- **Danger / Success:** neutral button shape, text and hover-tint recolored to system red / accessible forest — used for renew/return/delete actions, never as a filled button.
-- **Glass:** round, frosted, tinted with the accent color — reserved specifically for secondary floating actions like "add to calendar."
-- **Press state:** every button scales to 0.975 on `:active` — a small physical squash that reinforces "this is a real control," not just a color change.
-- **Touch:** grows to 44px minimum height under coarse-pointer media query.
+- **Shape:** 5px radius by default (`--r-sm`), 8px on large buttons (`--r-md`), fully round only for the glass icon button.
+- **Primary:** indigo fill (`--accent-fill`), white text, `shadow-btn`. Hover moves to `--accent-hover`.
+- **Secondary (default `.btn`):** `--bg-raised` background, `--separator-strong` border, `shadow-btn` — same physical shape as primary, neutral instead of filled.
+- **Danger / Success:** neutral button shape, text and hover-tint recolored to coral/aqua — reserved for renew/return/delete, never filled by default. Inside a confirmation sheet specifically, danger flips to a filled coral button (`--red-fill`, white text, hover `#a82833`) because it's the dialog's one primary action.
+- **Glass:** round, frosted (`saturate(180%) blur(14px)`), tinted with the accent color — reserved for secondary floating actions like "add to calendar."
+- **Press state:** every button scales to `0.98` on `:active` (`0.975` on the phone tab bar) — a small physical squash reinforcing "this is a real control."
+- **Touch:** grows to 44px minimum height under `@media (pointer: coarse)`.
 
-### Cards / Containers
+### Cards / Containers (Panel, Stat Tile, Book Card)
 - **Corner style:** 12px radius (`--r-lg`).
-- **Background:** Content White; no border, `shadow-sm` at rest.
-- **Shadow strategy:** see Elevation — lifts to `shadow-md` with a 1px translateY on hover only where the card is a link (stat tiles, book cards).
-- **Internal padding:** 16px body, with a hairline-separated header row for panels that have one.
+- **Background:** `--bg-content`; no border, `shadow-sm` at rest.
+- **Shadow strategy:** see Elevation — lifts to `shadow-md` with a small `translateY` on hover only where the card is itself a link (stat tiles, book cards, slips).
+- **Internal padding:** 16–18px body; panels with a header get a hairline-separated `.panel-head` row.
+- **Stat tiles** specifically carry a 3px top-edge accent rule in their status color, and set their value in Fraunces at a large optical size — the number is the content.
 
 ### Inputs / Fields
-- **Style:** Content White background, hairline border, 6px radius, 30px min height (44px on coarse pointers).
-- **Focus:** border switches to system blue plus a 3px soft blue glow (`box-shadow: 0 0 0 3px` of the blue-soft token) — no color-only focus state; the glow is the primary signal.
-- **Checkboxes/radios:** native elements themed via `accent-color`, not custom markup — keeps real keyboard/AT behavior for free.
+- **Style:** `--bg-field` background, `--separator-strong` border, 5px radius, 38px min height (44px on coarse pointers).
+- **Focus:** border switches to `--accent` plus a 3px `--accent-soft` glow — never a color-only signal.
+- **Checkboxes/radios:** native elements themed via `accent-color`, not custom markup, to keep real keyboard/AT behavior for free.
 
 ### Navigation
-- **Sidebar link:** 6px radius, transparent at rest, active state fills with system blue and switches text/icon to white — the same filled-selection language as a primary button, reused for "this is where you are."
-- **Bottom tab bar (member/phone only):** fixed, frosted-glass, iOS-style. Active tab uses system-blue text (the text-tuned token, not the fill-tuned one — see Named Rules). Unread-style red badges for active loans/reservations.
-- **Breadcrumbs:** sit directly on Window Gray rather than a content panel, so they use `accent-hover` in light mode and plain `accent` in dark mode — the one place the two blue tokens swap roles, because Window Gray's contrast math differs from Content White's.
+- **Rail link:** transparent at rest; the active page fills with `--rail-active` and gains a 3px apricot rule at its leading edge — the rail marks "you are here" with a rule rather than a filled pill, so the rail itself stays one uninterrupted field of indigo.
+- **Bottom tab bar (member/phone only):** fixed, opaque indigo (the rail laid on its side, not glass), with the same apricot marker rule now on the top edge of the active tab. Unread-style coral badges (`#f7636e` fill, `#45060b` text) for active loans/reservations.
+- **Breadcrumbs:** sit directly on `--bg-window` rather than a content panel, using `--accent` (not `--accent-fill`) — the one place a single accent token works unmodified in both appearances, because Window's contrast math differs from Content's.
+
+### The Accession Slip (signature component)
+A loan or reservation is rendered as a physical card in a pocket: a 92px perforated indigo stub on the left, stamped with the due date in Fraunces (day) and Plex Mono (month), and the record itself on the right. The perforation is drawn with a repeating radial gradient rather than an image, so it stays crisp at any pixel density. Overdue restamps the whole stub in `--red-fill`; due-soon restamps it in apricot at full strength and re-points the stub's own foreground tokens to a dark burnt ink (`#4a2408`) rather than introduce a muddy darkened orange, because straight white fails against apricot. This is the object the entire system's vernacular is named after and modeled on.
 
 ### Book Cover (signature component)
-No cover-art pipeline exists, so every book gets a deterministic gradient identity plus its title's initial — the same trick Apple Music/Podcasts/Contacts use for items without real artwork. The hue is derived from the book's ISBN; lightness is capped at 30%/18% (not more vivid) specifically because the hue rotates through the full wheel including yellow, and WCAG's luminance weighting makes yellow read far "brighter" than blue or red at equal HSL lightness — this cap keeps white text at 4.7:1 or better across all 360 hues, verified, not assumed.
+No cover-art pipeline exists, so every book gets a deterministic gradient identity plus its title's initial — the same trick Apple Music/Podcasts/Contacts use for items without real artwork. The hue is derived from the book's ISBN and confined to the brand arc (aqua 184° through indigo 250°) rather than the full color wheel, so covers always read as belonging to this palette; white text clears 5.68:1 at the arc's worst point.
 
 ### Category Badge
-A second use of the same deterministic-hue trick as Book Cover, this time keyed off the book's category string instead of its ISBN, so "Fiction" reads as the same color everywhere without a hand-maintained category→color map — this is the system's **data category** role (a role the semantic red/amber/forest/teal ladder doesn't cover, since that ladder means urgency, not subject matter). Soft tinted background, saturated text — the same visual grammar as the other badge variants (`badge-red`, `badge-green`, etc.), just hue-parametrized instead of fixed. Light-mode text lightness is capped at 26% and dark-mode text lightness floored at 78%, each independently walked across all 360 hues to guarantee ≥4.5:1 (worst case 4.66:1 light, 6.16:1 dark) — the same rigor as Book Cover's own cap. A book with no category gets the plain neutral `.badge`, not a colored one: color here means "this is a real category," so the absence of one should look like absence, not get an arbitrary hue.
+The same deterministic-hue trick as Book Cover, keyed off the category string instead of the ISBN, confined to the same aqua-through-indigo arc, so "Fiction" reads as one stable color everywhere without a hand-maintained category map — this is the system's data-category role, distinct from the coral/apricot/aqua urgency ladder. A book with no category gets the plain neutral `.badge`, never an arbitrary hue.
 
 ### Sheet (signature component)
-A modal confirmation dialog styled after macOS's native sheet: centered near the top of the viewport (not vertically centered — it visually "drops from" the toolbar), scale+fade transition, always names the exact record being acted on rather than a generic "are you sure?" Reserved for destructive/consequential actions (delete, renew, cancel reservation).
+A modal confirmation styled after a native macOS sheet: dropped near the top of the viewport rather than vertically centered, scale+fade transition, and it always names the exact record being acted on rather than a generic "are you sure?" Carries a soft accent-tinted icon for a routine confirm (borrow, renew) and a coral warning icon for anything destructive — `data-kind="safe"` on the backdrop swaps which glyph and tint show.
 
 ### Named Rules
-**The Explain-the-Block Rule.** When a control is disabled or an action is unavailable (renewal, reservation), the interface surfaces the specific reason as copy near the control rather than leaving a silently disabled button — this is a component behavior pattern, not just a copy guideline.
+**The Explain-the-Block Rule.** When a control is disabled or an action is unavailable (renewal, reservation), the interface surfaces the specific reason as copy near the control (`.row-note`) rather than leaving a silently disabled button.
 
 ## Do's and Don'ts
 
 ### Do:
-- **Do** keep color meaning-only: system blue for selection/primary/links, red/amber/forest/teal for status — never decorative color blocking on neutral surfaces.
-- **Do** re-derive every color independently for dark mode and verify it against real WCAG contrast math; don't dim or invert.
-- **Do** use frosted-glass blur only for floating/overlay chrome, and always ship a flat opaque `@supports not` fallback.
-- **Do** collapse all motion under `prefers-reduced-motion: reduce` — every transition and animation in this system already does.
-- **Do** keep the librarian (admin) shell desktop-only and the borrower (member) shell phone-optimized; treat them as two shells sharing one token set, not one responsive layout.
+- **Do** keep color meaning-only: indigo for identity/selection/primary, coral/apricot/aqua for overdue/due-soon/available — never decorative color blocking on a neutral surface.
+- **Do** re-derive every color independently for dark appearance and verify it against real WCAG contrast math; never dim or invert.
+- **Do** set any real identifying data — ISBN, call number, accession line, due date, count — in `--font-mono` with tabular numerals, never in the body face.
+- **Do** use frosted-glass blur only for floating/overlay chrome, and always ship a flat, opaque `@supports not` fallback.
+- **Do** tint shadows with the brand indigo rather than neutral black — depth in this system stays "ink," never generic Material grey.
+- **Do** collapse all motion under `prefers-reduced-motion: reduce` — every transition in this system already does.
+- **Do** treat the librarian (admin) and borrower (member) shells as two shells sharing one token set and one four-tier breakpoint structure, each adapted for its own primary device rather than one generic responsive layout stretched across both.
 - **Do** name the exact record in any destructive-action confirmation sheet.
 
 ### Don't:
-- **Don't** introduce a second brand accent alongside system blue — Muted Violet carries the roster/people lane and nothing else; it is not an invitation to add a second "brand" color.
-- **Don't** use `ink-tertiary` for a real value. It sits below the AA floor by design; see The Tertiary-Is-Not-Data Rule.
-- **Don't** use the fill-tuned accent token (`accent-fill`) as text color, or the text-tuned token (`accent`) as a background holding white text — they diverge in dark mode and this mix-up has already caused real contrast bugs (breadcrumbs, tab-bar labels).
-- **Don't** add heavy drop shadows, flat Material-style colorful cards, or ripple/elevation effects — depth here is either a soft ambient hint or frosted glass, never a loud statement.
+- **Don't** introduce a second brand accent alongside indigo — Muted Violet exists specifically as the roster/people lane and is not an invitation to add a second "brand" color.
+- **Don't** use `--fg-tertiary` for a real value; it sits below the AA floor by design — see the Tertiary-Is-Not-Data Rule.
+- **Don't** use a fill-tuned token (`--accent-fill`, `--red-fill`) as page text, or a text-tuned token (`--accent`, `--red`) as a background holding white text — they diverge in dark mode and this exact mix-up has already caused real contrast bugs (breadcrumbs, tab-bar labels).
+- **Don't** add heavy neutral drop shadows, flat Material-style colorful cards, or ripple/elevation effects — depth here is either a soft ink-tinted hint or true frosted glass, never a loud generic statement.
 - **Don't** disable a control without explaining why next to it.
-- **Don't** depend on a CDN, web font, icon font, or external asset for anything in this system — every icon is inline SVG and every font is a system stack, by design, so the app renders identically offline.
+- **Don't** depend on a CDN, web font service, icon font, or any external asset — every icon is inline SVG and every font is self-hosted from `static/fonts`, so the app renders identically offline and on restricted campus networks.

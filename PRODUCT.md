@@ -13,8 +13,10 @@ Two roles, each with a distinct job:
 - **Librarians (Admins).** Run the circulation desk: catalog books, process
   returns, manage members, work the reservation queue, and (per-deployment)
   set the organization's name, logo, and theme color. Desktop-first — the
-  admin side deliberately stays desktop-only; no mobile-optimized admin UI is
-  planned.
+  circulation desk is where the role lives day to day — but no longer
+  desktop-only: a librarian checking the queue from a tablet at the stacks,
+  or triaging one overdue notice from a phone, needs the admin shell to work
+  there too, not just degrade into it.
 - **Borrowers (Members).** School/academic library patrons — students and
   faculty — who search the catalog, borrow and self-renew books, place and
   track reservations, and check due dates, overwhelmingly from a phone. This
@@ -96,10 +98,14 @@ differs from a typical library system in two durable, evidenced ways:
    logic is derived from one canonical set of model properties
    (`due_state`/`days_until_due` etc.) so every surface — dashboard, history,
    labels, colors — agrees; never let a screen compute its own due-date logic.
-2. **Member is phone, admin is desktop.** Treat these as two different
-   products sharing a backend, not one responsive layout — mobile
-   improvements to the borrower experience should not imply the admin side
-   needs a mobile mode.
+2. **Two shells, one responsive system.** The librarian's circulation desk
+   and the borrower's phone-first experience are two different products
+   sharing a backend and a token set, each responsive across phone/tablet/
+   desktop in its own way — not one layout stretched across both, and not
+   one of the two frozen at a single size. A mobile improvement to the
+   borrower experience still doesn't imply the admin side needs the *same*
+   mobile treatment; it has its own (desk-dense on desktop, task-focused on
+   phone, hybrid on tablet).
 3. **Rebrandable without a redeploy.** Organization identity (name, logo,
    theme color) is admin-configurable data, not something baked into a build
    — any new branding-adjacent feature should follow that pattern.
