@@ -26,17 +26,23 @@
         <form method="POST" action="{{ url_for('admin.add_book') }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="form-grid">
-                <div class="field col-5">
+                <div class="field col-5 {{ 'has-error' if field_errors.get('title') }}">
                     <label for="title">Title <span class="req" aria-hidden="true">*</span></label>
-                    <input type="text" id="title" name="title" value="{{ form_values.get('title', '') }}" required maxlength="{{ maxlen('Book', 'title') }}">
+                    <input type="text" id="title" name="title" value="{{ form_values.get('title', '') }}" required maxlength="{{ maxlen('Book', 'title') }}"
+                           {% if field_errors.get('title') %}aria-invalid="true" aria-describedby="title-error"{% endif %}>
+                    {% if field_errors.get('title') %}<p class="field-error" id="title-error">{{ icon('warning', class='icon-sm') }} {{ field_errors['title'] }}</p>{% endif %}
                 </div>
-                <div class="field col-4">
+                <div class="field col-4 {{ 'has-error' if field_errors.get('author') }}">
                     <label for="author">Author <span class="req" aria-hidden="true">*</span></label>
-                    <input type="text" id="author" name="author" value="{{ form_values.get('author', '') }}" required maxlength="{{ maxlen('Book', 'author') }}">
+                    <input type="text" id="author" name="author" value="{{ form_values.get('author', '') }}" required maxlength="{{ maxlen('Book', 'author') }}"
+                           {% if field_errors.get('author') %}aria-invalid="true" aria-describedby="author-error"{% endif %}>
+                    {% if field_errors.get('author') %}<p class="field-error" id="author-error">{{ icon('warning', class='icon-sm') }} {{ field_errors['author'] }}</p>{% endif %}
                 </div>
-                <div class="field col-3">
+                <div class="field col-3 {{ 'has-error' if field_errors.get('isbn') }}">
                     <label for="isbn">ISBN <span class="req" aria-hidden="true">*</span></label>
-                    <input type="text" id="isbn" name="isbn" value="{{ form_values.get('isbn', '') }}" required maxlength="{{ maxlen('Book', 'isbn') }}">
+                    <input type="text" id="isbn" name="isbn" value="{{ form_values.get('isbn', '') }}" required maxlength="{{ maxlen('Book', 'isbn') }}"
+                           {% if field_errors.get('isbn') %}aria-invalid="true" aria-describedby="isbn-error"{% endif %}>
+                    {% if field_errors.get('isbn') %}<p class="field-error" id="isbn-error">{{ icon('warning', class='icon-sm') }} {{ field_errors['isbn'] }}</p>{% endif %}
                 </div>
                 <div class="field col-3">
                     <label for="category">Category</label>
@@ -51,10 +57,12 @@
                     <input type="number" id="publication_year" name="publication_year"
                            value="{{ form_values.get('publication_year', '') }}" min="1000" max="2100">
                 </div>
-                <div class="field col-12" style="max-width:120px">
+                <div class="field col-12 {{ 'has-error' if field_errors.get('quantity') }}" style="max-width:220px">
                     <label for="quantity">Copies</label>
                     <input type="number" id="quantity" name="quantity"
-                           value="{{ form_values.get('quantity', '1') }}" min="1">
+                           value="{{ form_values.get('quantity', '1') }}" min="1"
+                           {% if field_errors.get('quantity') %}aria-invalid="true" aria-describedby="quantity-error"{% endif %}>
+                    {% if field_errors.get('quantity') %}<p class="field-error" id="quantity-error">{{ icon('warning', class='icon-sm') }} {{ field_errors['quantity'] }}</p>{% endif %}
                 </div>
                 <div class="field col-12">
                     <label for="description">Description</label>
@@ -63,6 +71,7 @@
             </div>
             <div class="form-actions">
                 <button type="submit" class="btn btn-primary">{{ icon('check') }} Add Book</button>
+                <button type="reset" class="btn" data-collapse-details="add-book">Cancel</button>
             </div>
         </form>
     </div>

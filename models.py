@@ -280,7 +280,13 @@ class Borrowing(db.Model):
     def mark_returned(self):
         self.status = 'returned'
         self.return_date = datetime.utcnow()
-        self.book.available_quantity += 1
+        # Clamped rather than a bare +1: if a book's quantity was edited down
+        # while copies were out, letting available_quantity climb past it
+        # would violate the one canonical circulation-truth invariant this
+        # whole system builds on (see PRODUCT.md's Product Principles #1).
+        self.book.available_quantity = min(
+            self.book.quantity, self.book.available_quantity + 1
+        )
         db.session.commit()
         self._invalidate_derived()
 

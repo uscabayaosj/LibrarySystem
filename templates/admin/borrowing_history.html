@@ -21,19 +21,49 @@
 {% endblock %}
 
 {% block content %}
+{% set any_active = pagination.items|selectattr('status', 'equalto', 'active')|list %}
 <section class="panel">
     <div class="panel-body flush">
         {% if pagination.items %}
+        {% if any_active %}
+        {# A real <form> can't wrap the table, because each row's own Check
+           In button is itself a <form> (nesting forms is invalid HTML) --
+           so this bulk form lives outside the table entirely, and every
+           checkbox/submit that belongs to it points back here via the
+           form="bulk-checkin" attribute instead of DOM nesting. #}
+        <form method="POST" action="{{ url_for('admin.bulk_return_books') }}" id="bulk-checkin" data-bulk-form
+              data-confirm="0 books will be marked returned and put back on the shelf."
+              data-confirm-title="Check in the selected books?"
+              data-confirm-label="Check In">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="status" value="{{ filter_status }}">
+        </form>
+        <div class="panel-head" style="border-bottom:1px solid var(--separator)">
+            <span class="small text-secondary">Select active loans below to check in several at once.</span>
+            <span class="spacer"></span>
+            <button type="submit" form="bulk-checkin" class="btn btn-sm btn-success" data-bulk-submit disabled>
+                {{ icon('arrow-return', class='icon-sm') }} Check In Selected
+            </button>
+        </div>
+        {% endif %}
         <div class="table-wrap">
             <table class="data stacked">
                 <caption class="visually-hidden">Loan records, most recent first</caption>
                 <thead>
                     <tr>
+                        {% if any_active %}
+                        <th scope="col" style="width:32px">
+                            <span class="visually-hidden">Select</span>
+                            <label class="check-tap">
+                                <input type="checkbox" data-select-all aria-label="Select all active loans">
+                            </label>
+                        </th>
+                        {% endif %}
                         <th scope="col">Book</th>
                         <th scope="col">Member</th>
                         <th scope="col">Borrowed</th>
                         <th scope="col">Due</th>
-                        <th scope="col">Returned</th>
+                        <th scope="col" class="col-optional">Returned</th>
                         <th scope="col">Status</th>
                         <th scope="col"><span class="visually-hidden">Actions</span></th>
                     </tr>
@@ -41,6 +71,16 @@
                 <tbody>
                     {% for b in pagination.items %}
                     <tr class="{{ 'row-alert' if b.due_state == 'overdue' }}">
+                        {% if any_active %}
+                        <td data-label="">
+                            {% if b.status == 'active' %}
+                                <label class="check-tap">
+                                    <input type="checkbox" name="borrowing_ids" value="{{ b.id }}" form="bulk-checkin"
+                                           data-row-check aria-label="Select “{{ b.book.title }}” for bulk check-in">
+                                </label>
+                            {% endif %}
+                        </td>
+                        {% endif %}
                         <td class="cell-primary" data-label="Book">{{ b.book.title }}</td>
                         <td data-label="Member">
                             <a href="{{ url_for('admin.member_detail', id=b.user.id) }}">{{ b.user.username }}</a>
@@ -54,7 +94,7 @@
                                 </div>
                             {% endif %}
                         </td>
-                        <td class="num" data-label="Returned">
+                        <td class="num col-optional" data-label="Returned">
                             {% if b.return_date %}{{ b.return_date|localdate('%b %d, %Y') }}
                             {% else %}<span class="text-secondary">—</span>{% endif %}
                         </td>

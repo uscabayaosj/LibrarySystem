@@ -22,7 +22,7 @@
                         <th scope="col">Book</th>
                         <th scope="col">Borrowed</th>
                         <th scope="col">Due</th>
-                        <th scope="col">Returned</th>
+                        <th scope="col" class="col-optional">Returned</th>
                         <th scope="col">Status</th>
                         <th scope="col"><span class="visually-hidden">Actions</span></th>
                     </tr>
@@ -43,12 +43,12 @@
                         <td data-label="Due">
                             <span class="num">{{ b.due_date|localdate('%b %d, %Y') }}</span>
                             {% if b.renewal_count %}
-                                <div class="xs text-tertiary">Renewed {{ b.renewal_count }}×</div>
+                                <div class="xs text-secondary">Renewed {{ b.renewal_count }}×</div>
                             {% endif %}
                         </td>
-                        <td class="num" data-label="Returned">
+                        <td class="num col-optional" data-label="Returned">
                             {% if b.return_date %}{{ b.return_date|localdate('%b %d, %Y') }}
-                            {% else %}<span class="text-tertiary">—</span>{% endif %}
+                            {% else %}<span class="text-secondary">—</span>{% endif %}
                         </td>
                         <td data-label="Status">{{ due_badge(b) }}</td>
                         <td class="cell-actions" data-label="">
@@ -60,7 +60,7 @@
                                           data-confirm-label="Renew">
                                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                         <input type="hidden" name="next" value="history">
-                                        <button type="submit" class="btn btn-sm">{{ icon('refresh', class='icon-sm') }} Renew</button>
+                                        <button type="submit" class="btn btn-primary btn-sm">{{ icon('refresh', class='icon-sm') }} Renew</button>
                                     </form>
                                 {% elif b.status == 'active' and b.renew_blocked_reason %}
                                     {# Show the actual reason, not a hover-only tooltip: this is the

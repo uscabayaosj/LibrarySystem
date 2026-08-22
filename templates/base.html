@@ -42,7 +42,7 @@
 
 {% if current_user.is_authenticated %}
 {% set is_admin = current_user.is_admin %}
-<div class="app {{ 'app-member' if not is_admin }}">
+<div class="app {{ 'app-member' if not is_admin else 'app-admin' }}">
     <div class="scrim" id="scrim"></div>
 
     <aside class="sidebar" id="sidebar" data-open="false" aria-label="Navigation">
@@ -59,40 +59,46 @@
 
         <nav aria-label="Main">
             <p class="sidebar-section">{% if is_admin %}Library{% else %}My Library{% endif %}</p>
+            {# Every link wraps its icon and text in their own spans (rather than
+               bare text beside the icon) so the tablet icon-rail tier can hide
+               .link-label visually while a screen reader still reads it, and
+               give the icon a title tooltip -- see the 768-1023px tier in
+               app.css. Nothing here is admin/member-specific; both roles need
+               the same collapsible shape. #}
             <ul class="sidebar-nav">
                 {% if is_admin %}
-                    <li><a class="sidebar-link" href="{{ url_for('admin.dashboard') }}"
+                    <li><a class="sidebar-link" href="{{ url_for('admin.dashboard') }}" title="Dashboard"
                            {% if request.endpoint == 'admin.dashboard' %}aria-current="page"{% endif %}>
-                        {{ icon('gauge') }} Dashboard</a></li>
-                    <li><a class="sidebar-link" href="{{ url_for('admin.books') }}"
+                        <span class="link-icon">{{ icon('gauge') }}</span><span class="link-label">Dashboard</span></a></li>
+                    <li><a class="sidebar-link" href="{{ url_for('admin.books') }}" title="Books"
                            {% if request.endpoint in ['admin.books', 'admin.edit_book'] %}aria-current="page"{% endif %}>
-                        {{ icon('books') }} Books</a></li>
-                    <li><a class="sidebar-link" href="{{ url_for('admin.members') }}"
+                        <span class="link-icon">{{ icon('books') }}</span><span class="link-label">Books</span></a></li>
+                    <li><a class="sidebar-link" href="{{ url_for('admin.members') }}" title="Members"
                            {% if request.endpoint in ['admin.members', 'admin.member_detail'] %}aria-current="page"{% endif %}>
-                        {{ icon('people') }} Members</a></li>
-                    <li><a class="sidebar-link" href="{{ url_for('admin.borrowing_history') }}"
+                        <span class="link-icon">{{ icon('people') }}</span><span class="link-label">Members</span></a></li>
+                    <li><a class="sidebar-link" href="{{ url_for('admin.borrowing_history') }}" title="Circulation"
                            {% if request.endpoint == 'admin.borrowing_history' %}aria-current="page"{% endif %}>
-                        {{ icon('clock') }} Circulation</a></li>
-                    <li><a class="sidebar-link" href="{{ url_for('admin.settings') }}"
+                        <span class="link-icon">{{ icon('clock') }}</span><span class="link-label">Circulation</span></a></li>
+                    <li class="phone-only-link"><a class="sidebar-link" href="{{ url_for('admin.settings') }}" title="Settings"
                            {% if request.endpoint == 'admin.settings' %}aria-current="page"{% endif %}>
-                        {{ icon('gear') }} Settings</a></li>
+                        <span class="link-icon">{{ icon('gear') }}</span><span class="link-label">Settings</span></a></li>
                 {% else %}
-                    <li><a class="sidebar-link" href="{{ url_for('member.dashboard') }}"
+                    <li><a class="sidebar-link" href="{{ url_for('member.dashboard') }}" title="Overview"
                            {% if request.endpoint == 'member.dashboard' %}aria-current="page"{% endif %}>
-                        {{ icon('gauge') }} Overview</a></li>
-                    <li><a class="sidebar-link" href="{{ url_for('member.search') }}"
+                        <span class="link-icon">{{ icon('gauge') }}</span><span class="link-label">Overview</span></a></li>
+                    <li><a class="sidebar-link" href="{{ url_for('member.search') }}" title="Browse"
                            {% if request.endpoint == 'member.search' %}aria-current="page"{% endif %}>
-                        {{ icon('search') }} Browse</a></li>
-                    <li><a class="sidebar-link" href="{{ url_for('member.borrowing_history') }}"
+                        <span class="link-icon">{{ icon('search') }}</span><span class="link-label">Browse</span></a></li>
+                    <li><a class="sidebar-link" href="{{ url_for('member.borrowing_history') }}" title="My Loans"
                            {% if request.endpoint == 'member.borrowing_history' %}aria-current="page"{% endif %}>
-                        {{ icon('archive') }} My Loans
+                        <span class="link-icon">{{ icon('archive') }}</span><span class="link-label">My Loans</span>
                         {% if current_user.active_borrowings %}
                             <span class="count">{{ current_user.active_borrowings }}</span>
                         {% endif %}
                     </a></li>
-                    <li><a class="sidebar-link" href="{{ url_for('member.reservations') }}"
+                    <li><a class="sidebar-link" href="{{ url_for('member.reservations') }}" title="Reservations"
                            {% if request.endpoint == 'member.reservations' %}aria-current="page"{% endif %}>
-                        {{ icon('calendar-check') }} Reservations
+                        <span class="link-icon">{{ icon('calendar-check') }}</span><span class="link-label">Reservations</span>
                         {% if current_user.active_reservations_count %}
                             <span class="count">{{ current_user.active_reservations_count }}</span>
                         {% endif %}
@@ -173,36 +179,62 @@
         </main>
     </div>
 
-    {% if not is_admin %}
+    {# Both shells get a phone-width bottom tab bar now (see the <768px tier
+       in app.css) -- the librarian's carries the same four sections the
+       tablet icon-rail shows; Settings stays reachable from the drawer only,
+       consistent with the ≤4-item Working Memory guidance rather than
+       cramming a fifth tab in. #}
     <nav class="tab-bar" aria-label="Primary">
-        <a class="tab-bar-item" href="{{ url_for('member.dashboard') }}"
-           {% if request.endpoint == 'member.dashboard' %}aria-current="page"{% endif %}>
-            <span class="tab-bar-icon">{{ icon('gauge') }}</span>
-            <span>Overview</span>
-        </a>
-        <a class="tab-bar-item" href="{{ url_for('member.search') }}"
-           {% if request.endpoint == 'member.search' %}aria-current="page"{% endif %}>
-            <span class="tab-bar-icon">{{ icon('search') }}</span>
-            <span>Browse</span>
-        </a>
-        <a class="tab-bar-item" href="{{ url_for('member.borrowing_history') }}"
-           {% if request.endpoint == 'member.borrowing_history' %}aria-current="page"{% endif %}>
-            <span class="tab-bar-icon">
-                {{ icon('archive') }}
-                {% if current_user.active_borrowings %}<span class="tab-bar-badge">{{ current_user.active_borrowings }}</span>{% endif %}
-            </span>
-            <span>Loans</span>
-        </a>
-        <a class="tab-bar-item" href="{{ url_for('member.reservations') }}"
-           {% if request.endpoint == 'member.reservations' %}aria-current="page"{% endif %}>
-            <span class="tab-bar-icon">
-                {{ icon('calendar-check') }}
-                {% if current_user.active_reservations_count %}<span class="tab-bar-badge">{{ current_user.active_reservations_count }}</span>{% endif %}
-            </span>
-            <span>Reserved</span>
-        </a>
+        {% if is_admin %}
+            <a class="tab-bar-item" href="{{ url_for('admin.dashboard') }}"
+               {% if request.endpoint == 'admin.dashboard' %}aria-current="page"{% endif %}>
+                <span class="tab-bar-icon">{{ icon('gauge') }}</span>
+                <span>Dashboard</span>
+            </a>
+            <a class="tab-bar-item" href="{{ url_for('admin.books') }}"
+               {% if request.endpoint in ['admin.books', 'admin.edit_book'] %}aria-current="page"{% endif %}>
+                <span class="tab-bar-icon">{{ icon('books') }}</span>
+                <span>Books</span>
+            </a>
+            <a class="tab-bar-item" href="{{ url_for('admin.members') }}"
+               {% if request.endpoint in ['admin.members', 'admin.member_detail'] %}aria-current="page"{% endif %}>
+                <span class="tab-bar-icon">{{ icon('people') }}</span>
+                <span>Members</span>
+            </a>
+            <a class="tab-bar-item" href="{{ url_for('admin.borrowing_history') }}"
+               {% if request.endpoint == 'admin.borrowing_history' %}aria-current="page"{% endif %}>
+                <span class="tab-bar-icon">{{ icon('clock') }}</span>
+                <span>Circulation</span>
+            </a>
+        {% else %}
+            <a class="tab-bar-item" href="{{ url_for('member.dashboard') }}"
+               {% if request.endpoint == 'member.dashboard' %}aria-current="page"{% endif %}>
+                <span class="tab-bar-icon">{{ icon('gauge') }}</span>
+                <span>Overview</span>
+            </a>
+            <a class="tab-bar-item" href="{{ url_for('member.search') }}"
+               {% if request.endpoint == 'member.search' %}aria-current="page"{% endif %}>
+                <span class="tab-bar-icon">{{ icon('search') }}</span>
+                <span>Browse</span>
+            </a>
+            <a class="tab-bar-item" href="{{ url_for('member.borrowing_history') }}"
+               {% if request.endpoint == 'member.borrowing_history' %}aria-current="page"{% endif %}>
+                <span class="tab-bar-icon">
+                    {{ icon('archive') }}
+                    {% if current_user.active_borrowings %}<span class="tab-bar-badge">{{ current_user.active_borrowings }}</span>{% endif %}
+                </span>
+                <span>Loans</span>
+            </a>
+            <a class="tab-bar-item" href="{{ url_for('member.reservations') }}"
+               {% if request.endpoint == 'member.reservations' %}aria-current="page"{% endif %}>
+                <span class="tab-bar-icon">
+                    {{ icon('calendar-check') }}
+                    {% if current_user.active_reservations_count %}<span class="tab-bar-badge">{{ current_user.active_reservations_count }}</span>{% endif %}
+                </span>
+                <span>Reserved</span>
+            </a>
+        {% endif %}
     </nav>
-    {% endif %}
 </div>
 
 {% else %}

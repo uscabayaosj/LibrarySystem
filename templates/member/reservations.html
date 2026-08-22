@@ -52,10 +52,16 @@
                     <div class="small text-orange">
                         Expires {{ r.expiration_date|localdate('%b %d') }} unless a copy frees up
                     </div>
+                    <p class="small text-secondary" style="margin-top:4px">
+                        This lapses automatically if a copy isn't free by {{ r.expiration_date|localdate('%b %d') }} — nothing you need to do.
+                    </p>
                 {% else %}
                     <div class="small text-secondary">
                         Held until {{ r.expiration_date|localdate('%b %d, %Y') }}
                     </div>
+                    <p class="small text-secondary" style="margin-top:4px">
+                        This lapses automatically if a copy isn't free by {{ r.expiration_date|localdate('%b %d, %Y') }} — nothing you need to do.
+                    </p>
                 {% endif %}
                 <div class="slip-actions">
                     <form action="{{ url_for('member.cancel_reservation', reservation_id=r.id) }}" method="POST"

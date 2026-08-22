@@ -228,6 +228,9 @@
             function openSheet(form) {
                 pendingForm = form;
                 lastFocus = document.activeElement;
+                // Reset from any prior use of the sheet -- a disable left over
+                // from the last confirm must not leak into this one.
+                sheetOk.disabled = false;
                 var isDanger = form.getAttribute('data-confirm-kind') === 'danger';
                 sheetTitle.textContent = form.getAttribute('data-confirm-title') || 'Are you sure?';
                 sheetBody.textContent = form.getAttribute('data-confirm') || '';
@@ -253,8 +256,19 @@
             });
 
             on(sheetOk, 'click', function () {
-                if (!pendingForm) { return; }
+                if (!pendingForm || sheetOk.disabled) { return; }
                 var form = pendingForm;
+                // Double-tapping "Confirm" on a slow campus connection must not
+                // fire the borrow/renew/reserve/cancel request twice -- these
+                // mutate real inventory (a copy count, a queue slot), so a
+                // second race-condition POST either double-decrements stock or
+                // just errors, neither of which the member should be able to
+                // trigger by accident. openSheet() clears this disable on the
+                // next use, and the pageshow/timeout guard below clears it if
+                // the POST never actually leaves the page -- the point is to
+                // block a double-tap, not to brick the control.
+                sheetOk.disabled = true;
+                disableFormSubmit(form);
                 form.dataset.confirmed = 'yes';
                 closeSheet();
                 if (typeof form.requestSubmit === 'function') { form.requestSubmit(); }
@@ -269,6 +283,116 @@
                 if (e.key === 'Escape') { closeSheet(); }
                 if (e.key === 'Tab') { trapFocus(backdrop, e); }
             });
+        }
+
+        /* -----------------------------------------------------------
+           Double-submit protection for plain (non-sheet) POST forms
+           Add Book, Save Changes (edit book / settings), and Process
+           Reservations don't go through the confirmation sheet, but they're
+           still a plain POST-and-redirect with no in-page "saving…" state --
+           an impatient repeat click can fire the request twice. Reuses
+           disableFormSubmit()/restoreDisabledSubmits() below (defined for
+           the confirm-sheet path) so these get the same bfcache/timeout
+           recovery instead of a second, lesser mechanism. Sheet-routed forms
+           already call disableFormSubmit() themselves once confirmed, and
+           calling it again here is a no-op (it bails if already disabled).
+           ----------------------------------------------------------- */
+        document.addEventListener('submit', function (e) {
+            var form = e.target;
+            if (!form || !form.matches || !form.matches('form')) { return; }
+            if ((form.method || 'get').toLowerCase() !== 'post') { return; }
+            // An unconfirmed [data-confirm] form isn't really submitting --
+            // the sheet just intercepted it and called preventDefault().
+            if (form.hasAttribute('data-confirm') && form.dataset.confirmed !== 'yes') { return; }
+            disableFormSubmit(form);
+        });
+
+        /* -----------------------------------------------------------
+           Double-submit guard for the form's own trigger button
+           These forms navigate the whole page on submit (no fetch/XHR), so a
+           successful submit always unloads this DOM -- but a failed one
+           (offline, timeout) can leave the page in place, or the browser can
+           restore it later from the back-forward cache with the button still
+           disabled from the earlier attempt. Both cases must recover on their
+           own without a reload, since re-tapping "Borrow"/"Renew" is the
+           user's only path forward on a flaky connection.
+           ----------------------------------------------------------- */
+        function disableFormSubmit(form) {
+            var btn = form.querySelector('button[type="submit"], button:not([type])');
+            if (!btn || btn.disabled) { return; }
+            btn.disabled = true;
+            btn.dataset.wasDisabledForSubmit = 'yes';
+        }
+
+        function restoreDisabledSubmits() {
+            document.querySelectorAll('[data-was-disabled-for-submit="yes"]').forEach(function (btn) {
+                btn.disabled = false;
+                delete btn.dataset.wasDisabledForSubmit;
+            });
+        }
+
+        // A safety net for the case where the POST never actually leaves the
+        // page (offline, DNS failure, etc.) -- without this, "Borrow" stays
+        // permanently disabled with no way to retry.
+        window.addEventListener('pageshow', function (e) {
+            if (e.persisted) { restoreDisabledSubmits(); }
+        });
+        window.setTimeout(restoreDisabledSubmits, 12000);
+
+        /* -----------------------------------------------------------
+           Cancel button inside a <details> panel (e.g. Add Book).
+           type="reset" already clears the form's own fields; this closes
+           the disclosure too, matching the Cancel button on Edit Book
+           (which simply navigates back).
+           ----------------------------------------------------------- */
+        document.querySelectorAll('[data-collapse-details]').forEach(function (btn) {
+            on(btn, 'click', function () {
+                var target = document.getElementById(btn.getAttribute('data-collapse-details'));
+                if (target && target.tagName === 'DETAILS') {
+                    // Let the native reset happen first, then collapse.
+                    window.setTimeout(function () { target.open = false; }, 0);
+                }
+            });
+        });
+
+        /* -----------------------------------------------------------
+           Bulk row selection (Borrowing History active-loan check-ins)
+           A header checkbox toggles every selectable row checkbox; the
+           "Check In Selected" button stays disabled until at least one row
+           is checked, and its confirm-sheet body is filled in with a count
+           right before the sheet reads the form's data-confirm attribute.
+           ----------------------------------------------------------- */
+        var bulkForm = document.querySelector('[data-bulk-form]');
+        if (bulkForm) {
+            // The row checkboxes and header "select all" live inside the
+            // table, not nested inside this <form> -- a per-row Check In
+            // button is itself a <form>, and forms can't nest -- so they're
+            // associated to it via form="bulk-checkin" instead of DOM
+            // position, and found here the same way: by that association.
+            var selectAll = document.querySelector('[data-select-all]');
+            var rowChecks = Array.prototype.slice.call(document.querySelectorAll('[data-row-check]'));
+            var bulkSubmit = document.querySelector('[data-bulk-submit]');
+
+            function syncBulkState() {
+                var checked = rowChecks.filter(function (c) { return c.checked; });
+                var count = checked.length;
+                if (bulkSubmit) { bulkSubmit.disabled = count === 0; }
+                bulkForm.setAttribute(
+                    'data-confirm',
+                    count + ' book' + (count === 1 ? '' : 's') + ' will be marked returned and put back on the shelf.'
+                );
+                if (selectAll) {
+                    selectAll.checked = rowChecks.length > 0 && count === rowChecks.length;
+                    selectAll.indeterminate = count > 0 && count < rowChecks.length;
+                }
+            }
+
+            on(selectAll, 'change', function () {
+                rowChecks.forEach(function (c) { c.checked = selectAll.checked; });
+                syncBulkState();
+            });
+            rowChecks.forEach(function (c) { on(c, 'change', syncBulkState); });
+            syncBulkState();
         }
 
         /* -----------------------------------------------------------

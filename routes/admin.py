@@ -4,7 +4,7 @@ from models import db, Book, User, Borrowing, Reservation, OrganizationSettings
 from datetime import datetime, timedelta
 from theming import normalize_hex
 from branding_images import validate_and_reencode, LogoValidationError
-from validation import length_errors
+from validation import length_errors, max_length, FIELD_LABELS
 
 bp = Blueprint('admin', __name__, url_prefix='/admin')
 
@@ -22,7 +22,7 @@ def restrict_to_admins():
         return redirect(url_for('member.dashboard'))
 
 
-def _books_context(page=1, search='', form_values=None, form_errors=None):
+def _books_context(page=1, search='', form_values=None, form_errors=None, field_errors=None):
     per_page = 20
     query = Book.query
     if search:
@@ -42,6 +42,7 @@ def _books_context(page=1, search='', form_values=None, form_errors=None):
         'search': search,
         'form_values': form_values or {},
         'form_errors': form_errors,
+        'field_errors': field_errors or {},
     }
 
 
@@ -94,26 +95,36 @@ def add_book():
     description = request.form.get('description', '').strip()
     quantity = request.form.get('quantity', 1, type=int)
 
-    errors = []
-    if not all([title, author, isbn]):
-        errors.append('Title, Author, and ISBN are required.')
-    errors.extend(length_errors(Book, {
+    field_errors = {}
+    if not title:
+        field_errors['title'] = 'Title is required.'
+    if not author:
+        field_errors['author'] = 'Author is required.'
+    if not isbn:
+        field_errors['isbn'] = 'ISBN is required.'
+    length_values = {
         'title': title, 'author': author, 'isbn': isbn,
         'category': category, 'publisher': publisher,
-    }))
+    }
+    for field in length_values:
+        limit = max_length(Book, field)
+        value = length_values[field]
+        if limit is not None and isinstance(value, str) and len(value) > limit and field not in field_errors:
+            field_errors[field] = f'{FIELD_LABELS.get(field, field.capitalize())} must be {limit} characters or fewer (you entered {len(value)}).'
     if quantity is None or quantity < 1:
-        errors.append('Quantity must be at least 1.')
+        field_errors['quantity'] = 'Quantity must be at least 1.'
         quantity = 1
     existing = Book.query.filter_by(isbn=isbn).first() if isbn else None
     if existing:
-        errors.append(f'A book with ISBN {isbn} already exists ({existing.title}).')
+        field_errors['isbn'] = f'A book with ISBN {isbn} already exists ({existing.title}).'
 
+    errors = list(field_errors.values())
     if errors:
         for msg in errors:
             flash(msg, 'warning')
         return render_template(
             'admin/books.html',
-            **_books_context(1, '', form_values=request.form, form_errors=errors)
+            **_books_context(1, '', form_values=request.form, form_errors=errors, field_errors=field_errors)
         )
 
     book = Book(
@@ -131,37 +142,56 @@ def add_book():
 @bp.route('/books/<int:id>/edit', methods=['GET', 'POST'])
 def edit_book(id):
     book = Book.query.get_or_404(id)
+    active_loans = Borrowing.query.filter_by(book_id=id, status='active').count()
     if request.method == 'POST':
         title = request.form.get('title', '').strip()
         author = request.form.get('author', '').strip()
         isbn = request.form.get('isbn', '').strip()
+        category = request.form.get('category', '').strip()
+        publisher = request.form.get('publisher', '').strip()
         new_quantity = request.form.get('quantity', book.quantity, type=int)
 
-        errors = []
-        if not all([title, author, isbn]):
-            errors.append('Title, Author, and ISBN are required.')
-        errors.extend(length_errors(Book, {
-            'title': title, 'author': author, 'isbn': isbn,
-            'category': request.form.get('category', '').strip(),
-            'publisher': request.form.get('publisher', '').strip(),
-        }))
+        field_errors = {}
+        if not title:
+            field_errors['title'] = 'Title is required.'
+        if not author:
+            field_errors['author'] = 'Author is required.'
+        if not isbn:
+            field_errors['isbn'] = 'ISBN is required.'
+        length_values = {'title': title, 'author': author, 'isbn': isbn, 'category': category, 'publisher': publisher}
+        for field in length_values:
+            limit = max_length(Book, field)
+            value = length_values[field]
+            if limit is not None and isinstance(value, str) and len(value) > limit and field not in field_errors:
+                field_errors[field] = f'{FIELD_LABELS.get(field, field.capitalize())} must be {limit} characters or fewer (you entered {len(value)}).'
         if new_quantity is None or new_quantity < 0:
-            errors.append('Quantity cannot be negative.')
+            field_errors['quantity'] = 'Quantity cannot be negative.'
+            new_quantity = book.quantity
+        elif new_quantity < active_loans:
+            # Circulation-truth guardrail (PRODUCT.md Principle #1): dropping
+            # quantity below what's currently checked out would produce a
+            # nonsensical negative available count downstream.
+            field_errors['quantity'] = (
+                f'{active_loans} currently on loan — quantity can\'t go below {active_loans}.'
+            )
             new_quantity = book.quantity
         duplicate = Book.query.filter(Book.isbn == isbn, Book.id != id).first() if isbn else None
         if duplicate:
-            errors.append(f'Another book already uses ISBN {isbn} ({duplicate.title}).')
+            field_errors['isbn'] = f'Another book already uses ISBN {isbn} ({duplicate.title}).'
 
-        if errors:
-            for msg in errors:
+        if field_errors:
+            for msg in field_errors.values():
                 flash(msg, 'warning')
-            return render_template('admin/edit_book.html', book=book)
+            return render_template(
+                'admin/edit_book.html', book=book, form_values=request.form,
+                field_errors=field_errors, active_loans=active_loans,
+            )
 
         book.title = title
         book.author = author
         book.isbn = isbn
-        book.category = request.form.get('category', '').strip()
-        book.publisher = request.form.get('publisher', '').strip()
+        book.category = category
+        book.publisher = publisher
         book.publication_year = request.form.get('publication_year', type=int)
         book.description = request.form.get('description', '').strip()
 
@@ -171,7 +201,7 @@ def edit_book(id):
         db.session.commit()
         flash('Book updated successfully.', 'success')
         return redirect(url_for('admin.books'))
-    return render_template('admin/edit_book.html', book=book)
+    return render_template('admin/edit_book.html', book=book, form_values=None, field_errors={}, active_loans=active_loans)
 
 
 @bp.route('/books/<int:id>/delete', methods=['POST'])
@@ -328,6 +358,27 @@ def return_book(id):
     borrowing.mark_returned()
     flash(f'"{borrowing.book.title}" returned by {borrowing.user.username}.', 'success')
     return redirect(url_for('admin.borrowing_history'))
+
+
+@bp.route('/return-books/bulk', methods=['POST'])
+def bulk_return_books():
+    ids = request.form.getlist('borrowing_ids', type=int)
+    if not ids:
+        flash('No loans were selected.', 'warning')
+        return redirect(url_for('admin.borrowing_history'))
+
+    borrowings = Borrowing.query.filter(
+        Borrowing.id.in_(ids), Borrowing.status == 'active'
+    ).all()
+    count = len(borrowings)
+    for borrowing in borrowings:
+        borrowing.mark_returned()  # commits per-row, same as the single check-in path
+
+    if count:
+        flash(f'{count} book{"s" if count != 1 else ""} checked in.', 'success')
+    else:
+        flash('Those loans were already returned.', 'info')
+    return redirect(url_for('admin.borrowing_history', status=request.form.get('status', '')))
 
 
 @bp.route('/check-reservations', methods=['POST'])

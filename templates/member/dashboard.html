@@ -91,7 +91,7 @@
                                           data-confirm-label="Renew">
                                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                         <input type="hidden" name="next" value="dashboard">
-                                        <button type="submit" class="btn btn-sm">{{ icon('refresh', class='icon-sm') }} Renew</button>
+                                        <button type="submit" class="btn btn-primary btn-sm">{{ icon('refresh', class='icon-sm') }} Renew</button>
                                     </form>
                                 {% elif b.renew_blocked_reason %}
                                     <span class="row-note">{{ b.renew_blocked_reason }}</span>

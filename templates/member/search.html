@@ -16,7 +16,7 @@
 {% block content %}
 <form method="GET" action="{{ url_for('member.search') }}" class="panel region">
     <div class="panel-body">
-        <div class="searchbar">
+        <div class="searchbar searchbar-compact">
             <div class="field searchbar-scope">
                 <label class="visually-hidden" for="type">Search in</label>
                 <select id="type" name="type">
@@ -29,14 +29,20 @@
             </div>
             <div class="searchbar-field">
                 <label class="visually-hidden" for="q">Search the collection</label>
-                {{ icon('search', class='icon-sm') }}
+                {{ icon('search', class='icon-sm searchbar-icon') }}
                 <input type="search" id="q" name="q" value="{{ search_term }}" data-search-input
-                       placeholder="Search the collection…">
+                       placeholder="Search…">
+                <div class="searchbar-actions">
+                    {% if search_term %}
+                        <a href="{{ url_for('member.search') }}" class="searchbar-clear" aria-label="Clear search">
+                            {{ icon('x', class='icon-sm') }}
+                        </a>
+                    {% endif %}
+                    <button class="btn btn-primary btn-icon searchbar-submit" type="submit" aria-label="Search">
+                        {{ icon('search', class='icon-sm') }}
+                    </button>
+                </div>
             </div>
-            <button class="btn btn-primary" type="submit">Search</button>
-            {% if search_term %}
-                <a href="{{ url_for('member.search') }}" class="btn">Clear</a>
-            {% endif %}
         </div>
     </div>
 </form>
@@ -46,7 +52,7 @@
         {% for book in books %}
         {% set my_loan = my_loans.get(book.id) %}
         {% set my_res = my_reservations.get(book.id) %}
-        <article class="book">
+        <article class="book {% if my_loan %}is-mine{% elif book.available_quantity > 0 %}is-available{% elif my_res %}is-queued{% endif %}">
             <div class="book-cover" style="--hue: {{ book.isbn|cover_hue }}" aria-hidden="true">{{ book.title[0]|upper }}</div>
             <div class="book-body">
                 <h2 class="book-title">{{ book.title }}</h2>

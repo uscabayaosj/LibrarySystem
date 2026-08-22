@@ -17,42 +17,51 @@
         <form method="POST" action="{{ url_for('admin.edit_book', id=book.id) }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="form-grid">
-                <div class="field col-8">
+                <div class="field col-8 {{ 'has-error' if field_errors.get('title') }}">
                     <label for="title">Title <span class="req" aria-hidden="true">*</span></label>
-                    <input type="text" id="title" name="title" value="{{ book.title }}" required maxlength="{{ maxlen('Book', 'title') }}">
+                    <input type="text" id="title" name="title" value="{{ form_values.get('title', book.title) if form_values else book.title }}" required maxlength="{{ maxlen('Book', 'title') }}"
+                           {% if field_errors.get('title') %}aria-invalid="true" aria-describedby="title-error"{% endif %}>
+                    {% if field_errors.get('title') %}<p class="field-error" id="title-error">{{ icon('warning', class='icon-sm') }} {{ field_errors['title'] }}</p>{% endif %}
                 </div>
                 <div class="field col-4">
                     <label for="category">Category</label>
-                    <input type="text" id="category" name="category" value="{{ book.category or '' }}" maxlength="{{ maxlen('Book', 'category') }}">
+                    <input type="text" id="category" name="category" value="{{ form_values.get('category', book.category or '') if form_values else (book.category or '') }}" maxlength="{{ maxlen('Book', 'category') }}">
                 </div>
-                <div class="field col-6">
+                <div class="field col-6 {{ 'has-error' if field_errors.get('author') }}">
                     <label for="author">Author <span class="req" aria-hidden="true">*</span></label>
-                    <input type="text" id="author" name="author" value="{{ book.author }}" required maxlength="{{ maxlen('Book', 'author') }}">
+                    <input type="text" id="author" name="author" value="{{ form_values.get('author', book.author) if form_values else book.author }}" required maxlength="{{ maxlen('Book', 'author') }}"
+                           {% if field_errors.get('author') %}aria-invalid="true" aria-describedby="author-error"{% endif %}>
+                    {% if field_errors.get('author') %}<p class="field-error" id="author-error">{{ icon('warning', class='icon-sm') }} {{ field_errors['author'] }}</p>{% endif %}
                 </div>
-                <div class="field col-3">
+                <div class="field col-3 {{ 'has-error' if field_errors.get('isbn') }}">
                     <label for="isbn">ISBN <span class="req" aria-hidden="true">*</span></label>
-                    <input type="text" id="isbn" name="isbn" value="{{ book.isbn }}" required maxlength="{{ maxlen('Book', 'isbn') }}">
+                    <input type="text" id="isbn" name="isbn" value="{{ form_values.get('isbn', book.isbn) if form_values else book.isbn }}" required maxlength="{{ maxlen('Book', 'isbn') }}"
+                           {% if field_errors.get('isbn') %}aria-invalid="true" aria-describedby="isbn-error"{% endif %}>
+                    {% if field_errors.get('isbn') %}<p class="field-error" id="isbn-error">{{ icon('warning', class='icon-sm') }} {{ field_errors['isbn'] }}</p>{% endif %}
                 </div>
-                <div class="field col-3">
+                <div class="field col-3 {{ 'has-error' if field_errors.get('quantity') }}">
                     <label for="quantity">Total copies</label>
-                    <input type="number" id="quantity" name="quantity" value="{{ book.quantity }}" min="0"
-                           aria-describedby="qty-hint">
+                    <input type="number" id="quantity" name="quantity" value="{{ form_values.get('quantity', book.quantity) if form_values else book.quantity }}" min="{{ active_loans }}"
+                           aria-describedby="qty-hint{{ ' quantity-error' if field_errors.get('quantity') else '' }}"
+                           {% if field_errors.get('quantity') %}aria-invalid="true"{% endif %}>
                     <span class="xs text-secondary" id="qty-hint">
                         {{ book.available_quantity }} on the shelf now
+                        {% if active_loans %}&middot; {{ active_loans }} currently on loan — can't go below {{ active_loans }}{% endif %}
                     </span>
+                    {% if field_errors.get('quantity') %}<p class="field-error" id="quantity-error">{{ icon('warning', class='icon-sm') }} {{ field_errors['quantity'] }}</p>{% endif %}
                 </div>
                 <div class="field col-6">
                     <label for="publisher">Publisher</label>
-                    <input type="text" id="publisher" name="publisher" value="{{ book.publisher or '' }}" maxlength="{{ maxlen('Book', 'publisher') }}">
+                    <input type="text" id="publisher" name="publisher" value="{{ form_values.get('publisher', book.publisher or '') if form_values else (book.publisher or '') }}" maxlength="{{ maxlen('Book', 'publisher') }}">
                 </div>
                 <div class="field col-3">
                     <label for="publication_year">Year</label>
                     <input type="number" id="publication_year" name="publication_year"
-                           value="{{ book.publication_year or '' }}" min="1000" max="2100">
+                           value="{{ form_values.get('publication_year', book.publication_year or '') if form_values else (book.publication_year or '') }}" min="1000" max="2100">
                 </div>
                 <div class="field col-12">
                     <label for="description">Description</label>
-                    <textarea id="description" name="description" rows="3">{{ book.description or '' }}</textarea>
+                    <textarea id="description" name="description" rows="3">{{ form_values.get('description', book.description or '') if form_values else (book.description or '') }}</textarea>
                 </div>
             </div>
             <div class="form-actions">
