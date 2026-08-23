@@ -5,6 +5,8 @@ third one -- a database created by the pre-migrations `db.create_all()` --
 is the case that would otherwise break an existing deployment, so it's the
 one most worth pinning down.
 """
+from datetime import datetime
+
 import sqlalchemy as sa
 
 from alembic.migration import MigrationContext
@@ -66,9 +68,21 @@ def test_legacy_create_all_database_is_stamped_not_recreated(tmp_path, monkeypat
         db.session.execute(sa.text('DROP TABLE alembic_version'))
         db.session.commit()
 
+        # Raw SQL, not the User ORM model: the model now carries columns
+        # (onboarding_completed_at) added by a migration after baseline, so
+        # inserting through it here -- against a table genuinely stamped at
+        # baseline -- would fail with "no such column", the same drift this
+        # fixture already guards the schema-creation step against above.
         user = User(username='existing', email='existing@example.com', is_admin=True)
         user.set_password('pw123456')
-        db.session.add(user)
+        db.session.execute(sa.text(
+            'INSERT INTO user (username, email, password_hash, is_admin, phone, member_since) '
+            'VALUES (:username, :email, :password_hash, :is_admin, NULL, :member_since)'
+        ), {
+            'username': user.username, 'email': user.email,
+            'password_hash': user.password_hash, 'is_admin': True,
+            'member_since': datetime.utcnow(),
+        })
         db.session.add(Book(title='Pre-existing', author='A', isbn='111',
                             quantity=1, available_quantity=1))
         db.session.commit()

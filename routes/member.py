@@ -7,6 +7,15 @@ from localtime import to_local
 
 bp = Blueprint('member', __name__)
 
+# Closed set of where "Skip"/"Start browsing" send a member once the
+# walkthrough is dismissed -- mirrors the _RENEW_REDIRECTS pattern in this
+# same module: request.form data picks a key, never a URL, so this can't
+# become an open redirect.
+_WELCOME_REDIRECTS = {
+    'search': lambda: url_for('member.search'),
+    'dashboard': lambda: url_for('member.dashboard'),
+}
+
 
 @bp.route('/badge-count')
 @login_required
@@ -16,6 +25,28 @@ def badge_count():
     # that actually demands action, so that's what the badge counts rather
     # than every active loan/reservation.
     return jsonify({'count': current_user.overdue_borrowings})
+
+
+@bp.route('/welcome')
+@login_required
+def welcome():
+    # Admins are provisioned once at first boot, never self-register, and
+    # have their own dashboard -- this page has nothing for them.
+    if current_user.is_admin:
+        return redirect(url_for('admin.dashboard'))
+    return render_template('member/welcome.html')
+
+
+@bp.route('/welcome', methods=['POST'])
+@login_required
+def welcome_finish():
+    if current_user.onboarding_completed_at is None:
+        current_user.onboarding_completed_at = datetime.utcnow()
+        db.session.commit()
+    destination = _WELCOME_REDIRECTS.get(
+        request.form.get('next'), _WELCOME_REDIRECTS['search']
+    )()
+    return redirect(destination)
 
 
 @bp.route('/dashboard')
@@ -205,10 +236,36 @@ def renew_borrowing(borrowing_id):
         flash(borrowing.renew_blocked_reason or 'This loan cannot be renewed.', 'warning')
         return redirect(destination)
 
-    borrowing.renew()
+    now = datetime.utcnow()
+    new_due_date = now + timedelta(days=current_app.config['LOAN_PERIOD_DAYS'])
+    max_renewals = current_app.config['MAX_RENEWALS']
+    # Atomic, race-safe increment -- the renewal mirror of borrow_book's
+    # atomic decrement above. can_renew was just checked, but that read and
+    # this write aren't one transaction: two near-simultaneous renews (a
+    # double-tap that beats the client-side submit guard, or the same loan
+    # open in two tabs) could both pass the check before either commits.
+    # Re-verifying the renewal limit and due date in the WHERE clause means
+    # at most one of the two actually renews.
+    updated = Borrowing.query.filter(
+        Borrowing.id == borrowing.id,
+        Borrowing.status == 'active',
+        Borrowing.due_date >= now,
+        Borrowing.renewal_count < max_renewals,
+    ).update(
+        {
+            Borrowing.due_date: new_due_date,
+            Borrowing.renewal_count: Borrowing.renewal_count + 1,
+        },
+        synchronize_session=False,
+    )
+    if not updated:
+        db.session.rollback()
+        flash('This loan can no longer be renewed.', 'warning')
+        return redirect(destination)
+    db.session.commit()
     flash(
         f'"{borrowing.book.title}" renewed — now due '
-        f'{borrowing.due_date.strftime("%b %d, %Y")}.',
+        f'{new_due_date.strftime("%b %d, %Y")}.',
         'success',
     )
     return redirect(destination)

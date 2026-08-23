@@ -298,7 +298,15 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 
-html { -webkit-text-size-adjust: 100%; }
+html {
+    -webkit-text-size-adjust: 100%;
+    /* Anchor jumps (e.g. the toolbar's "Add Book" link into a details panel)
+       land the target flush under the sticky toolbar without this padding. */
+    scroll-padding-top: calc(var(--toolbar-h) + 12px);
+}
+@media (prefers-reduced-motion: no-preference) {
+    html { scroll-behavior: smooth; }
+}
 
 body {
     margin: 0;
@@ -434,6 +442,11 @@ table.data th,
     top: 0;
     height: 100vh;
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    /* The rail scrolls independently of the page; without this a rail that
+       hits its own top/bottom hands the gesture off to body scroll (or, on
+       the mobile drawer, to the page behind the scrim). */
+    overscroll-behavior: contain;
 }
 
 .sidebar-head {
@@ -1025,7 +1038,13 @@ input[type="checkbox"], input[type="radio"] {
    6. Data display — the ledger
    -------------------------------------------------------------------------- */
 
-.table-wrap { width: 100%; overflow-x: auto; }
+.table-wrap {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    /* Panning a wide table shouldn't chain into the page scrolling under it. */
+    overscroll-behavior-x: contain;
+}
 table.data {
     width: 100%;
     border-collapse: collapse;
@@ -1107,7 +1126,7 @@ table.data tr.row-alert td:first-child { box-shadow: inset 3px 0 0 var(--red); }
     .row-item:hover { background: var(--bg-hover); }
 }
 .row-main { min-width: 0; }
-.row-title { font-weight: 600; font-size: var(--text-base); letter-spacing: -0.006em; }
+.row-title { font-weight: 600; font-size: var(--text-base); letter-spacing: -0.006em; overflow-wrap: break-word; }
 .row-sub { font-size: var(--text-sm); color: var(--fg-secondary); margin-top: 2px; }
 .row-side {
     text-align: right;
@@ -1272,8 +1291,8 @@ table.data tr.row-alert td:first-child { box-shadow: inset 3px 0 0 var(--red); }
 }
 
 .book-body { padding: 16px 18px; flex: 1; }
-.book-title { font-size: var(--text-md); font-weight: 600; letter-spacing: -0.012em; line-height: 1.3; }
-.book-author { font-size: var(--text-base); color: var(--fg-secondary); margin-top: 3px; }
+.book-title { font-size: var(--text-md); font-weight: 600; letter-spacing: -0.012em; line-height: 1.3; overflow-wrap: break-word; }
+.book-author { font-size: var(--text-base); color: var(--fg-secondary); margin-top: 3px; overflow-wrap: break-word; }
 .book-meta { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 11px; }
 .book-desc {
     font-size: var(--text-sm); color: var(--fg-secondary); margin-top: 11px;
@@ -1373,8 +1392,8 @@ table.data tr.row-alert td:first-child { box-shadow: inset 3px 0 0 var(--red); }
 .slip.is-overdue { box-shadow: var(--shadow-sm), inset 0 0 0 1px var(--red); }
 
 .slip-body { padding: 14px 16px; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
-.slip-title { font-size: var(--text-md); font-weight: 600; letter-spacing: -0.012em; line-height: 1.3; }
-.slip-author { font-size: var(--text-sm); color: var(--fg-secondary); }
+.slip-title { font-size: var(--text-md); font-weight: 600; letter-spacing: -0.012em; line-height: 1.3; overflow-wrap: break-word; }
+.slip-author { font-size: var(--text-sm); color: var(--fg-secondary); overflow-wrap: break-word; }
 .slip-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 7px; }
 .slip-actions {
     display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
@@ -1463,6 +1482,13 @@ table.data tr.row-alert td:first-child { box-shadow: inset 3px 0 0 var(--red); }
 }
 .sheet {
     width: min(420px, calc(100vw - 32px));
+    /* Confirmation copy is short today, but a sheet reused for a longer form
+       (or a small phone viewport) must contain its own scroll rather than
+       grow the backdrop past the screen. */
+    max-height: calc(100vh - 24vh);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
     background: var(--bg-raised);
     border-radius: var(--r-lg);
     box-shadow: var(--shadow-lg);
@@ -1593,6 +1619,49 @@ table.data tr.row-alert td:first-child { box-shadow: inset 3px 0 0 var(--red); }
 .auth-head .hero-mark-logo { width: 76px; height: 76px; border-radius: var(--r-lg); margin-bottom: 16px; }
 .auth-head p { font-size: var(--text-base); color: var(--fg-secondary); margin-top: 5px; }
 .auth-foot { text-align: center; margin-top: 20px; font-size: var(--text-base); color: var(--fg-secondary); }
+
+/* ---- One-time member welcome (post-signup walkthrough) ---- */
+.welcome { max-width: 480px; padding-top: 32px; }
+
+/* The membership card is a `.slip` wearing a join date instead of a due
+   date -- same object, same construction, reused rather than re-invented.
+   Only the stub's own two lines need widening: "Joined" plus a month name
+   ("Aug 2026") run longer than "Due"/"Aug" ever do. */
+.welcome-card .slip-stub-label { white-space: nowrap; }
+.welcome-card .slip-stub-month { white-space: nowrap; }
+.welcome-card .slip-title { font-family: var(--font-display); font-variation-settings: 'opsz' 36, 'SOFT' 22, 'WONK' 1; font-size: var(--text-lg); }
+
+.welcome-steps { list-style: none; margin: 0; padding: 0; }
+.welcome-step {
+    display: flex; align-items: flex-start; gap: 14px;
+    padding: 16px 18px;
+    border-bottom: 1px solid var(--separator);
+}
+.welcome-step:last-child { border-bottom: none; }
+.welcome-step-icon {
+    flex: none;
+    width: 40px; height: 40px; border-radius: 50%;
+    display: grid; place-items: center;
+    background: var(--accent-soft); color: var(--accent);
+}
+.welcome-step-body { min-width: 0; padding-top: 3px; }
+.welcome-step-body h3 { font-size: var(--text-base); font-weight: 600; margin-bottom: 3px; }
+.welcome-step-body p { font-size: var(--text-sm); color: var(--fg-secondary); line-height: 1.5; }
+
+.welcome-actions { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.welcome-actions form { width: 100%; }
+.welcome-skip {
+    background: none; border: none; padding: 6px;
+    font: inherit; font-size: var(--text-sm); font-weight: 600;
+    color: var(--fg-secondary); cursor: pointer;
+}
+@media (hover: hover) and (pointer: fine) {
+    .welcome-skip:hover { color: var(--fg); text-decoration: underline; }
+}
+
+@media (max-width: 520px) {
+    .welcome { padding-top: 20px; }
+}
 
 .footer { padding: 24px; text-align: center; font-size: var(--text-sm); color: var(--fg-tertiary); }
 

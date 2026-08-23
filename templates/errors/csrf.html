@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+
+{% block title %}Session Expired{% endblock %}
+{% block heading %}Session Expired{% endblock %}
+
+{% block content %}
+<div class="panel"><div class="empty">
+    {{ icon('clock', class='icon-xl') }}
+    <h3>Your session timed out</h3>
+    <p>That form took a while to submit, or was opened in another tab. Go back and try again.</p>
+    <a href="{{ url_for('index') }}" class="btn btn-primary">Back to Library</a>
+</div></div>
+{% endblock %}

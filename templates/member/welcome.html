@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+
+{% block title %}Welcome{% endblock %}
+{% block heading %}Welcome{% endblock %}
+{% block subheading %}<p class="toolbar-sub">Your account is ready</p>{% endblock %}
+
+{% block content %}
+<div class="content-narrow welcome">
+
+    {# The membership card: the accession-slip vernacular reused for the one
+       moment it fits just as well as a due-date -- a hand-issued record with
+       a stamped date and a name on file. Same component, same construction
+       as a loan slip, just holding a join date instead of a due date. #}
+    <div class="slip welcome-card region">
+        <div class="slip-stub">
+            <span class="slip-stub-label">Joined</span>
+            <span class="slip-stub-day">{{ current_user.member_since|localdate('%d') }}</span>
+            <span class="slip-stub-month">{{ current_user.member_since|localdate('%b %Y') }}</span>
+        </div>
+        <div class="slip-body">
+            <div class="slip-title">Welcome, {{ current_user.username }}</div>
+            <div class="slip-author">You're registered at {{ org_settings.org_name }}.</div>
+            <div class="slip-meta">
+                <span class="slip-accession">{{ current_user.email }}</span>
+            </div>
+        </div>
+    </div>
+
+    <section class="panel region">
+        <ol class="welcome-steps">
+            <li class="welcome-step">
+                <div class="welcome-step-icon">{{ icon('search', class='icon') }}</div>
+                <div class="welcome-step-body">
+                    <h3>Find something to read</h3>
+                    <p>Search the catalog by title, author, or ISBN, then tap
+                       <span class="strong">Borrow</span> — it's yours for
+                       {{ config.LOAN_PERIOD_DAYS }} days.</p>
+                </div>
+            </li>
+            <li class="welcome-step">
+                <div class="welcome-step-icon">{{ icon('calendar-check', class='icon') }}</div>
+                <div class="welcome-step-body">
+                    <h3>Stay ahead of due dates</h3>
+                    <p>Every loan shows up on your Overview with its due date.
+                       Renew in one tap, up to {{ config.MAX_RENEWALS }} times, or
+                       add a reminder to your phone's calendar.</p>
+                </div>
+            </li>
+            <li class="welcome-step">
+                <div class="welcome-step-icon">{{ icon('bookmark', class='icon') }}</div>
+                <div class="welcome-step-body">
+                    <h3>Reserve what's checked out</h3>
+                    <p>All copies out? Reserve the title and you'll see exactly
+                       where you stand in the queue — held for
+                       {{ config.RESERVATION_HOLD_DAYS }} days once it's your turn.</p>
+                </div>
+            </li>
+        </ol>
+    </section>
+
+    <div class="welcome-actions region">
+        <form method="POST" action="{{ url_for('member.welcome_finish') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="next" value="search">
+            <button type="submit" class="btn btn-primary btn-block btn-lg">
+                {{ icon('search') }} Start browsing
+            </button>
+        </form>
+        <form method="POST" action="{{ url_for('member.welcome_finish') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="next" value="dashboard">
+            <button type="submit" class="welcome-skip">I'll explore on my own</button>
+        </form>
+    </div>
+
+</div>
+{% endblock %}

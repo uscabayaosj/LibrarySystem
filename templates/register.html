@@ -9,7 +9,7 @@
         <div class="auth-head">
             <div class="hero-mark">{{ icon('person-plus', class='icon-lg') }}</div>
             <h1>Create your account</h1>
-            <p>Borrow and reserve from the collection</p>
+            <p>Search, borrow, and reserve from {{ org_settings.org_name }}'s collection</p>
         </div>
 
         <form method="POST" action="{{ url_for('auth.register') }}">
@@ -17,12 +17,16 @@
             <div class="field" style="margin-bottom:12px">
                 <label for="username">Username</label>
                 <input type="text" id="username" name="username" value="{{ username or '' }}"
-                       autocomplete="username" required autofocus maxlength="{{ maxlen('User', 'username') }}">
+                       autocomplete="username" required autofocus maxlength="{{ maxlen('User', 'username') }}"
+                       aria-describedby="username-hint">
+                <span class="xs text-secondary" id="username-hint">What you'll sign in with — and what the library sees on your loans.</span>
             </div>
             <div class="field" style="margin-bottom:12px">
                 <label for="email">Email</label>
                 <input type="email" id="email" name="email" value="{{ email or '' }}"
-                       autocomplete="email" required maxlength="{{ maxlen('User', 'email') }}">
+                       autocomplete="email" required maxlength="{{ maxlen('User', 'email') }}"
+                       aria-describedby="email-hint">
+                <span class="xs text-secondary" id="email-hint">For due-date reminders and account recovery.</span>
             </div>
             <div class="field" style="margin-bottom:18px">
                 <label for="password">Password</label>

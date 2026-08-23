@@ -4,6 +4,7 @@ from datetime import datetime
 
 import sqlalchemy as sa
 from flask import Flask, render_template, jsonify, url_for
+from flask_wtf.csrf import CSRFError
 from config import Config
 from extensions import db, login_manager, csrf, migrate
 from models import User, Book, OrganizationSettings
@@ -164,6 +165,14 @@ def create_app(config_object=Config):
         response = app.send_static_file('js/sw.js')
         response.headers['Content-Type'] = 'application/javascript'
         return response
+
+    @app.errorhandler(CSRFError)
+    def csrf_error(error):
+        # Flask-WTF's default is a bare, unstyled 400 -- a stale form (an
+        # expired session, a page left open in a background tab) is common
+        # enough on a library's own devices to deserve the same app shell
+        # and tone as every other error page instead of a raw browser dump.
+        return render_template('errors/csrf.html'), 400
 
     @app.errorhandler(403)
     def forbidden(error):

@@ -103,6 +103,10 @@ class User(UserMixin, db.Model):
     is_admin = db.Column(db.Boolean, default=False)
     phone = db.Column(db.String(20))
     member_since = db.Column(db.DateTime, default=datetime.utcnow)
+    # Null until the member finishes or skips the one-time welcome walkthrough
+    # (see routes/member.py:welcome). Admins never see it, so this stays null
+    # for every seeded/admin-created account without needing a special case.
+    onboarding_completed_at = db.Column(db.DateTime, nullable=True)
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
