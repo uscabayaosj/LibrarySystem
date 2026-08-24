@@ -181,3 +181,52 @@ def test_no_warning_outside_production_or_on_postgres(tmp_path, monkeypatch, cap
     flask_app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://user@host/db'
     app_module._warn_if_ephemeral_database()
     assert 'WARNING' not in capsys.readouterr().out
+
+
+# ---- Boot migration (hosts with no release phase) --------------------------
+
+def test_boot_migration_is_off_by_default(tmp_path, monkeypatch):
+    """A plain import must not touch the database. Local runs, the test suite,
+    and `flask db upgrade` itself all import this module."""
+    _build_app(tmp_path, monkeypatch, 'bootoff.db')
+    monkeypatch.delenv('VERCEL', raising=False)
+    monkeypatch.delenv('MIGRATE_ON_BOOT', raising=False)
+    called = []
+    monkeypatch.setattr(app_module, 'init_db', lambda: called.append(True))
+
+    app_module._boot_migrate_if_requested()
+
+    assert called == []
+
+
+def test_boot_migration_runs_on_vercel(tmp_path, monkeypatch):
+    """Vercel has no release phase, so the import is the only chance to
+    migrate -- without this, a schema change ships broken (login 500s on the
+    missing column) until someone runs the migration by hand."""
+    _build_app(tmp_path, monkeypatch, 'booton.db')
+    monkeypatch.setenv('VERCEL', '1')
+    called = []
+    monkeypatch.setattr(app_module, 'init_db', lambda: called.append(True))
+
+    app_module._boot_migrate_if_requested()
+
+    assert called == [True]
+
+
+def test_boot_migration_failure_does_not_break_the_import(tmp_path, monkeypatch, capsys):
+    """A raising migration must not fail the module import: that would turn a
+    partial breakage into every route 500ing, including the ones you would
+    use to diagnose it."""
+    _build_app(tmp_path, monkeypatch, 'bootfail.db')
+    monkeypatch.setenv('MIGRATE_ON_BOOT', '1')
+
+    def boom():
+        raise RuntimeError('database is on fire')
+
+    monkeypatch.setattr(app_module, 'init_db', boom)
+
+    app_module._boot_migrate_if_requested()  # must not raise
+
+    out = capsys.readouterr().out
+    assert 'Boot migration failed' in out
+    assert 'database is on fire' in out

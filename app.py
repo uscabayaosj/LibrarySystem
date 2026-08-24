@@ -5,7 +5,7 @@ from datetime import datetime
 import sqlalchemy as sa
 from flask import Flask, render_template, jsonify, url_for
 from flask_wtf.csrf import CSRFError
-from config import Config
+from config import Config, _env_flag
 from extensions import db, login_manager, csrf, migrate
 from models import User, Book, OrganizationSettings
 from theming import build_theme_css
@@ -288,6 +288,37 @@ def init_db():
             else:
                 print('Admin user created (username: admin) with the password '
                       'from ADMIN_PASSWORD.')
+
+
+def _boot_migrate_if_requested():
+    """Run init_db() at import time on hosts that have no release phase.
+
+    Render runs the Procfile's `release:` line before any traffic reaches the
+    app, so the schema is always current by the time a request arrives. Vercel
+    has no equivalent -- it imports this module and serves -- so nothing
+    migrated and nothing seeded, and the first schema change after a deploy
+    took the whole site down with an UndefinedColumn error on /login while the
+    fix sat in a migration nobody had run. Doing it here restores the same
+    guarantee on both hosts.
+
+    Failures are logged and swallowed on purpose. A migration that raises at
+    import time would fail the module import and turn a partial breakage (some
+    pages erroring on a missing column) into a total one (every route 500s,
+    including the pages you would use to diagnose it). Two concurrent cold
+    starts racing on the same upgrade land here too: the loser logs and
+    continues, and the schema is at head either way.
+    """
+    if not _env_flag('MIGRATE_ON_BOOT', default=bool(os.environ.get('VERCEL'))):
+        return
+    try:
+        init_db()
+    except Exception as exc:  # noqa: BLE001 -- see docstring
+        print(f'Boot migration failed ({exc.__class__.__name__}: {exc}). '
+              'The app is still serving; run `flask db upgrade` by hand.',
+              flush=True)
+
+
+_boot_migrate_if_requested()
 
 
 if __name__ == '__main__':
