@@ -73,8 +73,26 @@ The first run will:
 ### Database migrations
 
 Schema changes are managed with Flask-Migrate (Alembic). **You do not need to
-run anything by hand on deploy** — `init_db()` brings the database to the
-latest revision on boot, and the `Procfile`'s `release` step calls it.
+run anything by hand on deploy, on either host** — `init_db()` brings the
+database to the latest revision and seeds an admin if there isn't one, and
+both hosts call it before serving:
+
+| Host | What calls `init_db()` |
+|---|---|
+| Render | The `Procfile`'s `release:` step, before traffic reaches the app |
+| Vercel | `_boot_migrate_if_requested()` at the bottom of `app.py`, at import time — Vercel has no release phase, so the import is the only hook available |
+
+The Vercel path is gated on `MIGRATE_ON_BOOT`, which defaults to on whenever
+Vercel's own `VERCEL` environment variable is present. Set it to `0` to opt a
+deployment out, or to `1` to opt any other host in.
+
+A boot migration that fails is **logged, not raised** — it prints
+`Boot migration failed (...)` and the app carries on serving. Raising would
+fail the module import and turn a partial breakage (some pages erroring on a
+missing column) into a total one, including the pages you'd use to diagnose
+it. So a failure here is quiet by design: if a schema change doesn't seem to
+have landed, check the logs for that line, then apply it by hand — see
+[7. Troubleshooting](#7-troubleshooting).
 
 It handles all three states a database can be in:
 
@@ -113,6 +131,7 @@ Set environment variables:
 | `FLASK_DEBUG` | `0` | Set to `1` **only** in local development to enable the debugger |
 | `SESSION_COOKIE_SECURE` | `1` in production | Send session cookie over HTTPS only |
 | `ADMIN_PASSWORD` | `admin` | Password for the seeded admin account on first run |
+| `MIGRATE_ON_BOOT` | on when `VERCEL` is set | Run migrations and seeding at import time, for hosts with no release phase. See [Database migrations](#database-migrations) |
 
 For production: set a long random `SECRET_KEY`, keep `FLASK_DEBUG` unset/`0`, and change the seeded admin password.
 
@@ -227,41 +246,31 @@ Poetry's `package-mode = false` — without it `uv sync` tries to build the app
 itself as a wheel and fails), and `.python-version` pins `3.12` as
 major.minor only (uv has no interpreter for an exact patch like `3.12.9`).
 
-What changes operationally from the Render flow: there's no build-time disk
-to worry about (see [0](#0-what-this-app-needs-from-a-host)), and there's no
-`startCommand` hook to run migrations in, so that becomes an explicit step
-you run once per schema change rather than something that happens
-automatically on every deploy.
+What changes operationally from the Render flow: there's no build-time disk to
+worry about (see [0](#0-what-this-app-needs-from-a-host)). Migrations are *not*
+one of the differences — Vercel has no release phase, so `app.py` runs
+`init_db()` at import instead (see
+[Database migrations](#database-migrations)). Both hosts migrate and seed
+themselves on deploy.
+
+> This was not always true. Until 2026-08-24 nothing on Vercel applied
+> migrations at all, and this section told you to run them by hand. The step
+> was easy to forget, and forgetting it took production down: migration
+> `b7e2f4a91c36` added `user.onboarding_completed_at`, was never applied, and
+> every `/login` POST returned 500 with `psycopg2.errors.UndefinedColumn`. The
+> boot hook exists so that a missing migration is no longer one forgotten
+> command away from an outage.
 
 1. **Create the Neon project.** [neon.tech](https://neon.tech) → New Project.
    Copy the pooled connection string from the dashboard (starts
    `postgresql://` and already includes `?sslmode=require` — nothing to edit).
 
-2. **Run migrations against it, before the first deploy:**
+2. **Nothing to run.** The first request after deploying creates every table
+   (`_apply_migrations()`'s brand-new-database case) and seeds the admin
+   account — see [Database migrations](#database-migrations). Set
+   `ADMIN_PASSWORD` in step 3 so that seed isn't `admin`/`admin`.
 
-   ```bash
-   pip install -r requirements.txt
-   DATABASE_URL="<neon-connection-string>" FLASK_APP=app.py flask db upgrade
-   ```
-
-   This creates every table (`_apply_migrations()`'s brand-new-database case —
-   see [Database migrations](#database-migrations)). Run it again, the same
-   way, after any future migration — it's the one manual step this host adds.
-
-3. **Seed the admin account.** Either run `init_db()` locally against the same
-   `DATABASE_URL` (it migrates *and* seeds, and does nothing if an admin
-   already exists — safe to run more than once):
-
-   ```bash
-   DATABASE_URL="<neon-connection-string>" ADMIN_PASSWORD="<a-real-password>" \
-     python -c "from app import init_db; init_db()"
-   ```
-
-   or sign up through `/register` on the deployed site once it's live and
-   promote that account to admin directly in Neon's SQL editor
-   (`UPDATE "user" SET is_admin = true WHERE username = '...'`).
-
-4. **Deploy.** `vercel link` once to connect the project, then set the
+3. **Deploy.** `vercel link` once to connect the project, then set the
    environment variables Vercel needs (Project → Settings → Environment
    Variables, or `vercel env add <NAME>`):
 
@@ -270,17 +279,19 @@ automatically on every deploy.
    | `DATABASE_URL` | the same Neon connection string |
    | `SECRET_KEY` | `python -c "import secrets; print(secrets.token_urlsafe(48))"` — refuses to start without it |
    | `FLASK_ENV` | `production` |
+   | `ADMIN_PASSWORD` | the password to seed the admin account with |
 
    Then `vercel deploy --prod`.
 
-5. **Every later schema change:** run step 2 again with the same
-   `DATABASE_URL` *before* (or right after) pushing the deploy that needs it —
-   there's no automatic equivalent of Render's `startCommand` migrate-then-
-   serve here. A deploy that ships a model change without its migration having
-   been applied will start fine and fail at runtime on the missing column,
-   exactly as noted in [4. Subsequent deploys](#4-subsequent-deploys) — it
-   just can't self-heal on the next boot the way Render's flow does, so don't
-   skip the step.
+   **Keep the Neon connection string somewhere you can get at it again.**
+   Vercel stores `DATABASE_URL` as a *Sensitive* variable, which is write-only
+   by design: `vercel env pull` returns the literal text `[SENSITIVE]`, and
+   the dashboard won't reveal it either. The only place to recover it is the
+   Neon console (your project → **Connection Details**).
+
+4. **Every later schema change:** commit the migration with the code and push.
+   The next deploy applies it on its first request. Nothing manual — see
+   [4. Subsequent deploys](#4-subsequent-deploys).
 
 ---
 
@@ -325,16 +336,15 @@ Then in a browser:
 **Render:** push to `main`. The host rebuilds and re-runs the start command,
 which applies any new migrations before serving. Nothing manual.
 
-**Vercel:** push, or `vercel deploy --prod`. Migrations are **not** applied
-automatically — there's no start-command hook to do it in — so run
-[step 1b.2](#1b-first-deploy--vercel--neon) against the same `DATABASE_URL`
-before or right after any deploy that includes a schema change.
+**Vercel:** push, or `vercel deploy --prod`. The first request after the
+deploy applies any new migrations. Nothing manual.
 
 Either host: after changing a model, generate the migration locally and commit
 it with the code — see [Database migrations](#database-migrations). A deploy
 whose migration file is missing will start fine and then fail at runtime on
 the missing column, so treat the migration as part of the change, not a
-follow-up.
+follow-up. The boot hook can only apply migrations that were committed; it
+can't invent one you forgot to generate.
 
 ### 5. Rollback
 
@@ -352,7 +362,10 @@ copy first to confirm the down-migration is correct.
 
 ### 6. Operations
 
-**Open a shell** (Render → Shell tab):
+**Open a shell** (Render → Shell tab). Vercel has no shell — run these
+locally instead, with `DATABASE_URL` set to the Neon connection string from
+the Neon console (Vercel won't give it back to you; see
+[1b](#1b-first-deploy--vercel--neon)):
 
 ```bash
 # Inspect migration state
@@ -371,6 +384,18 @@ with app.app_context():
     print('password updated')
 "
 ```
+
+**Locked out entirely** (no admin password, no shell). Register a normal
+account through `/register` on the live site, then promote it in your
+provider's SQL editor — Neon console → **SQL Editor**:
+
+```sql
+UPDATE "user" SET is_admin = true WHERE username = 'your-new-account';
+```
+
+The seed path won't help here: it only creates an admin when *no* admin row
+exists, so it never resets or overwrites an account you've lost the password
+to.
 
 **Back up the database** (run locally, with the *External* database URL):
 
@@ -397,7 +422,8 @@ expire after 90 days. Fine for evaluation; move to a paid instance for real use.
 | Build fails: `The current project could not be installed: No file/folder found for package library-system` | The host autodetected `poetry.lock` and ran a bare `poetry install`, which tries to install the app as a package | Already handled — `package-mode = false` in `pyproject.toml`. Confirm you're on current `main`. Setting the Build Command to `pip install -r requirements.txt` also avoids it |
 | Build uses an unexpected Python version | No version pinned, so the host picks its default (Render currently defaults to 3.14) | Already handled — `.python-version` pins 3.12. `PYTHON_VERSION` in the environment overrides it |
 | `ModuleNotFoundError: No module named 'psycopg2'` | Build didn't install requirements | Check the Build Command is `pip install -r requirements.txt` |
-| `no such table` / `column ... does not exist` at runtime | A migration wasn't committed, or the start command doesn't migrate | Confirm the start command includes the `init_db()` prefix; generate and commit the missing migration |
+| `no such table` / `column ... does not exist` at runtime (e.g. every `/login` POST 500s) | A migration wasn't committed, or the boot migration failed and was logged rather than raised | Search the logs for `Boot migration failed`. If it's there, fix the cause and redeploy, or apply it by hand (below). If it isn't, the migration file was never generated or committed — generate and commit it. On Render, also confirm the `Procfile` `release:` step is intact |
+| Boot migration needs applying by hand | The boot hook failed, or you're on a host with no release phase and `MIGRATE_ON_BOOT` off | `DATABASE_URL="<connection-string>" FLASK_APP=app.py flask db upgrade`. On Vercel the connection string must come from the Neon console — `vercel env pull` returns `[SENSITIVE]` for it |
 | Sign-in appears to succeed but bounces back to `/login` | Cookie marked secure while served over plain HTTP | Serve over HTTPS (Render does this by default), or unset `SESSION_COOKIE_SECURE` for a non-TLS test host |
 | Startup logs a `WARNING: running in production on SQLite` banner, or migrations log `Context impl SQLiteImpl` | `DATABASE_URL` isn't set, so the app is writing to a local file that the next deploy destroys | Attach a managed Postgres instance and set `DATABASE_URL`. Any data created in the meantime is lost on the next deploy |
 | Data disappeared after a deploy | Same cause as above — the app was on SQLite, not Postgres | Set `DATABASE_URL` before putting real data in |
