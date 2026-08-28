@@ -119,11 +119,21 @@ def test_due_labels_agree_in_both_directions(db, member, book):
     assert b.due_label == '7 days overdue'
 
 
-def test_due_today_is_not_reported_as_overdue_zero(db, member, book):
-    """A book due earlier today used to render '0 day(s) overdue'."""
-    now = datetime.utcnow()
+def test_due_today_is_not_reported_as_overdue_zero(db, member, book, monkeypatch):
+    """A book due earlier today used to render '0 day(s) overdue'.
+
+    Pinned to FIXED_UTC_NOW like its neighbours. Built from utcnow() this was
+    flaky on a daily schedule: the property compares *local* calendar days, so
+    whenever local midnight fell inside the two-hour window the fixture spans,
+    'earlier today' became yesterday and the count came out -1.
+
+    The offset also does real work here. FIXED_UTC_NOW is 09:00 local, so two
+    hours earlier is 07:00 local the same day but 23:00 UTC the *previous* day
+    -- the exact divergence days_until_due exists to get right.
+    """
+    monkeypatch.setattr(models, 'local_now', lambda: to_local(FIXED_UTC_NOW))
     b = Borrowing(user_id=member.id, book_id=book.id,
-                  due_date=now - timedelta(hours=2), status='active')
+                  due_date=FIXED_UTC_NOW - timedelta(hours=2), status='active')
     db.session.add(b)
     db.session.commit()
 
