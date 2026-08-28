@@ -44,6 +44,25 @@ class Config:
     )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
+    # A serverless instance outlives the connections it pools, and the other
+    # end hangs up without telling it. Neon suspends an idle compute and its
+    # pooler drops idle connections; Vercel then reuses the same warm instance
+    # and hands a request a connection the server closed minutes ago. The
+    # request has done nothing wrong and still dies with
+    # `psycopg2.OperationalError: SSL connection has been closed unexpectedly`,
+    # which is why the symptom is a page that 500s once after a quiet period
+    # and then works fine on reload -- the failed checkout discards the dead
+    # connection, so the retry gets a live one.
+    #
+    # pool_pre_ping spends one cheap round trip proving a connection is alive
+    # before handing it out, and transparently replaces it if not. pool_recycle
+    # keeps connections from reaching Neon's idle timeout to begin with, so the
+    # pre-ping rarely has to do the recovering.
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        'pool_pre_ping': True,
+        'pool_recycle': 240,
+    }
+
     # Session/cookie hardening
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = 'Lax'

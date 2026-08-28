@@ -161,3 +161,46 @@ def test_admin_member_detail_payload_stays_bounded(client, db, admin, member):
         f'{SMALL_HISTORY} to {LARGE_HISTORY} loans (legitimate growth '
         'measures <300); something on the page scales with record count.'
     )
+
+
+# ---- Serverless connection pooling ------------------------------------------
+
+def test_engine_recovers_from_a_connection_closed_by_the_server():
+    """A pooled connection whose far end hung up must not surface as a 500.
+
+    Neon suspends idle computes and its pooler drops idle connections, while
+    the Vercel instance holding the pool stays warm and reuses it. Without
+    pool_pre_ping the next request gets a dead connection and dies with
+    `OperationalError: SSL connection has been closed unexpectedly`, having
+    done nothing wrong -- a page that 500s once after a quiet period and
+    works on reload. Simulated here by closing the DBAPI connection directly;
+    the dialect differs from production, the mechanism does not.
+    """
+    import sqlalchemy as sa
+    from config import Config
+
+    def survives_a_hangup(**engine_options):
+        engine = sa.create_engine('sqlite://', **engine_options)
+        with engine.connect() as conn:
+            conn.execute(sa.text('SELECT 1'))       # pool one connection
+        engine.pool.connect().dbapi_connection.close()   # server hangs up
+        try:
+            with engine.connect() as conn:
+                conn.execute(sa.text('SELECT 1'))
+            return True
+        except sa.exc.SQLAlchemyError:
+            return False
+
+    # The guard is load-bearing, not incidental: without it this same
+    # sequence fails.
+    assert not survives_a_hangup(pool_pre_ping=False)
+    assert survives_a_hangup(**Config.SQLALCHEMY_ENGINE_OPTIONS)
+
+
+def test_pool_recycles_before_neon_drops_idle_connections():
+    """pool_recycle has to stay under the provider's idle timeout, or
+    connections reach it first and pre_ping is left doing all the recovering."""
+    from config import Config
+
+    recycle = Config.SQLALCHEMY_ENGINE_OPTIONS['pool_recycle']
+    assert 0 < recycle < 300
