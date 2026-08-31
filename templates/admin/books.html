@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from "_icons.html" import icon %}
+{% from "_macros.html" import sort_th %}
 
 {% block title %}Books{% endblock %}
 {% block heading %}Books{% endblock %}
@@ -116,11 +117,12 @@
                 <caption class="visually-hidden">Catalogued books</caption>
                 <thead>
                     <tr>
-                        <th scope="col">Title</th>
-                        <th scope="col">Author</th>
+                        {%- set sp = {'search': search or none} %}
+                        {{ sort_th('Title', 'title', 'admin.books', sort_key, sort_dir, sp) }}
+                        {{ sort_th('Author', 'author', 'admin.books', sort_key, sort_dir, sp) }}
                         <th scope="col">ISBN</th>
-                        <th scope="col">Category</th>
-                        <th scope="col">Available</th>
+                        {{ sort_th('Category', 'category', 'admin.books', sort_key, sort_dir, sp) }}
+                        {{ sort_th('Available', 'available', 'admin.books', sort_key, sort_dir, sp) }}
                         <th scope="col"><span class="visually-hidden">Actions</span></th>
                     </tr>
                 </thead>
@@ -198,16 +200,16 @@
 {% if pagination.pages > 1 %}
 <nav class="pagination" aria-label="Book list pages">
     {% if pagination.has_prev %}
-        <a href="{{ url_for('admin.books', page=pagination.prev_num, search=search) }}">Previous</a>
+        <a href="{{ url_for('admin.books', page=pagination.prev_num, search=search, sort=sort_key, dir=sort_dir) }}">Previous</a>
     {% else %}<span class="is-disabled">Previous</span>{% endif %}
     {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
         {% if p %}
             {% if p == pagination.page %}<span class="is-current" aria-current="page">{{ p }}</span>
-            {% else %}<a href="{{ url_for('admin.books', page=p, search=search) }}">{{ p }}</a>{% endif %}
+            {% else %}<a href="{{ url_for('admin.books', page=p, search=search, sort=sort_key, dir=sort_dir) }}">{{ p }}</a>{% endif %}
         {% else %}<span class="is-disabled">…</span>{% endif %}
     {% endfor %}
     {% if pagination.has_next %}
-        <a href="{{ url_for('admin.books', page=pagination.next_num, search=search) }}">Next</a>
+        <a href="{{ url_for('admin.books', page=pagination.next_num, search=search, sort=sort_key, dir=sort_dir) }}">Next</a>
     {% else %}<span class="is-disabled">Next</span>{% endif %}
 </nav>
 {% endif %}

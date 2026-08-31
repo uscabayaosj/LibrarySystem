@@ -1,8 +1,8 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app
+from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, jsonify
 from flask_login import login_required, current_user
 from models import db, Book, User, Borrowing, Reservation, OrganizationSettings, Notification
 from datetime import datetime, timedelta
-from theming import normalize_hex
+from theming import normalize_hex, build_theme_css
 from branding_images import validate_and_reencode, LogoValidationError
 from validation import length_errors, max_length, FIELD_LABELS
 from localtime import local_today_start_utc, to_local
@@ -23,7 +23,53 @@ def restrict_to_admins():
         return redirect(url_for('member.dashboard'))
 
 
-def _books_context(page=1, search='', form_values=None, form_errors=None, field_errors=None):
+# ---- Sortable columns --------------------------------------------------------
+#
+# Server-side, not a client-side table script. All three admin lists paginate,
+# so sorting the rendered rows would reorder 30 records out of 300 and present
+# the result as "sorted by worst overdue" -- the same class of lie the bulk
+# select-all label used to tell. The sort travels in the querystring, so it
+# survives pagination, search, a filter change and a bookmark.
+#
+# Each table declares a closed map of key -> column. A request naming anything
+# else falls back to the default rather than erroring, because a sort key is
+# not worth a 400 to a librarian who edited a URL.
+
+def _sorted_query(query, sort, direction, columns, default_key, tiebreak):
+    """Apply ?sort=&dir= to a query. Returns (query, key, direction)."""
+    key = sort if sort in columns else default_key
+    direction = 'desc' if direction == 'desc' else 'asc'
+    col = columns[key]
+    primary = col.desc() if direction == 'desc' else col.asc()
+    # The tiebreak is not decoration. Without a deterministic second key, two
+    # loans due the same day can swap places between the query for page 1 and
+    # the query for page 2, which silently shows one record twice and skips
+    # another -- the failure mode a librarian would experience as "a book
+    # vanished from the list".
+    return query.order_by(primary, tiebreak.asc()), key, direction
+
+
+_LEDGER_SORTS = {
+    'book': Book.title,
+    'member': User.username,
+    'borrowed': Borrowing.borrow_date,
+    'due': Borrowing.due_date,
+}
+_BOOK_SORTS = {
+    'title': Book.title,
+    'author': Book.author,
+    'category': Book.category,
+    'available': Book.available_quantity,
+}
+_MEMBER_SORTS = {
+    'member': User.username,
+    'email': User.email,
+    'joined': User.member_since,
+}
+
+
+def _books_context(page=1, search='', form_values=None, form_errors=None,
+                   field_errors=None, sort=None, direction=None):
     per_page = 20
     query = Book.query
     if search:
@@ -35,7 +81,9 @@ def _books_context(page=1, search='', form_values=None, form_errors=None, field_
                 Book.category.ilike(f'%{search}%'),
             )
         )
-    pagination = query.order_by(Book.title).paginate(
+    query, sort_key, sort_dir = _sorted_query(
+        query, sort, direction, _BOOK_SORTS, 'title', Book.id)
+    pagination = query.paginate(
         page=page, per_page=per_page, error_out=False
     )
     # How many copies of each visible title are out, in one grouped query
@@ -57,6 +105,8 @@ def _books_context(page=1, search='', form_values=None, form_errors=None, field_
         'form_errors': form_errors,
         'field_errors': field_errors or {},
         'on_loan_counts': on_loan_counts,
+        'sort_key': sort_key,
+        'sort_dir': sort_dir,
     }
 
 
@@ -76,6 +126,40 @@ def dashboard():
     active_reservations = Reservation.query.filter_by(status='active').count()
     available_books = Book.query.filter(Book.available_quantity > 0).count()
 
+    # The lane the librarian's day actually runs on. Worst first, because that
+    # is the order a chase list is worked -- the same order the Overdue filter
+    # uses, so opening "see all" doesn't reshuffle what they were reading.
+    overdue_loans = Borrowing.query.options(
+        db.joinedload(Borrowing.user),
+        db.joinedload(Borrowing.book)
+    ).filter(
+        Borrowing.status == 'active',
+        Borrowing.due_date < local_today_start_utc(),
+    ).order_by(Borrowing.due_date.asc()).limit(6).all()
+
+    # Due today and in the next few days: what will be late if nobody acts.
+    # Bounded by the same due-soon window the member's badge uses, so the two
+    # roles agree about which loans are "nearly due".
+    soon_cutoff = local_today_start_utc() + timedelta(days=4)
+    due_soon_loans = Borrowing.query.options(
+        db.joinedload(Borrowing.user),
+        db.joinedload(Borrowing.book)
+    ).filter(
+        Borrowing.status == 'active',
+        Borrowing.due_date >= local_today_start_utc(),
+        Borrowing.due_date < soon_cutoff,
+    ).order_by(Borrowing.due_date.asc()).limit(6).all()
+
+    # Holds waiting on a copy that is already back on the shelf -- the work
+    # "Process Reservations" exists to do, surfaced so the librarian knows
+    # there is something to process before pressing it.
+    ready_to_fulfil = Reservation.query.filter(
+        Reservation.status == 'active',
+        Reservation.book_id.in_(
+            db.session.query(Book.id).filter(Book.available_quantity > 0)
+        ),
+    ).count()
+
     recent_borrowings = Borrowing.query.options(
         db.joinedload(Borrowing.user),
         db.joinedload(Borrowing.book)
@@ -90,6 +174,9 @@ def dashboard():
         active_reservations=active_reservations,
         available_books=available_books,
         recent_borrowings=recent_borrowings,
+        overdue_loans=overdue_loans,
+        due_soon_loans=due_soon_loans,
+        ready_to_fulfil=ready_to_fulfil,
         now=now,
     )
 
@@ -98,7 +185,9 @@ def dashboard():
 def books():
     page = request.args.get('page', 1, type=int)
     search = request.args.get('search', '').strip()
-    return render_template('admin/books.html', **_books_context(page, search))
+    return render_template('admin/books.html', **_books_context(
+        page, search,
+        sort=request.args.get('sort'), direction=request.args.get('dir')))
 
 
 @bp.route('/books/add', methods=['GET'])
@@ -265,7 +354,10 @@ def members():
                 User.email.ilike(f'%{search}%'),
             )
         )
-    members_pagination = query.order_by(User.username).paginate(
+    query, sort_key, sort_dir = _sorted_query(
+        query, request.args.get('sort'), request.args.get('dir'),
+        _MEMBER_SORTS, 'member', User.id)
+    members_pagination = query.paginate(
         page=page, per_page=per_page, error_out=False
     )
 
@@ -297,6 +389,8 @@ def members():
         now=now,
         active_counts=active_counts,
         overdue_counts=overdue_counts,
+        sort_key=sort_key,
+        sort_dir=sort_dir,
     )
 
 
@@ -390,10 +484,13 @@ def borrowing_history():
     search_term = request.args.get('search', '').strip()
 
     now = datetime.utcnow()
+    # Joined up front, before anything filters or sorts on them: both the
+    # search and the book/member sort keys reference these tables, and adding
+    # the join afterwards leaves SQLAlchemy to invent a cross join.
     query = Borrowing.query.options(
         db.joinedload(Borrowing.user),
         db.joinedload(Borrowing.book)
-    )
+    ).join(Borrowing.book).join(Borrowing.user)
     if filter_status == 'overdue':
         # Overdue isn't a stored status -- it's active plus a past due date.
         query = query.filter(Borrowing.status == 'active',
@@ -408,19 +505,26 @@ def borrowing_history():
     # patron standing at the desk asks about.
     if search_term:
         like = f'%{search_term}%'
-        query = query.join(Borrowing.book).join(Borrowing.user).filter(
+        query = query.filter(
             db.or_(Book.title.ilike(like), Book.isbn.ilike(like),
                    User.username.ilike(like))
         )
 
-    # Under the Overdue filter, sort by the field the lane is about. Ordering
-    # every filter by borrow_date put the 26-days-late item *below* the
-    # 7-days-late one, so the worst case sorted last in a chase list.
-    if filter_status == 'overdue':
-        order = Borrowing.due_date.asc()
+    # The default still depends on the lane: under Overdue, worst-first, because
+    # that is the order a chase list is worked. Ordering every filter by
+    # borrow_date put the 26-days-late item *below* the 7-days-late one.
+    sort = request.args.get('sort')
+    direction = request.args.get('dir')
+    if sort in _LEDGER_SORTS:
+        query, sort_key, sort_dir = _sorted_query(
+            query, sort, direction, _LEDGER_SORTS, 'due', Borrowing.id)
+    elif filter_status == 'overdue':
+        query, sort_key, sort_dir = _sorted_query(
+            query, 'due', 'asc', _LEDGER_SORTS, 'due', Borrowing.id)
     else:
-        order = Borrowing.borrow_date.desc()
-    history_pagination = query.order_by(order).paginate(
+        query, sort_key, sort_dir = _sorted_query(
+            query, 'borrowed', 'desc', _LEDGER_SORTS, 'borrowed', Borrowing.id)
+    history_pagination = query.paginate(
         page=page, per_page=per_page, error_out=False
     )
     return render_template(
@@ -428,6 +532,8 @@ def borrowing_history():
         pagination=history_pagination,
         filter_status=filter_status,
         search_term=search_term,
+        sort_key=sort_key,
+        sort_dir=sort_dir,
         now=now,
     )
 
@@ -454,7 +560,26 @@ def return_book(id):
         flash('This book has already been returned.', 'info')
         return _back_to_ledger()
     borrowing.mark_returned()
-    flash(f'"{borrowing.book.title}" returned by {borrowing.user.username}.', 'success')
+    # The receipt carries its own inverse. A check-in is the single most
+    # repeated destructive-ish action at the desk and it had no undo at all;
+    # a confirmation dialog on every one of thirty returns is the wrong
+    # answer (it taxes the 29 correct ones to catch the 1 mistake), so the
+    # cheap control goes on the outcome instead.
+    flash(f'"{borrowing.book.title}" returned by {borrowing.user.username}.',
+          f'success|undo:{borrowing.id}')
+    return _back_to_ledger()
+
+
+@bp.route('/return-book/<int:id>/undo', methods=['POST'])
+def undo_return(id):
+    borrowing = Borrowing.query.get_or_404(id)
+    blocked = borrowing.undo_return_blocked_reason
+    if blocked:
+        flash(blocked, 'warning')
+        return _back_to_ledger()
+    borrowing.undo_return()
+    flash(f'"{borrowing.book.title}" is back on loan to '
+          f'{borrowing.user.username}.', 'info')
     return _back_to_ledger()
 
 
@@ -568,6 +693,20 @@ def check_reservations():
         flash('Nothing to do — no holds have lapsed, no reserved title has a '
               'copy free, and every member is already up to date.', 'info')
     return redirect(url_for('admin.dashboard'))
+
+
+@bp.route('/settings/theme-preview')
+def theme_preview():
+    """The generated accent tokens for a candidate colour, as JSON.
+
+    Saving branding repaints every screen for every member of the institution,
+    and it did that from an un-previewed colour picker with no way to see the
+    result first. The generator lives on the server (theming.build_theme),
+    so the honest preview asks the server what it *would* produce rather than
+    reimplementing the ramp in JavaScript and drifting from it.
+    """
+    css = build_theme_css(normalize_hex(request.args.get('color', '')) or '')
+    return jsonify({'css': css})
 
 
 @bp.route('/settings', methods=['GET', 'POST'])

@@ -399,6 +399,41 @@ class Borrowing(db.Model):
         db.session.commit()
         self._invalidate_derived()
 
+    # A mis-clicked check-in used to be permanent: the row's control became an
+    # em-dash and there was no inverse anywhere in the app. On a desk doing
+    # thirty returns in a morning that is a real and unrecoverable mistake, so
+    # the receipt now carries an undo for a few minutes.
+    UNDO_WINDOW_MINUTES = 15
+
+    @property
+    def undo_return_blocked_reason(self):
+        """Why this return can't be undone, or None if it can.
+
+        Refuses rather than guesses. Putting a copy back on loan is only safe
+        while nothing else has happened to it -- if the shelf copy has since
+        gone out to someone else, silently decrementing availability again
+        would hand out a copy the library does not physically have.
+        """
+        if self.status != 'returned' or self.return_date is None:
+            return 'This loan is not checked in.'
+        age = datetime.utcnow() - self.return_date
+        if age > timedelta(minutes=self.UNDO_WINDOW_MINUTES):
+            return (f'Check-ins can only be undone within '
+                    f'{self.UNDO_WINDOW_MINUTES} minutes.')
+        if self.book.available_quantity < 1:
+            return ('Every copy is out again — undoing this would lend a copy '
+                    'the shelf does not have.')
+        return None
+
+    def undo_return(self):
+        """Put this loan back on loan. Caller must check
+        undo_return_blocked_reason first."""
+        self.status = 'active'
+        self.return_date = None
+        self.book.available_quantity = max(0, self.book.available_quantity - 1)
+        db.session.commit()
+        self._invalidate_derived()
+
 
 class Reservation(db.Model):
     __tablename__ = 'reservation'

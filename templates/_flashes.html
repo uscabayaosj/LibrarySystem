@@ -3,7 +3,13 @@
     {% if messages %}
         <div class="flashes">
             {% for category, message in messages %}
-                {% set kind = category if category in ['success', 'danger', 'warning', 'info'] else 'info' %}
+                {#- A category may carry an action after a pipe, e.g.
+                    "success|undo:42". Kept in the category rather than in the
+                    message so the message stays plain text and can never be
+                    a route for markup. -#}
+                {% set base, _, action = category.partition('|') %}
+                {% set kind = base if base in ['success', 'danger', 'warning', 'info'] else 'info' %}
+                {% set undo_id = action[5:] if action.startswith('undo:') else none %}
                 <div class="alert alert-{{ kind }}"
                      role="{% if kind in ['danger', 'warning'] %}alert{% else %}status{% endif %}">
                     {% if kind == 'success' %}{{ icon('check-circle', class='icon lead') }}
@@ -11,6 +17,18 @@
                     {% elif kind == 'warning' %}{{ icon('warning', class='icon lead') }}
                     {% else %}{{ icon('info', class='icon lead') }}{% endif %}
                     <div class="alert-body">{{ message }}</div>
+                    {% if undo_id and current_user.is_authenticated and current_user.is_admin %}
+                        {#- Undo lives on the receipt, so the cost of catching a
+                            mistake falls on the one action that was wrong rather
+                            than on every action that was right. -#}
+                        <form class="alert-action" method="POST"
+                              action="{{ url_for('admin.undo_return', id=undo_id|int) }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-sm">
+                                {{ icon('arrow-return', class='icon-sm') }} Undo
+                            </button>
+                        </form>
+                    {% endif %}
                     <button class="alert-close" type="button" aria-label="Dismiss message">
                         {{ icon('x', class='icon-sm') }}
                     </button>

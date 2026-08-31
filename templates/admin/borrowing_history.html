@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% from "_icons.html" import icon %}
-{% from "_macros.html" import due_badge %}
+{% from "_macros.html" import due_badge, sort_th %}
 
 {% block title %}Circulation{% endblock %}
 {% block heading %}Circulation{% endblock %}
@@ -100,10 +100,11 @@
                             </label>
                         </th>
                         {% endif %}
-                        <th scope="col">Book</th>
-                        <th scope="col">Member</th>
+                        {%- set sp = {'status': filter_status or none, 'search': search_term or none} %}
+                        {{ sort_th('Book', 'book', 'admin.borrowing_history', sort_key, sort_dir, sp) }}
+                        {{ sort_th('Member', 'member', 'admin.borrowing_history', sort_key, sort_dir, sp) }}
                         <th scope="col" class="col-optional">Borrowed</th>
-                        <th scope="col">Due</th>
+                        {{ sort_th('Due', 'due', 'admin.borrowing_history', sort_key, sort_dir, sp) }}
                         <th scope="col" class="col-optional">Returned</th>
                         <th scope="col">Status</th>
                         <th scope="col"><span class="visually-hidden">Actions</span></th>
@@ -189,16 +190,16 @@
 {% if pagination.pages > 1 %}
 <nav class="pagination" aria-label="Circulation pages">
     {% if pagination.has_prev %}
-        <a href="{{ url_for('admin.borrowing_history', page=pagination.prev_num, status=filter_status, search=search_term or None) }}">Previous</a>
+        <a href="{{ url_for('admin.borrowing_history', page=pagination.prev_num, status=filter_status, search=search_term or None, sort=sort_key, dir=sort_dir) }}">Previous</a>
     {% else %}<span class="is-disabled">Previous</span>{% endif %}
     {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
         {% if p %}
             {% if p == pagination.page %}<span class="is-current" aria-current="page">{{ p }}</span>
-            {% else %}<a href="{{ url_for('admin.borrowing_history', page=p, status=filter_status, search=search_term or None) }}">{{ p }}</a>{% endif %}
+            {% else %}<a href="{{ url_for('admin.borrowing_history', page=p, status=filter_status, search=search_term or None, sort=sort_key, dir=sort_dir) }}">{{ p }}</a>{% endif %}
         {% else %}<span class="is-disabled">…</span>{% endif %}
     {% endfor %}
     {% if pagination.has_next %}
-        <a href="{{ url_for('admin.borrowing_history', page=pagination.next_num, status=filter_status, search=search_term or None) }}">Next</a>
+        <a href="{{ url_for('admin.borrowing_history', page=pagination.next_num, status=filter_status, search=search_term or None, sort=sort_key, dir=sort_dir) }}">Next</a>
     {% else %}<span class="is-disabled">Next</span>{% endif %}
 </nav>
 {% endif %}

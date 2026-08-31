@@ -20,3 +20,34 @@
         <span class="badge badge-accent">{{ b.due_label }}</span>
     {%- endif -%}
 {%- endmacro %}
+
+{# A sortable column header.
+
+   One macro for all three admin tables, for the same reason due_badge exists:
+   three hand-rolled versions is how they drift. Renders a real link, not a
+   JS handler, so the sort is bookmarkable, survives a reload, and works with
+   the keyboard for free. aria-sort is what tells a screen-reader user which
+   column the table is ordered by -- the caret alone says it only to people
+   who can see it.
+
+   `params` carries the rest of the querystring (search, filter, and so on) so
+   sorting never silently drops the view the librarian had set up. Clicking the
+   active column flips direction; clicking a new one starts ascending, which is
+   what every table in every OS does. #}
+{% macro sort_th(label, key, endpoint, sort_key, sort_dir, params={}, numeric=false) -%}
+    {%- set is_active = (sort_key == key) -%}
+    {%- set next_dir = 'desc' if (is_active and sort_dir == 'asc') else ('asc' if is_active else 'asc') -%}
+    <th scope="col" class="th-sort{{ ' is-sorted' if is_active }}{{ ' num' if numeric }}"
+        {% if is_active %}aria-sort="{{ 'ascending' if sort_dir == 'asc' else 'descending' }}"{% endif %}>
+        <a href="{{ url_for(endpoint, sort=key, dir=next_dir, **params) }}">
+            {{ label }}
+            <span class="sort-caret" aria-hidden="true">
+                {%- if is_active -%}{{ '↑' if sort_dir == 'asc' else '↓' }}{%- else -%}↕{%- endif -%}
+            </span>
+            <span class="visually-hidden">
+                {%- if is_active %}, sorted {{ 'ascending' if sort_dir == 'asc' else 'descending' }}, click to reverse
+                {%- else %}, click to sort{% endif -%}
+            </span>
+        </a>
+    </th>
+{%- endmacro %}

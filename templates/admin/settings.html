@@ -39,15 +39,23 @@
                    the file input as "button, Choose File" with no field name. #}
                 <label for="logo">Logo</label>
                 <div style="display:flex; align-items:center; gap:14px; margin-top:4px">
+                    {#- id'd so the file input can swap it for the chosen file before
+                        saving. A logo is the one setting whose "did that work?" is
+                        purely visual. -#}
                     {% if org_settings.logo_ready %}
-                        <img src="{{ org_settings.logo_url }}"
+                        <img id="logo-preview" src="{{ org_settings.logo_url }}"
                              alt="Current logo" style="width:56px;height:56px;object-fit:contain;
                              border-radius:var(--r-md);background:var(--bg-sunken);border:1px solid var(--separator)">
                     {% else %}
-                        <div class="hero-mark" style="width:56px;height:56px;margin:0">{{ brand_mark() }}</div>
+                        {#- No srcless <img> placeholder here: an <img> with no src is
+                            a broken-image box waiting to be un-hidden. When there is no
+                            logo yet, the default mark stands alone and app.js creates
+                            the preview element only once a file is actually chosen. -#}
+                        <div class="hero-mark" id="logo-preview-fallback" style="width:56px;height:56px;margin:0">{{ brand_mark() }}</div>
                     {% endif %}
                     <div style="flex:1">
-                        <input type="file" id="logo" name="logo" accept="image/png,image/jpeg,image/webp">
+                        <input type="file" id="logo" name="logo" accept="image/png,image/jpeg,image/webp"
+                               data-logo-input data-logo-preview-target="logo-preview">
                         <div class="xs text-secondary" style="margin-top:6px">
                             Square PNG, JPEG, or WEBP, ideally 512×512 to 1024×1024px
                             (transparent PNG recommended). Max 2 MB.
@@ -69,7 +77,7 @@
                            value="{{ (form_values.theme_color if form_values else org_settings.theme_color) or '#292168' }}"
                            style="width:44px;height:32px;padding:2px;border-radius:var(--r-sm);border:1px solid var(--separator-strong);cursor:pointer"
                            aria-hidden="true" tabindex="-1"
-                           onchange="document.getElementById('theme_color').value=this.value">
+                           data-theme-picker onchange="document.getElementById('theme_color').value=this.value">
                     {# The text field used to render empty while the swatch beside it
                        showed #292168 -- two halves of one control disagreeing about
                        whether a value was set. Both now show the colour in force;
@@ -78,8 +86,12 @@
                            placeholder="#292168" pattern="^#?[0-9A-Fa-f]{6}$"
                            value="{{ (form_values.theme_color if form_values else org_settings.theme_color) or '#292168' }}"
                            style="max-width:120px"
-                           oninput="if(/^#[0-9A-Fa-f]{6}$/.test(this.value)) document.getElementById('theme_color_picker').value=this.value">
+                           data-theme-text oninput="if(/^#[0-9A-Fa-f]{6}$/.test(this.value)) document.getElementById('theme_color_picker').value=this.value">
                 </div>
+                <p class="xs text-secondary" data-theme-preview-note hidden>
+                    Previewing — this page is showing the new accent. Nothing is
+                    saved until you press Save Changes.
+                </p>
                 <span class="xs text-secondary">
                     Replaces the accent color app-wide. A light and dark variant of this
                     color is generated automatically so text and buttons stay readable.

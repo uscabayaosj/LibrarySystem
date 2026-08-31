@@ -256,10 +256,88 @@
             }
             on(closeBtn, 'click', dismiss);
 
+            // A flash carrying an action is the only way to reach that action,
+            // so it must not retire on a timer -- a six-second undo is not an
+            // undo. It stays until dismissed, like a warning.
+            if (alert.querySelector('.alert-action')) { return; }
+
             if (alert.classList.contains('alert-success') || alert.classList.contains('alert-info')) {
                 setTimeout(dismiss, 6000);
             }
         });
+
+        /* -----------------------------------------------------------
+           Branding preview (admin settings)
+           Saving branding repaints every screen for every member of the
+           institution, and it did that from an un-previewed picker. Both
+           previews are local and reversible -- nothing is written until the
+           form is submitted.
+           ----------------------------------------------------------- */
+        var logoInput = document.querySelector('[data-logo-input]');
+        if (logoInput) {
+            on(logoInput, 'change', function () {
+                var file = logoInput.files && logoInput.files[0];
+                if (!file) { return; }
+                var fallback = document.getElementById('logo-preview-fallback');
+                var img = document.getElementById(
+                    logoInput.getAttribute('data-logo-preview-target'));
+                if (!img) {
+                    // No logo is set yet, so the template rendered only the
+                    // default mark -- an <img> with no src would have shipped a
+                    // broken-image box. Build it now that there is something to
+                    // show, matching the saved-logo variant's styling.
+                    if (!fallback) { return; }
+                    img = document.createElement('img');
+                    img.id = logoInput.getAttribute('data-logo-preview-target');
+                    img.style.cssText = 'width:56px;height:56px;object-fit:contain;' +
+                        'border-radius:var(--r-md);background:var(--bg-sunken);' +
+                        'border:1px solid var(--separator)';
+                    fallback.parentNode.insertBefore(img, fallback);
+                }
+                var url = URL.createObjectURL(file);
+                // Revoked once painted: a settings page a librarian leaves open
+                // while trying several files would otherwise hold every one.
+                img.onload = function () { URL.revokeObjectURL(url); };
+                img.src = url;
+                img.alt = 'Selected logo, not yet saved';
+                img.hidden = false;
+                if (fallback) { fallback.hidden = true; }
+            });
+        }
+
+        var themeText = document.querySelector('[data-theme-text]');
+        var themePicker = document.querySelector('[data-theme-picker]');
+        if (themeText) {
+            var previewStyle = null;
+            var previewNote = document.querySelector('[data-theme-preview-note]');
+            var themeTimer = null;
+            // The accent ramp (light + dark variants, hover, soft tint) is
+            // generated server-side by theming.build_theme. The preview asks
+            // the server what it would produce rather than reimplementing that
+            // ramp here, where the two would drift apart the first time either
+            // changed.
+            function previewTheme(value) {
+                if (!/^#[0-9A-Fa-f]{6}$/.test(value)) { return; }
+                fetch('/admin/settings/theme-preview?color=' + encodeURIComponent(value), {
+                    headers: { 'Accept': 'application/json' }
+                }).then(function (r) { return r.ok ? r.json() : null; }).then(function (data) {
+                    if (!data) { return; }
+                    if (!previewStyle) {
+                        previewStyle = document.createElement('style');
+                        previewStyle.setAttribute('data-theme-preview', '');
+                        document.head.appendChild(previewStyle);
+                    }
+                    previewStyle.textContent = data.css || '';
+                    if (previewNote) { previewNote.hidden = false; }
+                }).catch(function () { /* offline: the field still works, just no preview */ });
+            }
+            function schedulePreview(value) {
+                window.clearTimeout(themeTimer);
+                themeTimer = window.setTimeout(function () { previewTheme(value); }, 180);
+            }
+            on(themeText, 'input', function () { schedulePreview(themeText.value.trim()); });
+            on(themePicker, 'input', function () { schedulePreview(themePicker.value); });
+        }
 
         /* -----------------------------------------------------------
            Confirmation sheet

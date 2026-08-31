@@ -47,12 +47,98 @@
     </a>
 </div>
 
-<section class="panel">
+{#- The work lane, above the survey. The dashboard used to give its largest
+    region to the five most recent loans -- a list where nothing is ever wrong --
+    while the overdue items sat one click behind a number. A circulation desk's
+    day is "chase what is late, then take back what came in", so that is the
+    order the page runs in now. -#}
+{% if overdue_loans or due_soon_loans %}
+<section class="panel region">
     <div class="panel-head">
-        <h2>Recent Activity</h2>
+        <h2>Needs attention</h2>
         <span class="spacer"></span>
-        <a href="{{ url_for('admin.borrowing_history') }}" class="btn btn-sm">View all</a>
+        {% if overdue_count > overdue_loans|length %}
+            <a href="{{ url_for('admin.borrowing_history', status='overdue') }}" class="btn btn-sm">
+                See all {{ overdue_count }} overdue
+            </a>
+        {% endif %}
     </div>
+    <div class="panel-body flush">
+        <ul class="plain-list">
+            {% for b in overdue_loans + due_soon_loans %}
+            <li class="row-item {{ 'is-alert' if b.due_state == 'overdue' }}">
+                <div class="book-cover-sm" style="--hue: {{ b.book.isbn|cover_hue }}; --tone: {{ b.book.isbn|cover_tone }}" aria-hidden="true">{{ b.book.title[0]|upper }}</div>
+                <div class="row-main">
+                    <div class="row-title">{{ b.book.title }}</div>
+                    <div class="row-sub">
+                        <a href="{{ url_for('admin.member_detail', id=b.user.id) }}">{{ b.user.username }}</a>
+                        · due <span class="num">{{ b.due_date|localdate('%b %d, %Y') }}</span>
+                    </div>
+                </div>
+                <div class="row-side">
+                    {{ due_badge(b) }}
+                    {# Check in from here: chasing and taking back are the same task,
+                       and sending the librarian to another screen to finish it is
+                       what made the overdue lane read as a report rather than work. #}
+                    <form action="{{ url_for('admin.return_book', id=b.id) }}" method="POST"
+                          data-confirm="“{{ b.book.title }}” will be marked returned and a copy put back on the shelf."
+                          data-confirm-title="Check this book in?"
+                          data-confirm-label="Check In">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-sm btn-success">
+                            {{ icon('arrow-return', class='icon-sm') }} Check In
+                        </button>
+                    </form>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+</section>
+{% else %}
+<section class="panel region">
+    <div class="empty" style="padding:36px 20px">
+        {{ icon('check-circle', class='icon-xl text-green') }}
+        <h3>Nothing is late or due soon</h3>
+        <p>
+            Every loan still has time on it.
+            {% if ready_to_fulfil %}
+                {{ ready_to_fulfil }} hold{{ 's' if ready_to_fulfil != 1 }}
+                {{ 'is' if ready_to_fulfil == 1 else 'are' }} waiting on a copy that is back on the shelf.
+            {% else %}
+                Nothing is waiting in the reservation queue either.
+            {% endif %}
+        </p>
+    </div>
+</section>
+{% endif %}
+
+{% if ready_to_fulfil and (overdue_loans or due_soon_loans) %}
+    {#- Tells the librarian there is something to process *before* they press the
+        button, rather than reporting it afterwards. -#}
+    <div class="alert alert-info region" role="status">
+        {{ icon('info', class='icon-sm') }}
+        <div>
+            {{ ready_to_fulfil }} hold{{ 's' if ready_to_fulfil != 1 }}
+            {{ 'is' if ready_to_fulfil == 1 else 'are' }} waiting on a copy that is
+            already back on the shelf. Use <strong>Process Reservations</strong> to
+            issue {{ 'it' if ready_to_fulfil == 1 else 'them' }}.
+        </div>
+    </div>
+{% endif %}
+
+{#- Demoted to a disclosure. It is reference, not work: a list of the most
+    recent loans contains nothing that can be wrong. -#}
+<details class="panel region">
+    <summary class="panel-head" style="cursor:pointer;list-style:none">
+        {{ icon('clock') }}
+        <h2>Recent activity</h2>
+        <span class="spacer"></span>
+        <span class="small text-secondary" data-summary-hint>
+            <span class="when-closed">Click to expand</span>
+            <span class="when-open">Click to collapse</span>
+        </span>
+    </summary>
     <div class="panel-body flush">
         {% if recent_borrowings %}
         <div class="table-wrap">
@@ -62,7 +148,7 @@
                     <tr>
                         <th scope="col">Book</th>
                         <th scope="col">Member</th>
-                        <th scope="col">Borrowed</th>
+                        <th scope="col" class="col-optional">Borrowed</th>
                         <th scope="col">Due</th>
                         <th scope="col">Status</th>
                     </tr>
@@ -74,13 +160,8 @@
                         <td data-label="Member">
                             <a href="{{ url_for('admin.member_detail', id=b.user.id) }}">{{ b.user.username }}</a>
                         </td>
-                        <td class="num" data-label="Borrowed">{{ b.borrow_date|localdate('%b %d') }}</td>
+                        <td class="num col-optional" data-label="Borrowed">{{ b.borrow_date|localdate('%b %d') }}</td>
                         <td class="num" data-label="Due">{{ b.due_date|localdate('%b %d') }}</td>
-                        {# The shared mapping, not a local one. This block used to
-                           have no due-soon tier and no day count, so a loan due
-                           today looked identical to one due in twelve days -- and
-                           the same loan read apricot on the member's phone and flat
-                           blue here. #}
                         <td data-label="Status">{{ due_badge(b) }}</td>
                     </tr>
                     {% endfor %}
@@ -95,5 +176,5 @@
         </div>
         {% endif %}
     </div>
-</section>
+</details>
 {% endblock %}
