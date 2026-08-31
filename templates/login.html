@@ -18,13 +18,23 @@
 
         <form method="POST" action="{{ url_for('auth.login') }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            {#- The username survives a failed sign-in now (register.html has always
+                kept its fields), and focus opens on whichever field still needs
+                work: username on a fresh visit, password after a rejected attempt.
+                Previously autofocus always returned to username, two fields above
+                the one that was actually wrong. -#}
             <div class="field" style="margin-bottom:12px">
                 <label for="username">Username</label>
-                <input type="text" id="username" name="username" autocomplete="username" required autofocus>
+                <input type="text" id="username" name="username" autocomplete="username" required
+                       value="{{ username or '' }}" {% if not username %}autofocus{% endif %}>
             </div>
             <div class="field" style="margin-bottom:14px">
-                <label for="password">Password</label>
-                <input type="password" id="password" name="password" autocomplete="current-password" required>
+                <div class="label-row">
+                    <label for="password">Password</label>
+                    <a class="xs" href="{{ url_for('auth.reset_password') }}">Forgot password?</a>
+                </div>
+                <input type="password" id="password" name="password" autocomplete="current-password" required
+                       {% if username %}autofocus aria-invalid="true"{% endif %}>
             </div>
             <div class="checkbox-field" style="margin-bottom:18px">
                 <input type="checkbox" id="remember" name="remember">

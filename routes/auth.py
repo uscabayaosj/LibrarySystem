@@ -48,13 +48,22 @@ def login():
         user = User.query.filter_by(username=username).first()
         if user is None or not user.check_password(password):
             flash('Invalid username or password.', 'danger')
-            return render_template('login.html')
+            # Hand the username back, the way register.html already does for
+            # every one of its fields. Retyping it is pure tax -- the wrong
+            # half was the password, and this is a phone-first product.
+            return render_template('login.html', username=username)
         remember = request.form.get('remember') == 'on'
         login_user(user, remember=remember)
         next_page = request.args.get('next')
         if not _is_safe_next(next_page):
             next_page = _landing_for(user)
-        flash(f'Welcome back, {user.username}!', 'success')
+        # "Welcome back" is false on a first sign-in, and it landed stacked
+        # directly above the onboarding card's own "Welcome, <name>" -- two
+        # greetings, one of them wrong, on the screen whose whole job is a
+        # first impression. A member who hasn't finished onboarding is going
+        # straight to that card, so let it do the greeting alone.
+        if user.is_admin or user.onboarding_completed_at is not None:
+            flash(f'Welcome back, {user.username}!', 'success')
         return redirect(next_page)
     return render_template('login.html')
 
@@ -75,24 +84,41 @@ def register():
         username = request.form.get('username', '').strip()
         email = request.form.get('email', '').strip().lower()
         password = request.form.get('password', '')
-        if not all([username, email, password]):
-            flash('All fields are required.', 'warning')
-            return render_template('register.html', username=username, email=email)
-        too_long = length_errors(User, {'username': username, 'email': email})
-        if too_long:
-            for message in too_long:
-                flash(message, 'warning')
-            return render_template('register.html', username=username, email=email)
+        # Collected per field rather than flashed one at a time, so the message
+        # renders against the input it is about. Before this every error was a
+        # page-top flash with no aria-invalid anywhere, and autofocus sent
+        # focus back to username even when the password was the problem.
+        field_errors = {}
+        if not username:
+            field_errors['username'] = 'Choose a username to sign in with.'
+        if not email:
+            field_errors['email'] = 'Enter an email address.'
+        if not password:
+            field_errors['password'] = 'Choose a password.'
+
+        for message in length_errors(User, {'username': username, 'email': email}):
+            field = 'username' if 'sername' in message else 'email'
+            field_errors.setdefault(field, message)
+
         min_len = current_app.config['MIN_PASSWORD_LENGTH']
-        if len(password) < min_len:
-            flash(f'Password must be at least {min_len} characters long.', 'warning')
-            return render_template('register.html', username=username, email=email)
-        if User.query.filter_by(username=username).first():
-            flash('That username is already taken. Please choose another.', 'warning')
-            return render_template('register.html', username=username, email=email)
-        if User.query.filter_by(email=email).first():
-            flash('That email address is already registered.', 'warning')
-            return render_template('register.html', username=username, email=email)
+        if password and len(password) < min_len:
+            field_errors['password'] = (
+                f'That is {len(password)} character{"s" if len(password) != 1 else ""} — '
+                f'passwords need at least {min_len}.')
+        if username and 'username' not in field_errors and \
+                User.query.filter_by(username=username).first():
+            field_errors['username'] = 'That username is taken — try another.'
+        if email and 'email' not in field_errors and \
+                User.query.filter_by(email=email).first():
+            field_errors['email'] = ('That email is already registered. '
+                                     'Sign in instead?')
+
+        if field_errors:
+            count = len(field_errors)
+            flash(f"Account not created — {count} field{'s need' if count != 1 else ' needs'} "
+                  'fixing below.', 'warning')
+            return render_template('register.html', username=username, email=email,
+                                   field_errors=field_errors)
         user = User(username=username, email=email)
         user.set_password(password)
         db.session.add(user)
@@ -114,3 +140,68 @@ def register():
         login_user(user)
         return redirect(url_for('member.welcome'))
     return render_template('register.html')
+
+
+# ---- Desk-issued password reset ---------------------------------------------
+#
+# Redemption half of the flow. The issuing half lives in routes/admin.py, on the
+# member's detail page, because the librarian is the one who identifies the
+# person standing in front of them -- the app cannot, and an emailed link would
+# need SMTP this deployment deliberately does without (see
+# models.User.issue_reset_code).
+
+@bp.route('/reset', methods=['GET', 'POST'])
+def reset_password():
+    if current_user.is_authenticated:
+        return redirect(_dashboard_for(current_user))
+
+    # Prefilled when the librarian hands over the link rather than reading the
+    # code aloud; harmless if absent.
+    prefill_code = request.args.get('code', '').strip()
+    prefill_user = request.args.get('u', '').strip()
+
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        code = request.form.get('code', '').strip()
+        password = request.form.get('password', '')
+        confirm = request.form.get('confirm', '')
+
+        field_errors = {}
+        if not username:
+            field_errors['username'] = 'Enter the username you sign in with.'
+        if not code:
+            field_errors['code'] = 'Enter the code the library desk gave you.'
+        min_len = current_app.config['MIN_PASSWORD_LENGTH']
+        if not password:
+            field_errors['password'] = 'Choose a new password.'
+        elif len(password) < min_len:
+            field_errors['password'] = (
+                f'That is {len(password)} character{"s" if len(password) != 1 else ""} — '
+                f'passwords need at least {min_len}.')
+        elif password != confirm:
+            field_errors['confirm'] = "The two passwords don't match."
+
+        user = User.query.filter_by(username=username).first() if username else None
+
+        # One message for "no such user", "wrong code" and "expired code". They
+        # are the same failure to the person at the keyboard, and telling them
+        # apart would let anyone probe which usernames exist and whether a
+        # given account currently has a reset outstanding.
+        if not field_errors and (user is None or not user.check_reset_code(code)):
+            field_errors['code'] = (
+                "That code isn't valid, or it has expired. Codes last "
+                f'{User.RESET_TTL_MINUTES} minutes — ask the desk for a new one.')
+
+        if field_errors:
+            return render_template('reset_password.html', field_errors=field_errors,
+                                   username=username, code=code)
+
+        # set_password() clears the reset itself, so the code is single-use by
+        # construction rather than by remembering to clear it here.
+        user.set_password(password)
+        db.session.commit()
+        flash('Your password is set. You can sign in with it now.', 'success')
+        return redirect(url_for('auth.login'))
+
+    return render_template('reset_password.html', field_errors={},
+                           username=prefill_user, code=prefill_code)

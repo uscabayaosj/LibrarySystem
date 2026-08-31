@@ -124,7 +124,7 @@
                 <div class="rows">
                     {% for b in recent_returns %}
                     <div class="row-item">
-                        <div class="book-cover-sm" style="--hue: {{ b.book.isbn|cover_hue }}" aria-hidden="true">{{ b.book.title[0]|upper }}</div>
+                        <div class="book-cover-sm" style="--hue: {{ b.book.isbn|cover_hue }}; --tone: {{ b.book.isbn|cover_tone }}" aria-hidden="true">{{ b.book.title[0]|upper }}</div>
                         <div class="row-main">
                             <div class="row-title">{{ b.book.title }}</div>
                             <div class="row-sub">Returned {{ b.return_date|localdate('%b %d, %Y') }}</div>

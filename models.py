@@ -1,3 +1,5 @@
+import secrets
+
 from flask import current_app, g, has_app_context, url_for
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -5,7 +7,7 @@ from datetime import datetime, timedelta
 from functools import cached_property
 from sqlalchemy import event
 from extensions import db
-from localtime import to_local, local_now
+from localtime import to_local, local_now, local_today_start_utc
 
 # Several display properties below issue their own query (a reservation
 # lookup, a count). Templates read them more than once per object -- the
@@ -29,6 +31,11 @@ class OrganizationSettings(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     org_name = db.Column(db.String(80), nullable=False, default='Library System')
     theme_color = db.Column(db.String(7))  # '#rrggbb', or None for the default palette
+    # Where to reach a human: shown on error pages, which otherwise say
+    # "contact the library desk" and name no desk. Per-deployment like the
+    # rest of the branding, so it is editable in Admin -> Settings rather than
+    # hardcoded. None falls back to the generic sentence.
+    contact_note = db.Column(db.String(200))
 
     # The logo itself, stored as bytes rather than a filename on disk. See
     # branding_images.py's module docstring for why: a filename column only
@@ -108,11 +115,67 @@ class User(UserMixin, db.Model):
     # for every seeded/admin-created account without needing a special case.
     onboarding_completed_at = db.Column(db.DateTime, nullable=True)
 
+    # A librarian-issued, single-use password reset. Only the hash is stored --
+    # the plaintext code exists for exactly one response, the one that shows it
+    # to the librarian, and is unrecoverable afterwards. See issue_reset_code().
+    reset_code_hash = db.Column(db.String(255), nullable=True)
+    reset_expires_at = db.Column(db.DateTime, nullable=True)
+
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
+        # A password change consumes any outstanding reset, so a code issued at
+        # the desk cannot be redeemed after the member has already got back in
+        # some other way.
+        self.clear_reset_code()
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
+
+    # ---- Password reset (desk-issued) ---------------------------------------
+    #
+    # There is no mail server in this deployment and there deliberately isn't
+    # one: PRODUCT.md principle 4 keeps the app free of external dependencies so
+    # it runs on a restricted campus network. A self-service "email me a link"
+    # flow would need SMTP the institution may not expose, and would fail
+    # silently and unrecoverably when it did.
+    #
+    # What the library does have is a desk. So a reset is issued by a librarian
+    # to a member standing in front of them: the app generates a one-time code,
+    # shows it to the librarian once, and the member redeems it themselves --
+    # the librarian never learns or sets the new password.
+
+    # Digits and uppercase letters minus the pairs people misread when a code is
+    # read aloud or copied off a screen: no O/0, I/1, S/5, Z/2.
+    RESET_ALPHABET = 'ABCDEFGHJKLMNPQRTUVWXY346789'
+    RESET_CODE_LENGTH = 10
+    RESET_TTL_MINUTES = 30
+
+    def issue_reset_code(self):
+        """Generate a fresh single-use reset code, store only its hash, and
+        return the plaintext once. Any previous code is invalidated."""
+        code = ''.join(secrets.choice(self.RESET_ALPHABET)
+                       for _ in range(self.RESET_CODE_LENGTH))
+        self.reset_code_hash = generate_password_hash(code)
+        self.reset_expires_at = (datetime.utcnow()
+                                 + timedelta(minutes=self.RESET_TTL_MINUTES))
+        return code
+
+    def clear_reset_code(self):
+        self.reset_code_hash = None
+        self.reset_expires_at = None
+
+    @property
+    def reset_code_active(self):
+        return bool(self.reset_code_hash
+                    and self.reset_expires_at
+                    and self.reset_expires_at > datetime.utcnow())
+
+    def check_reset_code(self, code):
+        """Constant-time-ish check of a submitted code. False for an expired,
+        consumed, or never-issued code, so an attacker can't tell those apart."""
+        if not self.reset_code_active or not code:
+            return False
+        return check_password_hash(self.reset_code_hash, code.strip().upper())
 
     # Read on every page: the member tab bar renders unread-style badges from
     # these, and the dashboard reads them again for its summary tiles.
@@ -122,15 +185,52 @@ class User(UserMixin, db.Model):
 
     @cached_property
     def overdue_borrowings(self):
+        # Cut off at local midnight, not utcnow() -- this count drives the PWA
+        # home-screen badge, and against a raw UTC clock it went to 1 while the
+        # loan's own badge still read "Due today". See localtime.py.
         return Borrowing.query.filter(
             Borrowing.user_id == self.id,
             Borrowing.status == 'active',
-            Borrowing.due_date < datetime.utcnow()
+            Borrowing.due_date < local_today_start_utc()
         ).count()
 
     @cached_property
     def active_reservations_count(self):
         return Reservation.query.filter_by(user_id=self.id, status='active').count()
+
+    @cached_property
+    def borrow_blocked_reason(self):
+        """Why this member can't borrow anything right now, or None if they
+        can. The sibling of Borrowing.renew_blocked_reason, and it exists for
+        the same reason: the rules that stop a loan are knowable when the page
+        is rendered, so the interface can say which one applies instead of
+        offering a control the server will refuse.
+
+        Before this existed, a blocked member saw a live Borrow button on
+        every available title, agreed to a confirmation sheet promising a due
+        date, and only then met a flash naming the rule -- repeatable once per
+        title in the catalogue.
+
+        Memoized because the catalogue asks once per card (twenty times a
+        page) and the answer cannot change inside one request."""
+        overdue_limit = current_app.config['MAX_OVERDUE_BEFORE_BLOCK']
+        if self.overdue_borrowings >= overdue_limit:
+            n = self.overdue_borrowings
+            return (f"{n} overdue book{'s' if n != 1 else ''} "
+                    f"{'are' if n != 1 else 'is'} blocking new loans — "
+                    'return them to start borrowing again.')
+        loan_limit = current_app.config['MAX_ACTIVE_LOANS']
+        if self.active_borrowings >= loan_limit:
+            return (f"You're at your {loan_limit}-book limit — "
+                    'return one to borrow again.')
+        return None
+
+    def _invalidate_borrow_state(self):
+        """Drop the memoized loan/overdue counts after a borrow or return, so
+        a read following a write inside one request isn't stale."""
+        for key in ('active_borrowings', 'overdue_borrowings',
+                    'active_reservations_count', 'borrow_blocked_reason'):
+            self.__dict__.pop(key, None)
 
 
 class Book(db.Model):
@@ -174,7 +274,10 @@ class Borrowing(db.Model):
 
     @property
     def is_overdue(self):
-        return self.status == 'active' and self.due_date < datetime.utcnow()
+        # Derived from due_state rather than recomputed, so this can never
+        # disagree with the badge, the colour, or the renewal block -- all of
+        # which already come from that one property.
+        return self.due_state == 'overdue'
 
     @property
     def days_until_due(self):
@@ -257,7 +360,9 @@ class Borrowing(db.Model):
         if self.due_state == 'overdue':
             return 'Overdue loans must be returned rather than renewed.'
         if self.renewals_remaining <= 0:
-            return 'This loan has reached its renewal limit.'
+            limit = current_app.config['MAX_RENEWALS']
+            times = 'once' if limit == 1 else f'{limit} times'
+            return f"You've already renewed this {times} — that's the limit."
         if self.book_id in Reservation.reserved_book_ids():
             return 'Another member is waiting for this title.'
         return None
@@ -445,6 +550,122 @@ class Reservation(db.Model):
     def expire(self):
         self.status = 'expired'
         db.session.commit()
+
+
+class Notification(db.Model):
+    """An in-app notice for one member.
+
+    In-app rather than push or email, for the same reason the password reset is
+    desk-issued: web push needs VAPID keys and a third-party push service, and
+    email needs SMTP. Both are external dependencies this deployment
+    deliberately does without (PRODUCT.md principle 4), and a notification
+    channel that silently fails on a restricted network is worse than none --
+    it would let the library believe members had been told.
+
+    So these are records the member reads when they open the app, which is the
+    thing the borrower persona already does daily to check due dates.
+    """
+    __tablename__ = 'notification'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    kind = db.Column(db.String(32), nullable=False)  # hold_ready | due_soon | overdue | checked_out
+    title = db.Column(db.String(160), nullable=False)
+    body = db.Column(db.String(400))
+    # A route name plus optional id, resolved in the template. Storing a built
+    # URL would bake the deployment's script-root into the database.
+    link_endpoint = db.Column(db.String(64))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    read_at = db.Column(db.DateTime, nullable=True)
+
+    # What makes generation idempotent. The librarian runs the circulation
+    # sweep whenever they like -- several times a day in a busy week -- and a
+    # member must not collect five copies of "due in 2 days" because of it.
+    # Unique per user, so one loan crossing into due-soon and later into
+    # overdue still produces two distinct notices.
+    dedupe_key = db.Column(db.String(80), nullable=False)
+
+    user = db.relationship('User', backref=db.backref(
+        'notifications', lazy='dynamic', cascade='all, delete-orphan'))
+
+    __table_args__ = (
+        db.UniqueConstraint('user_id', 'dedupe_key', name='uq_notification_user_dedupe'),
+    )
+
+    @classmethod
+    def push(cls, user_id, kind, title, body=None, link_endpoint=None, dedupe_key=None):
+        """Create a notice unless this user already has one with the same
+        dedupe key. Returns the Notification, or None if it was a duplicate.
+
+        Does not commit -- callers batch these inside their own transaction so
+        a failed sweep doesn't leave half the notices behind.
+        """
+        key = dedupe_key or f'{kind}:{title}'
+        exists = cls.query.filter_by(user_id=user_id, dedupe_key=key).first()
+        if exists:
+            return None
+        note = cls(user_id=user_id, kind=kind, title=title, body=body,
+                   link_endpoint=link_endpoint, dedupe_key=key)
+        db.session.add(note)
+        return note
+
+    @classmethod
+    def unread_count(cls, user_id):
+        return cls.query.filter_by(user_id=user_id, read_at=None).count()
+
+    @classmethod
+    def sweep_loans(cls):
+        """Raise due-soon and overdue notices for every active loan.
+
+        Called from the librarian's circulation run rather than a cron job:
+        this deployment has no scheduler, and inventing one would add the
+        first background process to an app that is currently a single web
+        service. The desk runs this daily; the dedupe key makes running it
+        five times a day harmless.
+
+        Returns how many new notices were created.
+        """
+        created = 0
+        loans = Borrowing.query.options(
+            db.joinedload(Borrowing.book)
+        ).filter_by(status='active').all()
+        for loan in loans:
+            state = loan.due_state
+            if state == 'overdue':
+                days = loan.days_overdue
+                note = cls.push(
+                    loan.user_id, 'overdue',
+                    f'"{loan.book.title}" is overdue',
+                    f'It was due {to_local(loan.due_date).strftime("%b %d, %Y")}'
+                    f' — {days} day{"s" if days != 1 else ""} ago. '
+                    'Please return it to the desk.',
+                    'member.borrowing_history',
+                    f'overdue:{loan.id}',
+                )
+            elif state in ('today', 'soon'):
+                # Built from the day count rather than reusing due_label. That
+                # label is written to stand alone in a badge ("2 days left"),
+                # and dropping it into this sentence frame produced
+                # '"Pedagogy of the Oppressed" is 2 days left'.
+                days = loan.days_until_due
+                if days == 0:
+                    when = 'is due today'
+                elif days == 1:
+                    when = 'is due tomorrow'
+                else:
+                    when = f'is due in {days} days'
+                note = cls.push(
+                    loan.user_id, 'due_soon',
+                    f'"{loan.book.title}" {when}',
+                    'Renew it from My Loans if nobody else is waiting for it.',
+                    'member.borrowing_history',
+                    f'due_soon:{loan.id}',
+                )
+            else:
+                continue
+            if note is not None:
+                created += 1
+        return created
 
 
 @event.listens_for(db.session, 'after_commit')

@@ -9,6 +9,10 @@
     {{ icon('compass', class='icon-xl') }}
     <h3>We couldn't find that page</h3>
     <p>The page may have moved, or the link may be out of date.</p>
+    {%- if org_settings.contact_note %}
+        <p class="text-secondary">{{ org_settings.contact_note }}</p>
+    {%- endif %}
+
     <a href="{{ url_for('index') }}" class="btn btn-primary">Back to Library</a>
 </div></div>
 {% endblock %}

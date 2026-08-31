@@ -267,3 +267,104 @@ def test_register_normalizes_email(client, db):
     user = User.query.filter_by(username='caseuser').first()
     assert user is not None
     assert user.email == 'mixedcase@example.com'
+
+
+# ---- One clock: overdue counts must agree with overdue badges -----------------
+
+def _pin_clock(monkeypatch):
+    """Pin both clocks the overdue logic reads.
+
+    models.local_now() drives the per-loan calendar math (days_until_due ->
+    due_state -> the badge), and localtime.local_now() drives
+    local_today_start_utc(), the cutoff every count and query filter uses.
+    Pinning only one would let the two disagree for reasons the test invented
+    rather than reasons the code has.
+    """
+    import localtime
+    monkeypatch.setattr(models, 'local_now', lambda: to_local(FIXED_UTC_NOW))
+    monkeypatch.setattr(localtime, 'local_now', lambda: to_local(FIXED_UTC_NOW))
+
+
+def test_due_today_is_not_counted_as_overdue(db, member, book, monkeypatch):
+    """The count and the badge must come from the same clock.
+
+    FIXED_UTC_NOW is 09:00 local / 01:00 UTC, and this loan is due at 07:00
+    local the same calendar day -- which is 23:00 UTC the *previous* day. Every
+    count used to test `due_date < utcnow()`, which is true here, while the
+    badge derives from calendar dates, which say "Due today". For the eight
+    hours a day between local and UTC midnight the dashboard therefore called
+    a book overdue and, four lines below, labelled the same book due today.
+    """
+    _pin_clock(monkeypatch)
+    b = Borrowing(user_id=member.id, book_id=book.id,
+                  due_date=FIXED_UTC_NOW - timedelta(hours=2), status='active')
+    db.session.add(b)
+    db.session.commit()
+
+    assert b.due_state == 'today'
+    assert b.is_overdue is False
+    # The count that titles the coral alert and drives the PWA badge.
+    assert User.query.get(member.id).overdue_borrowings == 0
+
+
+def test_member_dashboard_alert_agrees_with_the_badges(client, db, member, book, monkeypatch):
+    """End to end: no coral 'overdue' alert for a loan the page calls due today."""
+    _pin_clock(monkeypatch)
+    db.session.add(Borrowing(user_id=member.id, book_id=book.id,
+                             due_date=FIXED_UTC_NOW - timedelta(hours=2),
+                             status='active'))
+    db.session.commit()
+
+    login(client, 'member', 'memberpass')
+    body = client.get('/dashboard').get_data(as_text=True)
+    assert 'Due today' in body
+    assert 'overdue book' not in body
+
+
+def test_admin_overdue_tile_agrees_with_the_overdue_list(client, db, admin, member, book,
+                                                         monkeypatch):
+    """The librarian's tile links straight to the list; they must count the
+    same loans. The tile said 5 while the list it opened badged 4."""
+    _pin_clock(monkeypatch)
+    due_today = Borrowing(user_id=member.id, book_id=book.id,
+                          due_date=FIXED_UTC_NOW - timedelta(hours=2), status='active')
+    really_late = Borrowing(user_id=member.id, book_id=book.id,
+                            due_date=FIXED_UTC_NOW - timedelta(days=9), status='active')
+    db.session.add_all([due_today, really_late])
+    db.session.commit()
+
+    tile_count = Borrowing.query.filter(
+        Borrowing.status == 'active',
+        Borrowing.due_date < models.local_today_start_utc(),
+    ).count()
+    badged_overdue = [b for b in Borrowing.query.filter_by(status='active').all()
+                      if b.due_state == 'overdue']
+    assert tile_count == len(badged_overdue) == 1
+
+    login(client, 'admin', 'adminpass')
+    body = client.get('/admin/borrowing-history?status=overdue').get_data(as_text=True)
+    assert '9 days overdue' in body   # the shared due_badge macro, not a bare "Overdue"
+
+
+def test_blocked_member_is_not_offered_a_borrow_button(client, db, member, book, monkeypatch):
+    """The catalogue must name the rule instead of offering an action the
+    server will refuse -- previously every available title showed a live
+    Borrow form and a sheet promising a due date."""
+    _pin_clock(monkeypatch)
+    for i in range(3):
+        overdue_book = Book(title=f'Late {i}', author='A', isbn=f'999000000000{i}',
+                            quantity=1, available_quantity=0)
+        db.session.add(overdue_book)
+        db.session.flush()
+        db.session.add(Borrowing(user_id=member.id, book_id=overdue_book.id,
+                                 due_date=FIXED_UTC_NOW - timedelta(days=5),
+                                 status='active'))
+    db.session.commit()
+
+    assert User.query.get(member.id).borrow_blocked_reason is not None
+
+    login(client, 'member', 'memberpass')
+    body = client.get('/search').get_data(as_text=True)
+    assert 'Borrowing is paused' in body
+    assert 'blocking new loans' in body
+    assert '/borrow/' not in body

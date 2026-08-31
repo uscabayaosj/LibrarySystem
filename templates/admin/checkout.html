@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+
+{% block title %}Check out{% endblock %}
+{% block heading %}Check out a book{% endblock %}
+{% block subheading %}
+    <p class="toolbar-sub">
+        {% if member %}Issuing to {{ member.username }}{% else %}Find the member, then the book{% endif %}
+    </p>
+{% endblock %}
+
+{% block content %}
+<nav class="crumbs" aria-label="Breadcrumb">
+    <a href="{{ url_for('admin.borrowing_history') }}">Circulation</a>
+    {{ icon('chevron-right', class='icon-sm') }}
+    <span aria-current="page">Check out</span>
+</nav>
+
+<div class="checkout-steps">
+    {# Two steps, in the order the desk works: who is standing here, then what
+       are they holding. The second step stays closed until the first is
+       answered, because a book without a member has no rules to check against. #}
+    <section class="panel region">
+        <div class="panel-head">
+            <span class="step-mark {{ 'is-done' if member }}" aria-hidden="true">1</span>
+            <h2>Member</h2>
+            <span class="spacer"></span>
+            {% if member %}
+                <a class="btn btn-sm" href="{{ url_for('admin.checkout') }}">Change</a>
+            {% endif %}
+        </div>
+        <div class="panel-body">
+            {% if member %}
+                <div class="checkout-member">
+                    <span class="avatar">{{ member.username[0]|upper }}</span>
+                    <div>
+                        <p class="strong">{{ member.username }}</p>
+                        <p class="small text-secondary">{{ member.email }}</p>
+                        <p class="small text-secondary">
+                            <span class="num">{{ member.active_borrowings }}</span> of
+                            <span class="num">{{ config.MAX_ACTIVE_LOANS }}</span> books out ·
+                            <span class="num">{{ member.overdue_borrowings }}</span> overdue
+                        </p>
+                    </div>
+                </div>
+                {% if member_blocked %}
+                    {# Stated before the book is even chosen. The librarian is about
+                       to be asked a question by a student; this is the answer. #}
+                    <div class="alert alert-warning" style="margin-top:14px" role="status">
+                        {{ icon('warning', class='icon-sm') }}
+                        <div>
+                            <strong>{{ member.username }} can't borrow right now.</strong>
+                            {{ member_blocked }}
+                            <a href="{{ url_for('admin.borrowing_history', search=member.username, status='overdue') }}">See what's out</a>.
+                        </div>
+                    </div>
+                {% endif %}
+            {% else %}
+                <form method="GET" action="{{ url_for('admin.checkout') }}">
+                    <div class="searchbar">
+                        <div class="searchbar-field">
+                            <label class="visually-hidden" for="member">Find a member by username or email</label>
+                            {{ icon('search', class='icon-sm') }}
+                            <input type="search" id="member" name="member" value="{{ member_q }}"
+                                   data-search-input autofocus placeholder="Username or email…">
+                        </div>
+                        <button class="btn btn-primary" type="submit">Find</button>
+                    </div>
+                </form>
+                {% if members %}
+                    <ul class="plain-list" style="margin-top:12px">
+                        {% for m in members %}
+                        <li class="row-item">
+                            <span class="avatar" aria-hidden="true">{{ m.username[0]|upper }}</span>
+                            <div class="row-main">
+                                <div class="row-title">{{ m.username }}</div>
+                                <div class="row-sub">
+                                    {{ m.email }} ·
+                                    <span class="num">{{ m.active_borrowings }}</span> out{% if m.overdue_borrowings %},
+                                    <span class="num text-red">{{ m.overdue_borrowings }}</span> overdue{% endif %}
+                                </div>
+                            </div>
+                            <div class="row-side">
+                                <a class="btn btn-sm btn-primary"
+                                   href="{{ url_for('admin.checkout', member_id=m.id) }}">Choose</a>
+                            </div>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                {% elif member_q %}
+                    <p class="row-note" style="margin-top:12px">
+                        No member matches "{{ member_q|truncate(40) }}". Check the spelling,
+                        or search their email instead.
+                    </p>
+                {% endif %}
+            {% endif %}
+        </div>
+    </section>
+
+    <section class="panel region {{ 'is-waiting' if not member }}">
+        <div class="panel-head">
+            <span class="step-mark" aria-hidden="true">2</span>
+            <h2>Book</h2>
+        </div>
+        <div class="panel-body">
+            {% if not member %}
+                <p class="row-note">Choose a member first — the loan rules depend on who it's for.</p>
+            {% else %}
+                <form method="GET" action="{{ url_for('admin.checkout') }}">
+                    <input type="hidden" name="member_id" value="{{ member.id }}">
+                    <div class="searchbar">
+                        <div class="searchbar-field">
+                            <label class="visually-hidden" for="book">Find a book by title, author or ISBN</label>
+                            {{ icon('search', class='icon-sm') }}
+                            <input type="search" id="book" name="book" value="{{ book_q }}"
+                                   data-search-input {% if member %}autofocus{% endif %}
+                                   placeholder="Title, author, or ISBN…">
+                        </div>
+                        <button class="btn btn-primary" type="submit">Find</button>
+                    </div>
+                </form>
+
+                {% if books %}
+                    <ul class="plain-list" style="margin-top:12px">
+                        {% for b in books %}
+                        {% set block = book_states.get(b.id) %}
+                        <li class="row-item">
+                            <div class="book-cover-sm" style="--hue: {{ b.isbn|cover_hue }}; --tone: {{ b.isbn|cover_tone }}" aria-hidden="true">{{ b.title[0]|upper }}</div>
+                            <div class="row-main">
+                                <div class="row-title">{{ b.title }}</div>
+                                <div class="row-sub">
+                                    {{ b.author }} · <span class="slip-accession">ISBN {{ b.isbn }}</span> ·
+                                    <span class="num">{{ b.available_quantity }}</span> of
+                                    <span class="num">{{ b.quantity }}</span> on the shelf
+                                </div>
+                            </div>
+                            <div class="row-side">
+                            {% if block or member_blocked %}
+                                {# No control at all rather than a disabled one plus a
+                                   sheet the server would refuse -- the same rule the
+                                   member catalogue now follows. #}
+                                <span class="badge">Can't issue</span>
+                                {% if block %}<p class="row-note">{{ block }}</p>{% endif %}
+                            {% else %}
+                                <form method="POST" action="{{ url_for('admin.checkout_issue') }}"
+                                      data-confirm="“{{ b.title }}” goes out to {{ member.username }}, due back in {{ config.LOAN_PERIOD_DAYS }} days."
+                                      data-confirm-title="Check out to {{ member.username }}?"
+                                      data-confirm-label="Check out"
+                                      data-confirm-kind="safe">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <input type="hidden" name="member_id" value="{{ member.id }}">
+                                    <input type="hidden" name="book_id" value="{{ b.id }}">
+                                    <input type="hidden" name="book_q" value="{{ book_q }}">
+                                    <button type="submit" class="btn btn-sm btn-primary">
+                                        {{ icon('swap', class='icon-sm') }} Check out
+                                    </button>
+                                </form>
+                            {% endif %}
+                            </div>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                {% elif book_q %}
+                    <p class="row-note" style="margin-top:12px">
+                        Nothing in the catalogue matches "{{ book_q|truncate(40) }}".
+                    </p>
+                {% endif %}
+            {% endif %}
+        </div>
+    </section>
+</div>
+{% endblock %}

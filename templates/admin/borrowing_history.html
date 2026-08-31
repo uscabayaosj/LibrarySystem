@@ -1,26 +1,57 @@
 {% extends "base.html" %}
 {% from "_icons.html" import icon %}
+{% from "_macros.html" import due_badge %}
 
 {% block title %}Circulation{% endblock %}
 {% block heading %}Circulation{% endblock %}
 {% block subheading %}
-    <p class="toolbar-sub">{{ pagination.total }} record{{ 's' if pagination.total != 1 }}</p>
+    <p class="toolbar-sub">
+        {% if search_term %}
+            {{ pagination.total }} record{{ 's' if pagination.total != 1 }} matching "{{ search_term|truncate(60) }}"
+        {% else %}
+            {{ pagination.total }} record{{ 's' if pagination.total != 1 }}
+        {% endif %}
+    </p>
 {% endblock %}
 
 {% block toolbar %}
+{# Check-out lives here rather than in the rail: it is an action within
+   circulation, not a sixth destination, and both shells are already at the
+   navigation ceiling this system holds itself to. #}
+<a href="{{ url_for('admin.checkout') }}" class="btn btn-primary">{{ icon('swap') }} Check out</a>
 <div class="segmented" role="group" aria-label="Filter by status">
-    <a href="{{ url_for('admin.borrowing_history') }}"
+    <a href="{{ url_for('admin.borrowing_history', search=search_term or None) }}"
        {% if not filter_status %}aria-current="true"{% endif %}>All</a>
-    <a href="{{ url_for('admin.borrowing_history', status='active') }}"
+    <a href="{{ url_for('admin.borrowing_history', status='active', search=search_term or None) }}"
        {% if filter_status == 'active' %}aria-current="true"{% endif %}>On loan</a>
-    <a href="{{ url_for('admin.borrowing_history', status='overdue') }}"
+    <a href="{{ url_for('admin.borrowing_history', status='overdue', search=search_term or None) }}"
        {% if filter_status == 'overdue' %}aria-current="true"{% endif %}>Overdue</a>
-    <a href="{{ url_for('admin.borrowing_history', status='returned') }}"
+    <a href="{{ url_for('admin.borrowing_history', status='returned', search=search_term or None) }}"
        {% if filter_status == 'returned' %}aria-current="true"{% endif %}>Returned</a>
 </div>
 {% endblock %}
 
 {% block content %}
+{# The other two lists have had a search box all along; this is the one a
+   patron at the desk actually triggers ("who has this book?"), and without it
+   the answer was a paging exercise at 30 records a page. #}
+{#- The same searchbar shape as Books and Members. The member shell's compact
+    variant is scoped to .app-member and does not lay out over here. -#}
+<form method="GET" action="{{ url_for('admin.borrowing_history') }}" style="margin-bottom:16px;max-width:520px">
+    <div class="searchbar">
+        <div class="searchbar-field">
+            <label class="visually-hidden" for="search">Search circulation by book, ISBN or member</label>
+            {{ icon('search', class='icon-sm') }}
+            <input type="search" id="search" name="search" value="{{ search_term }}" data-search-input
+                   placeholder="Book, ISBN, or member…">
+        </div>
+        {% if filter_status %}<input type="hidden" name="status" value="{{ filter_status }}">{% endif %}
+        <button class="btn btn-primary" type="submit">Search</button>
+        {% if search_term %}
+            <a href="{{ url_for('admin.borrowing_history', status=filter_status or None) }}" class="btn">Clear</a>
+        {% endif %}
+    </div>
+</form>
 {% set any_active = pagination.items|selectattr('status', 'equalto', 'active')|list %}
 <section class="panel">
     <div class="panel-body flush">
@@ -37,6 +68,8 @@
               data-confirm-label="Check In">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="status" value="{{ filter_status }}">
+            <input type="hidden" name="search" value="{{ search_term }}">
+            <input type="hidden" name="page" value="{{ pagination.page }}">
         </form>
         <div class="panel-head" style="border-bottom:1px solid var(--separator)">
             <span class="small text-secondary">Select active loans below to check in several at once.</span>
@@ -48,20 +81,28 @@
         {% endif %}
         <div class="table-wrap">
             <table class="data stacked">
-                <caption class="visually-hidden">Loan records, most recent first</caption>
+                <caption class="visually-hidden">
+                    {% if filter_status == 'overdue' %}Overdue loans, longest overdue first
+                    {% else %}Loan records, most recent first{% endif %}
+                </caption>
                 <thead>
                     <tr>
                         {% if any_active %}
                         <th scope="col" style="width:32px">
                             <span class="visually-hidden">Select</span>
                             <label class="check-tap">
-                                <input type="checkbox" data-select-all aria-label="Select all active loans">
+                                {#- "on this page", because that is what it does: the
+                                    handler ticks the rendered rows, and the ledger
+                                    paginates at 30. The old label promised every
+                                    active loan in the library. -#}
+                                <input type="checkbox" data-select-all
+                                       aria-label="Select all active loans on this page">
                             </label>
                         </th>
                         {% endif %}
                         <th scope="col">Book</th>
                         <th scope="col">Member</th>
-                        <th scope="col">Borrowed</th>
+                        <th scope="col" class="col-optional">Borrowed</th>
                         <th scope="col">Due</th>
                         <th scope="col" class="col-optional">Returned</th>
                         <th scope="col">Status</th>
@@ -85,7 +126,7 @@
                         <td data-label="Member">
                             <a href="{{ url_for('admin.member_detail', id=b.user.id) }}">{{ b.user.username }}</a>
                         </td>
-                        <td class="num" data-label="Borrowed">{{ b.borrow_date|localdate('%b %d, %Y') }}</td>
+                        <td class="num col-optional" data-label="Borrowed">{{ b.borrow_date|localdate('%b %d, %Y') }}</td>
                         <td data-label="Due">
                             <span class="num">{{ b.due_date|localdate('%b %d, %Y') }}</span>
                             {% if b.status == 'active' %}
@@ -98,15 +139,10 @@
                             {% if b.return_date %}{{ b.return_date|localdate('%b %d, %Y') }}
                             {% else %}<span class="text-secondary">—</span>{% endif %}
                         </td>
-                        <td data-label="Status">
-                            {% if b.status == 'returned' %}
-                                <span class="badge badge-green">{{ icon('check', class='icon-sm') }} Returned</span>
-                            {% elif b.due_state == 'overdue' %}
-                                <span class="badge badge-red">Overdue</span>
-                            {% else %}
-                                <span class="badge badge-accent">On loan</span>
-                            {% endif %}
-                        </td>
+                        {# Was a local mapping with no due-soon tier that printed the
+                           bare word "Overdue"; the shared macro says "9 days overdue",
+                           which is the number a returns run is actually sorted by. #}
+                        <td data-label="Status">{{ due_badge(b) }}</td>
                         <td class="cell-actions" data-label="">
                             {% if b.status == 'active' %}
                                 <form action="{{ url_for('admin.return_book', id=b.id) }}" method="POST"
@@ -114,6 +150,12 @@
                                       data-confirm-title="Check this book in?"
                                       data-confirm-label="Check In">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    {# The view travels with the action, so checking one
+                                       book in from the Overdue lane doesn't dump the
+                                       librarian back on the unfiltered ledger. #}
+                                    <input type="hidden" name="status" value="{{ filter_status }}">
+                                    <input type="hidden" name="search" value="{{ search_term }}">
+                                    <input type="hidden" name="page" value="{{ pagination.page }}">
                                     <button type="submit" class="btn btn-sm btn-success">
                                         {{ icon('arrow-return', class='icon-sm') }} Check In
                                     </button>
@@ -147,16 +189,16 @@
 {% if pagination.pages > 1 %}
 <nav class="pagination" aria-label="Circulation pages">
     {% if pagination.has_prev %}
-        <a href="{{ url_for('admin.borrowing_history', page=pagination.prev_num, status=filter_status) }}">Previous</a>
+        <a href="{{ url_for('admin.borrowing_history', page=pagination.prev_num, status=filter_status, search=search_term or None) }}">Previous</a>
     {% else %}<span class="is-disabled">Previous</span>{% endif %}
     {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
         {% if p %}
             {% if p == pagination.page %}<span class="is-current" aria-current="page">{{ p }}</span>
-            {% else %}<a href="{{ url_for('admin.borrowing_history', page=p, status=filter_status) }}">{{ p }}</a>{% endif %}
+            {% else %}<a href="{{ url_for('admin.borrowing_history', page=p, status=filter_status, search=search_term or None) }}">{{ p }}</a>{% endif %}
         {% else %}<span class="is-disabled">…</span>{% endif %}
     {% endfor %}
     {% if pagination.has_next %}
-        <a href="{{ url_for('admin.borrowing_history', page=pagination.next_num, status=filter_status) }}">Next</a>
+        <a href="{{ url_for('admin.borrowing_history', page=pagination.next_num, status=filter_status, search=search_term or None) }}">Next</a>
     {% else %}<span class="is-disabled">Next</span>{% endif %}
 </nav>
 {% endif %}

@@ -5,8 +5,13 @@
 {% block heading %}Books{% endblock %}
 {% block subheading %}
     <p class="toolbar-sub">
-        {% if search %}{{ pagination.total }} match{{ 'es' if pagination.total != 1 }} for "{{ search }}"
-        {% else %}{{ pagination.total }} title{{ 's' if pagination.total != 1 }} catalogued{% endif %}
+        {#- Reports the visible slice, not just the collection total: viewing rows
+            21-24 of 24 while the line read "24 titles catalogued" gave no sense of
+            position in the list. -#}
+        {% if search %}{{ pagination.total }} match{{ 'es' if pagination.total != 1 }} for "{{ search|truncate(60) }}"
+        {%- elif pagination.pages > 1 %}
+            Showing {{ pagination.first }}–{{ pagination.last }} of {{ pagination.total }} titles
+        {%- else %}{{ pagination.total }} title{{ 's' if pagination.total != 1 }} catalogued{% endif %}
     </p>
 {% endblock %}
 
@@ -20,7 +25,13 @@
         {{ icon('plus') }}
         <h2>Add a Book</h2>
         <span class="spacer"></span>
-        <span class="small text-secondary">Click to {% if form_errors %}collapse{% else %}expand{% endif %}</span>
+        {#- Bound to the panel's real open state via CSS, not to form_errors:
+            after clicking "Add Book" the expanded panel still read "Click to
+            expand", because the template only knew about the error case. -#}
+        <span class="small text-secondary" data-summary-hint>
+            <span class="when-closed">Click to expand</span>
+            <span class="when-open">Click to collapse</span>
+        </span>
     </summary>
     <div class="panel-body">
         <form method="POST" action="{{ url_for('admin.add_book') }}">
@@ -44,13 +55,20 @@
                            {% if field_errors.get('isbn') %}aria-invalid="true" aria-describedby="isbn-error"{% endif %}>
                     {% if field_errors.get('isbn') %}<p class="field-error" id="isbn-error">{{ icon('warning', class='icon-sm') }} {{ field_errors['isbn'] }}</p>{% endif %}
                 </div>
-                <div class="field col-3">
+                {#- Category and publisher can fail validation (over-length) like any
+                    other field, but had no inline error slot -- their message existed
+                    only as a page-top flash. Every validated field now shows its own. -#}
+                <div class="field col-3 {{ 'has-error' if field_errors.get('category') }}">
                     <label for="category">Category</label>
-                    <input type="text" id="category" name="category" value="{{ form_values.get('category', '') }}" maxlength="{{ maxlen('Book', 'category') }}">
+                    <input type="text" id="category" name="category" value="{{ form_values.get('category', '') }}" maxlength="{{ maxlen('Book', 'category') }}"
+                           {% if field_errors.get('category') %}aria-invalid="true" aria-describedby="category-error"{% endif %}>
+                    {% if field_errors.get('category') %}<p class="field-error" id="category-error">{{ icon('warning', class='icon-sm') }} {{ field_errors['category'] }}</p>{% endif %}
                 </div>
-                <div class="field col-4">
+                <div class="field col-4 {{ 'has-error' if field_errors.get('publisher') }}">
                     <label for="publisher">Publisher</label>
-                    <input type="text" id="publisher" name="publisher" value="{{ form_values.get('publisher', '') }}" maxlength="{{ maxlen('Book', 'publisher') }}">
+                    <input type="text" id="publisher" name="publisher" value="{{ form_values.get('publisher', '') }}" maxlength="{{ maxlen('Book', 'publisher') }}"
+                           {% if field_errors.get('publisher') %}aria-invalid="true" aria-describedby="publisher-error"{% endif %}>
+                    {% if field_errors.get('publisher') %}<p class="field-error" id="publisher-error">{{ icon('warning', class='icon-sm') }} {{ field_errors['publisher'] }}</p>{% endif %}
                 </div>
                 <div class="field col-3">
                     <label for="publication_year">Year</label>
@@ -119,7 +137,7 @@
                         <td data-label="ISBN"><span class="mono">{{ book.isbn }}</span></td>
                         <td data-label="Category">
                             {% if book.category %}
-                                <span class="badge badge-category" style="--hue: {{ book.category|cover_hue }}" title="{{ book.category }}">{{ book.category }}</span>
+                                <span class="badge badge-category" style="--hue: {{ book.category|cover_hue }}; --tone: {{ book.category|cover_tone }}" title="{{ book.category }}">{{ book.category }}</span>
                             {% else %}
                                 <span class="badge">Uncategorised</span>
                             {% endif %}
@@ -136,8 +154,20 @@
                                class="btn btn-sm btn-icon" aria-label="Edit {{ book.title }}" title="Edit">
                                 {{ icon('pencil', class='icon-sm') }}
                             </a>
+                            {%- set on_loan = on_loan_counts.get(book.id, 0) -%}
+                            {% if on_loan %}
+                                {# Known at render time, so no danger sheet is raised for
+                                   a deletion the server will refuse. A confirmation that
+                                   gets overruled teaches the librarian to distrust every
+                                   other one. #}
+                                <button type="button" class="btn btn-sm btn-icon" disabled
+                                        aria-label="Can't delete {{ book.title }} — {{ on_loan }} {{ 'copy' if on_loan == 1 else 'copies' }} still on loan">
+                                    {{ icon('trash', class='icon-sm') }}
+                                </button>
+                                <span class="row-note">{{ on_loan }} {{ 'copy' if on_loan == 1 else 'copies' }} on loan</span>
+                            {% else %}
                             <form action="{{ url_for('admin.delete_book', id=book.id) }}" method="POST"
-                                  data-confirm="“{{ book.title }}” and its loan history will be permanently removed."
+                                  data-confirm="“{{ book.title }}” and its loan history will be permanently removed. This can't be undone."
                                   data-confirm-title="Delete this book?"
                                   data-confirm-label="Delete"
                                   data-confirm-kind="danger">
@@ -147,6 +177,7 @@
                                     {{ icon('trash', class='icon-sm') }}
                                 </button>
                             </form>
+                            {% endif %}
                         </td>
                     </tr>
                     {% endfor %}
@@ -156,7 +187,7 @@
         {% else %}
         <div class="empty">
             {{ icon('books', class='icon-xl') }}
-            <h3>{% if search %}No books match "{{ search }}"{% else %}No books yet{% endif %}</h3>
+            <h3>{% if search %}No books match "{{ search|truncate(60) }}"{% else %}No books yet{% endif %}</h3>
             <p>{% if search %}Try a different search term.{% else %}Add the first title to start the catalogue.{% endif %}</p>
             {% if search %}<a href="{{ url_for('admin.books') }}" class="btn">Clear search</a>{% endif %}
         </div>

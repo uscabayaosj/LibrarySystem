@@ -59,19 +59,29 @@
         </ol>
     </section>
 
+    {#- This page is now reachable any time from the account menu, because it is
+        the only place the circulation rules are written down for a borrower.
+        Returning to it should not read like onboarding all over again. -#}
     <div class="welcome-actions region">
-        <form method="POST" action="{{ url_for('member.welcome_finish') }}">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <input type="hidden" name="next" value="search">
-            <button type="submit" class="btn btn-primary btn-block btn-lg">
-                {{ icon('search') }} Start browsing
-            </button>
-        </form>
-        <form method="POST" action="{{ url_for('member.welcome_finish') }}">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <input type="hidden" name="next" value="dashboard">
-            <button type="submit" class="welcome-skip">I'll explore on my own</button>
-        </form>
+        {% if current_user.onboarding_completed_at %}
+            <a href="{{ url_for('member.dashboard') }}" class="btn btn-primary btn-block btn-lg">
+                {{ icon('gauge') }} Back to my loans
+            </a>
+            <a href="{{ url_for('member.search') }}" class="welcome-skip">Browse the collection</a>
+        {% else %}
+            <form method="POST" action="{{ url_for('member.welcome_finish') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="next" value="search">
+                <button type="submit" class="btn btn-primary btn-block btn-lg">
+                    {{ icon('search') }} Start browsing
+                </button>
+            </form>
+            <form method="POST" action="{{ url_for('member.welcome_finish') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="next" value="dashboard">
+                <button type="submit" class="welcome-skip">I'll explore on my own</button>
+            </form>
+        {% endif %}
     </div>
 
 </div>

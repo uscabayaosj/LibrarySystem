@@ -9,6 +9,10 @@
     {{ icon('clock', class='icon-xl') }}
     <h3>Your session timed out</h3>
     <p>That form took a while to submit, or was opened in another tab. Go back and try again.</p>
+    {%- if org_settings.contact_note %}
+        <p class="text-secondary">{{ org_settings.contact_note }}</p>
+    {%- endif %}
+
     <a href="{{ url_for('index') }}" class="btn btn-primary">Back to Library</a>
 </div></div>
 {% endblock %}

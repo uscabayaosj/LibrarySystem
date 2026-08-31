@@ -1,10 +1,11 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app
 from flask_login import login_required, current_user
-from models import db, Book, User, Borrowing, Reservation, OrganizationSettings
+from models import db, Book, User, Borrowing, Reservation, OrganizationSettings, Notification
 from datetime import datetime, timedelta
 from theming import normalize_hex
 from branding_images import validate_and_reencode, LogoValidationError
 from validation import length_errors, max_length, FIELD_LABELS
+from localtime import local_today_start_utc, to_local
 
 bp = Blueprint('admin', __name__, url_prefix='/admin')
 
@@ -37,12 +38,25 @@ def _books_context(page=1, search='', form_values=None, form_errors=None, field_
     pagination = query.order_by(Book.title).paginate(
         page=page, per_page=per_page, error_out=False
     )
+    # How many copies of each visible title are out, in one grouped query
+    # rather than a COUNT per row. The delete control needs this at render
+    # time: a title with copies on loan can't be deleted, and the row should
+    # say so instead of raising a danger sheet the server then refuses.
+    book_ids = [b.id for b in pagination.items]
+    on_loan_counts = {}
+    if book_ids:
+        on_loan_counts = dict(db.session.query(
+            Borrowing.book_id, db.func.count(Borrowing.id)
+        ).filter(
+            Borrowing.book_id.in_(book_ids), Borrowing.status == 'active'
+        ).group_by(Borrowing.book_id).all())
     return {
         'pagination': pagination,
         'search': search,
         'form_values': form_values or {},
         'form_errors': form_errors,
         'field_errors': field_errors or {},
+        'on_loan_counts': on_loan_counts,
     }
 
 
@@ -52,9 +66,12 @@ def dashboard():
     total_books = Book.query.count()
     total_members = User.query.filter_by(is_admin=False).count()
     active_borrowings = Borrowing.query.filter_by(status='active').count()
+    # Local midnight, not utcnow(): this tile links straight to the list
+    # below it, and against a raw UTC clock the tile said 5 while the list it
+    # opened badged 4 -- the fifth was due *today*. See localtime.py.
     overdue_count = Borrowing.query.filter(
         Borrowing.status == 'active',
-        Borrowing.due_date < now
+        Borrowing.due_date < local_today_start_utc()
     ).count()
     active_reservations = Reservation.query.filter_by(status='active').count()
     available_books = Book.query.filter(Book.available_quantity > 0).count()
@@ -82,6 +99,15 @@ def books():
     page = request.args.get('page', 1, type=int)
     search = request.args.get('search', '').strip()
     return render_template('admin/books.html', **_books_context(page, search))
+
+
+@bp.route('/books/add', methods=['GET'])
+def add_book_form():
+    """Refreshing after a failed Add Book used to hit a POST-only URL and get
+    a raw, unstyled Werkzeug 405 with no way back into the app. The form has
+    no page of its own -- it is a disclosure panel on the catalogue -- so a
+    GET here just reopens it there."""
+    return redirect(url_for('admin.books') + '#add-book')
 
 
 @bp.route('/books/add', methods=['POST'])
@@ -120,8 +146,13 @@ def add_book():
 
     errors = list(field_errors.values())
     if errors:
-        for msg in errors:
-            flash(msg, 'warning')
+        # One summary flash, not one per field. Every message is already
+        # rendered inline against its own input, so flashing each of them too
+        # turned four problems into eight on-screen messages saying the same
+        # things twice.
+        count = len(errors)
+        flash(f"The book wasn't added — {count} field{'s need' if count != 1 else ' needs'} "
+              'fixing below.', 'warning')
         return render_template(
             'admin/books.html',
             **_books_context(1, '', form_values=request.form, form_errors=errors, field_errors=field_errors)
@@ -209,7 +240,9 @@ def delete_book(id):
     book = Book.query.get_or_404(id)
     active_borrowings = Borrowing.query.filter_by(book_id=id, status='active').count()
     if active_borrowings > 0:
-        flash(f'Cannot delete: {active_borrowings} copy(ies) are currently borrowed.', 'warning')
+        copies = f"{active_borrowings} copy" if active_borrowings == 1 else f"{active_borrowings} copies"
+        flash(f'"{book.title}" still has {copies} on loan. Check them in first, '
+              'then delete the title.', 'warning')
         return redirect(url_for('admin.books'))
     title = book.title
     db.session.delete(book)  # cascade removes historical borrowings/reservations
@@ -253,7 +286,7 @@ def members():
         ).filter(
             Borrowing.user_id.in_(member_ids),
             Borrowing.status == 'active',
-            Borrowing.due_date < now,
+            Borrowing.due_date < local_today_start_utc(),
         ).group_by(Borrowing.user_id).all()
         overdue_counts = dict(rows)
 
@@ -303,6 +336,33 @@ def member_detail(id):
     )
 
 
+@bp.route('/members/<int:id>/reset-password', methods=['POST'])
+def issue_password_reset(id):
+    """Issue a one-time reset code for a member standing at the desk.
+
+    The librarian identifies the person; the app can't. The code is shown to
+    the librarian exactly once, in the flash below, and only its hash is
+    stored -- so this route can hand out access but can never be used to
+    recover an existing password, and the librarian never learns the new one
+    the member chooses.
+    """
+    member = User.query.get_or_404(id)
+    if member.is_admin:
+        # Admin credentials are provisioned out of band (ADMIN_PASSWORD at
+        # first boot); letting one admin reset another from the UI would make
+        # the seeded account recoverable by anyone who reaches this page.
+        flash('Administrator passwords are set through the deployment, not here.', 'warning')
+        return redirect(url_for('admin.member_detail', id=id))
+
+    code = member.issue_reset_code()
+    db.session.commit()
+    flash(f'One-time code for {member.username}: {code} — write it down now, '
+          f'it is not shown again and expires in {User.RESET_TTL_MINUTES} minutes. '
+          'They enter it at Sign in → Forgot password to choose their own new password.',
+          'warning')
+    return redirect(url_for('admin.member_detail', id=id))
+
+
 @bp.route('/members/<int:id>/delete', methods=['POST'])
 def delete_member(id):
     member = User.query.get_or_404(id)
@@ -311,7 +371,9 @@ def delete_member(id):
         return redirect(url_for('admin.members'))
     active_count = Borrowing.query.filter_by(user_id=id, status='active').count()
     if active_count > 0:
-        flash(f'Cannot delete: member has {active_count} active borrowing(s).', 'warning')
+        loans = 'one book' if active_count == 1 else f'{active_count} books'
+        flash(f'{member.username} still has {loans} out. Check them in first, '
+              'then delete the account.', 'warning')
         return redirect(url_for('admin.members'))
     username = member.username
     db.session.delete(member)  # cascade removes history and reservations
@@ -325,6 +387,7 @@ def borrowing_history():
     page = request.args.get('page', 1, type=int)
     per_page = 30
     filter_status = request.args.get('status', '').strip()
+    search_term = request.args.get('search', '').strip()
 
     now = datetime.utcnow()
     query = Borrowing.query.options(
@@ -333,20 +396,55 @@ def borrowing_history():
     )
     if filter_status == 'overdue':
         # Overdue isn't a stored status -- it's active plus a past due date.
-        query = query.filter(Borrowing.status == 'active', Borrowing.due_date < now)
+        query = query.filter(Borrowing.status == 'active',
+                             Borrowing.due_date < local_today_start_utc())
     elif filter_status in ('active', 'returned'):
         query = query.filter(Borrowing.status == filter_status)
     else:
         filter_status = ''
-    history_pagination = query.order_by(Borrowing.borrow_date.desc()).paginate(
+
+    # "Who has this book?" was a paging exercise at 30 records a page -- this
+    # is the one list of the three that had no search, and it is the one a
+    # patron standing at the desk asks about.
+    if search_term:
+        like = f'%{search_term}%'
+        query = query.join(Borrowing.book).join(Borrowing.user).filter(
+            db.or_(Book.title.ilike(like), Book.isbn.ilike(like),
+                   User.username.ilike(like))
+        )
+
+    # Under the Overdue filter, sort by the field the lane is about. Ordering
+    # every filter by borrow_date put the 26-days-late item *below* the
+    # 7-days-late one, so the worst case sorted last in a chase list.
+    if filter_status == 'overdue':
+        order = Borrowing.due_date.asc()
+    else:
+        order = Borrowing.borrow_date.desc()
+    history_pagination = query.order_by(order).paginate(
         page=page, per_page=per_page, error_out=False
     )
     return render_template(
         'admin/borrowing_history.html',
         pagination=history_pagination,
         filter_status=filter_status,
+        search_term=search_term,
         now=now,
     )
+
+
+def _back_to_ledger():
+    """Return to the ledger view the librarian acted from.
+
+    The bulk path already carried `status` through; the single check-in did
+    not, so returning one book from the Overdue filter dropped the filter and
+    landed on the unfiltered ledger -- twenty times over in a returns run.
+    """
+    return redirect(url_for(
+        'admin.borrowing_history',
+        status=request.form.get('status', '') or None,
+        search=request.form.get('search', '') or None,
+        page=request.form.get('page', type=int) or None,
+    ))
 
 
 @bp.route('/return-book/<int:id>', methods=['POST'])
@@ -354,10 +452,10 @@ def return_book(id):
     borrowing = Borrowing.query.get_or_404(id)
     if borrowing.status != 'active':
         flash('This book has already been returned.', 'info')
-        return redirect(url_for('admin.borrowing_history'))
+        return _back_to_ledger()
     borrowing.mark_returned()
     flash(f'"{borrowing.book.title}" returned by {borrowing.user.username}.', 'success')
-    return redirect(url_for('admin.borrowing_history'))
+    return _back_to_ledger()
 
 
 @bp.route('/return-books/bulk', methods=['POST'])
@@ -365,20 +463,30 @@ def bulk_return_books():
     ids = request.form.getlist('borrowing_ids', type=int)
     if not ids:
         flash('No loans were selected.', 'warning')
-        return redirect(url_for('admin.borrowing_history'))
+        return _back_to_ledger()
 
     borrowings = Borrowing.query.filter(
         Borrowing.id.in_(ids), Borrowing.status == 'active'
     ).all()
     count = len(borrowings)
+    titles = [b.book.title for b in borrowings]
     for borrowing in borrowings:
         borrowing.mark_returned()  # commits per-row, same as the single check-in path
 
     if count:
-        flash(f'{count} book{"s" if count != 1 else ""} checked in.', 'success')
+        # Name the records, the way the single check-in path does. A bare count
+        # is the one receipt a mis-ticked checkbox stays invisible behind, and
+        # this flash is the only record the action leaves.
+        if count <= 3:
+            named = ', '.join(f'"{t}"' for t in titles)
+            flash(f'Checked in {named}.', 'success')
+        else:
+            named = ', '.join(f'"{t}"' for t in titles[:3])
+            flash(f'Checked in {count} books: {named}, '
+                  f'and {count - 3} more.', 'success')
     else:
         flash('Those loans were already returned.', 'info')
-    return redirect(url_for('admin.borrowing_history', status=request.form.get('status', '')))
+    return _back_to_ledger()
 
 
 @bp.route('/check-reservations', methods=['POST'])
@@ -397,6 +505,7 @@ def check_reservations():
     # Fulfil the reservation queue for every title that has copies free,
     # draining as many reservations as there is availability.
     fulfilled_count = 0
+    fulfilled_notes = []
     available_books = Book.query.filter(Book.available_quantity > 0).all()
     for book in available_books:
         while book.available_quantity > 0:
@@ -405,15 +514,59 @@ def check_reservations():
                 break
             active_reservation.status = 'fulfilled'
             book.available_quantity -= 1
+            # The member is told. Before notifications existed this moment --
+            # the one the entire queue feature builds toward -- reached them
+            # only if they happened to open the app and notice a card had
+            # changed, and the card had in fact vanished (see the fulfilled
+            # filter fix in routes/member.py:reservations).
+            Notification.push(
+                active_reservation.user_id, 'hold_ready',
+                f'"{book.title}" is ready to collect',
+                f'Your hold came up. Collect it from the desk within '
+                f'{current_app.config["RESERVATION_HOLD_DAYS"]} days.',
+                'member.reservations',
+                f'hold_ready:{active_reservation.id}',
+            )
             db.session.add(Borrowing(
                 user_id=active_reservation.user_id,
                 book_id=book.id,
                 due_date=now + timedelta(days=loan_days)
             ))
+            fulfilled_notes.append((active_reservation.user.username, book.title))
             fulfilled_count += 1
 
+    # Same sweep, same trip: raise due-soon and overdue notices for every
+    # active loan. This app has no scheduler, and this is the button a
+    # librarian already presses daily, so it is where recurring work belongs
+    # until there is somewhere better. Idempotent -- see Notification.sweep_loans.
+    loan_notices = Notification.sweep_loans()
+
     db.session.commit()
-    flash(f'Checked reservations: {len(expired)} expired, {fulfilled_count} fulfilled.', 'info')
+
+    # This button issues real loans on members' behalf, and the librarian then
+    # has to physically pull those books off a shelf. "0 expired, 1 fulfilled"
+    # read like cron output and named neither the member nor the title, so the
+    # one action with a physical consequence left no usable record. Say who
+    # gets what; keep it as a warning-tier flash so it doesn't self-dismiss
+    # after six seconds like a routine success.
+    if fulfilled_notes:
+        lines = '; '.join(f'"{title}" for {who}' for who, title in fulfilled_notes[:6])
+        more = '' if len(fulfilled_notes) <= 6 else f'; and {len(fulfilled_notes) - 6} more'
+        flash(f'Set aside {fulfilled_count} book{"s" if fulfilled_count != 1 else ""} '
+              f'for collection — {lines}{more}. '
+              f'{len(expired)} lapsed hold{"s" if len(expired) != 1 else ""} cleared, '
+              f'{loan_notices} due/overdue notice{"s" if loan_notices != 1 else ""} sent.',
+              'warning')
+    elif expired:
+        flash(f'{len(expired)} lapsed hold{"s" if len(expired) != 1 else ""} cleared, '
+              f'{loan_notices} due/overdue notice{"s" if loan_notices != 1 else ""} sent. '
+              'No queues could be filled — no reserved title has a copy free.', 'info')
+    elif loan_notices:
+        flash(f'{loan_notices} due/overdue notice{"s" if loan_notices != 1 else ""} sent. '
+              'No holds have lapsed and no reserved title has a copy free.', 'info')
+    else:
+        flash('Nothing to do — no holds have lapsed, no reserved title has a '
+              'copy free, and every member is already up to date.', 'info')
     return redirect(url_for('admin.dashboard'))
 
 
@@ -423,6 +576,7 @@ def settings():
 
     if request.method == 'POST':
         org_name = request.form.get('org_name', '').strip()
+        contact_note = request.form.get('contact_note', '').strip()
         theme_color_input = request.form.get('theme_color', '').strip()
         remove_logo = request.form.get('remove_logo') == 'on'
         logo_file = request.files.get('logo')
@@ -432,6 +586,8 @@ def settings():
             errors.append('Organization name is required.')
         elif len(org_name) > 80:
             errors.append('Organization name must be 80 characters or fewer.')
+        if len(contact_note) > 200:
+            errors.append('Contact line must be 200 characters or fewer.')
 
         normalized_color = None
         if theme_color_input:
@@ -452,21 +608,181 @@ def settings():
             return render_template(
                 'admin/settings.html',
                 org_settings=org_settings,
-                form_values={'org_name': org_name, 'theme_color': theme_color_input},
+                form_values={'org_name': org_name, 'theme_color': theme_color_input,
+                             'contact_note': contact_note},
             )
 
+        # Name what actually changed. This action repaints every screen for
+        # every member of the institution, and "Branding updated." was
+        # indistinguishable from a logo upload that silently didn't attach.
+        changes = []
+        if org_settings.org_name != org_name:
+            changes.append(f'name is now "{org_name}"')
+        if (org_settings.contact_note or '') != contact_note:
+            changes.append('contact line updated' if contact_note else 'contact line cleared')
+        if org_settings.theme_color != normalized_color:
+            changes.append(f'accent colour is now {normalized_color}' if normalized_color
+                           else 'accent colour is back to the department indigo')
+
         org_settings.org_name = org_name
+        org_settings.contact_note = contact_note or None
         org_settings.theme_color = normalized_color
         if new_logo_data:
             org_settings.logo_data = new_logo_data
             org_settings.logo_content_type = new_logo_content_type
             org_settings.logo_updated_at = datetime.utcnow()
+            changes.append('logo replaced')
         elif remove_logo:
             org_settings.logo_data = None
             org_settings.logo_content_type = None
             org_settings.logo_updated_at = None
+            changes.append('logo removed')
         db.session.commit()
-        flash('Branding updated.', 'success')
+        if changes:
+            summary = changes[0][0].upper() + changes[0][1:]
+            if len(changes) > 1:
+                summary = '; '.join(changes)
+                summary = summary[0].upper() + summary[1:]
+            flash(f'{summary}. Everyone sees this on their next page load.', 'success')
+        else:
+            flash('Nothing changed — the branding is already set that way.', 'info')
         return redirect(url_for('admin.settings'))
 
     return render_template('admin/settings.html', org_settings=org_settings, form_values=None)
+
+
+# ---- Desk check-out ----------------------------------------------------------
+#
+# The missing half of the stated product purpose. Until now the librarian could
+# check books *in* and never *out*: borrowing existed only at
+# routes/member.py:borrow_book, so a student at the counter without a phone --
+# or without an account they can get into -- could not borrow at all.
+
+@bp.route('/checkout', methods=['GET'])
+def checkout():
+    member_q = request.args.get('member', '').strip()
+    book_q = request.args.get('book', '').strip()
+
+    members = []
+    if member_q:
+        like = f'%{member_q}%'
+        members = User.query.filter(
+            User.is_admin.is_(False),
+            db.or_(User.username.ilike(like), User.email.ilike(like)),
+        ).order_by(User.username).limit(10).all()
+
+    member = None
+    member_id = request.args.get('member_id', type=int)
+    if member_id:
+        member = User.query.filter_by(id=member_id, is_admin=False).first()
+
+    books = []
+    if book_q:
+        like = f'%{book_q}%'
+        books = Book.query.filter(
+            db.or_(Book.title.ilike(like), Book.author.ilike(like), Book.isbn.ilike(like))
+        ).order_by(Book.title).limit(10).all()
+
+    # Everything the librarian needs to judge a loan before making it, computed
+    # per candidate book rather than discovered after the POST.
+    book_states = {}
+    if member and books:
+        held = {b.book_id for b in Borrowing.query.filter_by(
+            user_id=member.id, status='active').all()}
+        for b in books:
+            book_states[b.id] = _checkout_block(member, b, held)
+
+    return render_template(
+        'admin/checkout.html',
+        member_q=member_q, book_q=book_q,
+        members=members, member=member, books=books,
+        book_states=book_states,
+        member_blocked=member.borrow_blocked_reason if member else None,
+    )
+
+
+def _checkout_block(member, book, held_book_ids):
+    """Why this member can't be issued this copy right now, or None.
+
+    Deliberately mirrors the member-side rules rather than relaxing them for
+    the desk. A librarian override would need an audit trail to be honest
+    about who bypassed a limit and why, and this app has none -- so the answer
+    to "the rule is in the way" is to check something in, not to route around
+    the rule invisibly.
+    """
+    if book.id in held_book_ids:
+        return f'{member.username} already has a copy of this out.'
+    if book.available_quantity < 1:
+        return 'No copies are on the shelf.'
+    # A queue exists and this member is not the one it is being held for.
+    next_in_line = Reservation.get_active_reservation(book.id)
+    if next_in_line and next_in_line.user_id != member.id:
+        return (f'Reserved for {next_in_line.user.username}, who is next in line. '
+                'Run Process Reservations, or pick another copy.')
+    return None
+
+
+@bp.route('/checkout', methods=['POST'])
+def checkout_issue():
+    member_id = request.form.get('member_id', type=int)
+    book_id = request.form.get('book_id', type=int)
+    member = User.query.filter_by(id=member_id, is_admin=False).first()
+    book = Book.query.get(book_id) if book_id else None
+    if member is None or book is None:
+        flash('Pick a member and a book first.', 'warning')
+        return redirect(url_for('admin.checkout'))
+
+    back = url_for('admin.checkout', member_id=member.id,
+                   book=request.form.get('book_q', '') or None)
+
+    # The account-level rules (5-loan ceiling, 3-overdue block), in the member's
+    # own words -- the same string their catalogue shows them.
+    blocked = member.borrow_blocked_reason
+    if blocked:
+        flash(f'{member.username} can\'t borrow right now — {blocked}', 'warning')
+        return redirect(back)
+
+    held = {b.book_id for b in Borrowing.query.filter_by(
+        user_id=member.id, status='active').all()}
+    per_book = _checkout_block(member, book, held)
+    if per_book:
+        flash(per_book, 'warning')
+        return redirect(back)
+
+    # Atomic decrement, same race-safe pattern as the member borrow path: two
+    # desks (or a desk and a phone) must not hand out the same last copy.
+    updated = Book.query.filter(
+        Book.id == book.id, Book.available_quantity > 0
+    ).update({Book.available_quantity: Book.available_quantity - 1},
+             synchronize_session=False)
+    if not updated:
+        db.session.rollback()
+        flash(f'"{book.title}" was taken by someone else a moment ago.', 'warning')
+        return redirect(back)
+
+    loan_days = current_app.config['LOAN_PERIOD_DAYS']
+    now = datetime.utcnow()
+    loan = Borrowing(user_id=member.id, book_id=book.id,
+                     due_date=now + timedelta(days=loan_days))
+    db.session.add(loan)
+
+    # If this member was the one the queue was holding it for, this loan *is*
+    # the fulfilment -- otherwise the hold would sit active forever against a
+    # copy they are now carrying.
+    hold = Reservation.get_active_reservation(book.id)
+    if hold and hold.user_id == member.id:
+        hold.status = 'fulfilled'
+
+    Notification.push(
+        member.id, 'checked_out',
+        f'"{book.title}" is checked out to you',
+        f'Issued at the desk. Due back '
+        f'{to_local(loan.due_date).strftime("%b %d, %Y")}.',
+        'member.borrowing_history',
+        f'checked_out:{book.id}:{now.isoformat(timespec="seconds")}',
+    )
+    db.session.commit()
+
+    flash(f'"{book.title}" checked out to {member.username}. '
+          f'Due back {to_local(loan.due_date).strftime("%b %d, %Y")}.', 'success')
+    return redirect(url_for('admin.checkout', member_id=member.id))

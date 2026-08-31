@@ -103,6 +103,16 @@
                             <span class="count">{{ current_user.active_reservations_count }}</span>
                         {% endif %}
                     </a></li>
+                    {# Also in the rail on desktop and tablet, where there is room
+                       for a fifth destination and the toolbar bell is easy to miss
+                       beside a page action. #}
+                    <li><a class="sidebar-link" href="{{ url_for('member.notifications') }}" title="Notices"
+                           {% if request.endpoint == 'member.notifications' %}aria-current="page"{% endif %}>
+                        <span class="link-icon">{{ icon('inbox') }}</span><span class="link-label">Notices</span>
+                        {% if unread_notices %}
+                            <span class="count">{{ unread_notices }}</span>
+                        {% endif %}
+                    </a></li>
                 {% endif %}
             </ul>
         </nav>
@@ -137,6 +147,16 @@
                         <span data-check style="margin-left:auto;visibility:hidden">{{ icon('check', class='icon-sm') }}</span>
                     </button>
                     <div class="menu-sep" role="separator"></div>
+                    {% if not current_user.is_admin %}
+                        {# The onboarding walkthrough states the real circulation rules
+                           — loan period, renewal cap, hold window — pulled from config.
+                           It was reachable exactly once, and unreachable forever after
+                           the member tapped Skip, which left the rules documented
+                           nowhere a borrower could get to. #}
+                        <a class="menu-item" href="{{ url_for('member.welcome') }}" role="menuitem">
+                            {{ icon('info', class='icon-sm') }} How borrowing works
+                        </a>
+                    {% endif %}
                     <a class="menu-item" href="{{ url_for('auth.logout') }}" role="menuitem">
                         {{ icon('logout', class='icon-sm') }} Sign Out
                     </a>
@@ -149,14 +169,33 @@
         {% set page_heading %}{% block heading %}{{ self.title() }}{% endblock %}{% endset %}
         <header class="toolbar" id="toolbar">
             <button class="btn btn-plain btn-icon sidebar-toggle" id="sidebar-toggle" type="button"
-                    aria-expanded="false" aria-controls="sidebar" aria-label="Show navigation">
+                    {# Below 768px the drawer holds account, appearance and sign-out;
+                       page navigation moved to the bottom tab bar, so "Show
+                       navigation" described a drawer that no longer has any. #}
+                    aria-expanded="false" aria-controls="sidebar" aria-label="Account and settings">
                 {{ icon('menu') }}
             </button>
             <div class="toolbar-heading">
                 <h1>{{ page_heading }}</h1>
                 {% block subheading %}{% endblock %}
             </div>
-            <div class="toolbar-actions">{% block toolbar %}{% endblock %}</div>
+            <div class="toolbar-actions">
+                {% block toolbar %}{% endblock %}
+                {#- The bell lives in the toolbar, not the tab bar. Both shells are
+                    already at four tabs, which is the working-memory ceiling this
+                    system holds itself to, and notices are a check-when-prompted
+                    thing rather than a fifth destination. -#}
+                {% if current_user.is_authenticated and not current_user.is_admin %}
+                <a class="btn btn-plain btn-icon notice-bell {{ 'has-unread' if unread_notices }}"
+                   href="{{ url_for('member.notifications') }}"
+                   aria-label="{% if unread_notices %}Notices, {{ unread_notices }} unread{% else %}Notices{% endif %}">
+                    {{ icon('inbox') }}
+                    {% if unread_notices %}
+                        <span class="notice-dot" aria-hidden="true">{{ unread_notices if unread_notices < 10 else '9+' }}</span>
+                    {% endif %}
+                </a>
+                {% endif %}
+            </div>
         </header>
 
         <main class="content" id="main">
@@ -166,7 +205,16 @@
                the scroll and hidden from assistive tech so the page doesn't
                appear to have two headings. Purely a mobile/member effect;
                CSS keeps it off-screen everywhere else. #}
-            <h2 class="large-title" aria-hidden="true">{{ page_heading }}</h2>
+            {# The subheading rides with the large title, because the toolbar copy
+               of it is inside .toolbar-heading, which the phone holds at opacity 0
+               until the page scrolls. That meant the dashboard's one summary
+               sentence -- "2 items need your attention" -- was invisible at the
+               exact instant the app opened. aria-hidden like its sibling: the real
+               one is still in the toolbar and assistive tech reads it there. #}
+            <div class="large-title-group" aria-hidden="true">
+                <h2 class="large-title">{{ page_heading }}</h2>
+                <div class="large-title-sub">{{ self.subheading() }}</div>
+            </div>
             {% include "_flashes.html" %}
             {% block content %}{% endblock %}
             {# Inside <main>, not after it: .content already reserves space
@@ -238,8 +286,27 @@
 </div>
 
 {% else %}
+{# The public shell had no banner and no navigation landmark at all -- a
+   screen-reader user on the landing page could not jump to either, because
+   neither existed. The app shell's own header/nav don't render here. #}
 <div class="app app-plain">
     <div class="main-col">
+        <header class="plain-header">
+            <a class="plain-brand" href="{{ url_for('index') }}">
+                {% if org_settings.logo_ready %}
+                    <img src="{{ org_settings.logo_url }}" alt="" width="24" height="24">
+                {% endif %}
+                <span>{{ org_settings.org_name }}</span>
+            </a>
+            <nav aria-label="Account">
+                {% if request.endpoint != 'auth.login' %}
+                    <a class="btn btn-sm" href="{{ url_for('auth.login') }}">Sign in</a>
+                {% endif %}
+                {% if request.endpoint != 'auth.register' %}
+                    <a class="btn btn-sm" href="{{ url_for('auth.register') }}">Create account</a>
+                {% endif %}
+            </nav>
+        </header>
         <main class="content" id="main">
             {% include "_flashes.html" %}
             {% block content_public %}{{ self.content() }}{% endblock %}

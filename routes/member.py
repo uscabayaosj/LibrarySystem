@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, Response, abort, jsonify
 from flask_login import login_required, current_user
-from models import db, Book, Borrowing, Reservation
+from models import db, Book, Borrowing, Reservation, Notification
 from datetime import datetime, timedelta
 from calendar_export import build_ics
 from localtime import to_local
@@ -25,6 +25,30 @@ def badge_count():
     # that actually demands action, so that's what the badge counts rather
     # than every active loan/reservation.
     return jsonify({'count': current_user.overdue_borrowings})
+
+
+@bp.route('/notifications')
+@login_required
+def notifications():
+    notes = Notification.query.filter_by(user_id=current_user.id).order_by(
+        Notification.created_at.desc(), Notification.id.desc()
+    ).limit(50).all()
+    return render_template('member/notifications.html', notifications=notes)
+
+
+@bp.route('/notifications/read', methods=['POST'])
+@login_required
+def mark_notifications_read():
+    """Mark everything read in one action rather than per row.
+
+    A notice here is a nudge about a loan, not a message thread -- the member
+    reads the list, acts on what matters, and the point of the unread count is
+    "is there anything new since last time", which one control answers."""
+    Notification.query.filter_by(user_id=current_user.id, read_at=None).update(
+        {'read_at': datetime.utcnow()}, synchronize_session=False
+    )
+    db.session.commit()
+    return redirect(url_for('member.notifications'))
 
 
 @bp.route('/welcome')
@@ -56,7 +80,11 @@ def dashboard():
     active_borrowings = Borrowing.query.options(
         db.joinedload(Borrowing.book)
     ).filter_by(user_id=current_user.id, status='active').all()
-    overdue_items = [b for b in active_borrowings if b.due_date < now]
+    # due_state, not a raw timestamp comparison: this list titles the coral
+    # alert ("2 overdue books") while each loan's badge below it comes from
+    # due_state, and the two disagreed all morning when this counted its own
+    # way -- the alert named a book the badge beside it called "Due today".
+    overdue_items = [b for b in active_borrowings if b.due_state == 'overdue']
     active_reservations = Reservation.query.options(
         db.joinedload(Reservation.book)
     ).filter_by(user_id=current_user.id, status='active').count()
@@ -130,7 +158,42 @@ def search():
         search_type=search_type,
         my_loans=my_loans,
         my_reservations=my_reservations,
+        # Which rule, if any, stops this member borrowing at all -- resolved
+        # once here rather than per card, so the catalogue can say so instead
+        # of offering twenty buttons the server will refuse.
+        borrow_blocked_reason=current_user.borrow_blocked_reason,
     )
+
+
+_SEARCH_TYPES = ('all', 'title', 'author', 'isbn', 'category')
+
+
+def _back_to_catalogue(book):
+    """Return the member to the list position they acted from.
+
+    Borrowing used to redirect to `search?q=<book title>`, which answered a
+    question nobody asked: a member on page 3 of the catalogue landed on a
+    single-result page with their query, scope, page and scroll position
+    gone. The list state travels with the form as hidden fields; scope is
+    checked against a closed set and page coerced to int, so nothing here can
+    be steered into an open redirect. Falls back to the book's own title only
+    when the form carried no list state (a borrow from a detail context).
+    """
+    if 'from_list' not in request.form:
+        return redirect(url_for('member.search', q=book.title))
+    search_type = request.form.get('type', 'all')
+    if search_type not in _SEARCH_TYPES:
+        search_type = 'all'
+    try:
+        page = max(1, int(request.form.get('page', 1)))
+    except (TypeError, ValueError):
+        page = 1
+    return redirect(url_for(
+        'member.search',
+        q=request.form.get('q', '').strip() or None,
+        type=search_type if search_type != 'all' else None,
+        page=page if page > 1 else None,
+    ))
 
 
 @bp.route('/borrow/<int:book_id>', methods=['POST'])
@@ -145,24 +208,15 @@ def borrow_book(book_id):
     ).first()
     if already:
         flash(f'You already have "{book.title}" borrowed.', 'info')
-        return redirect(url_for('member.search', q=book.title))
+        return _back_to_catalogue(book)
 
-    active_count = Borrowing.query.filter_by(
-        user_id=current_user.id, status='active'
-    ).count()
-    if active_count >= current_app.config['MAX_ACTIVE_LOANS']:
-        flash('You have reached the maximum number of borrowed books. '
-              'Please return some before borrowing more.', 'warning')
-        return redirect(url_for('member.search', q=book.title))
-
-    overdue = Borrowing.query.filter(
-        Borrowing.user_id == current_user.id,
-        Borrowing.status == 'active',
-        Borrowing.due_date < now
-    ).count()
-    if overdue >= current_app.config['MAX_OVERDUE_BEFORE_BLOCK']:
-        flash('You have too many overdue books. Please return them first.', 'warning')
-        return redirect(url_for('member.search', q=book.title))
+    # One source for both halves of the block: the catalogue renders this same
+    # string beside the disabled control, so the sentence a member reads
+    # before acting and the one they'd read after are guaranteed identical.
+    blocked = current_user.borrow_blocked_reason
+    if blocked:
+        flash(blocked, 'warning')
+        return _back_to_catalogue(book)
 
     # Atomic, race-safe decrement: only succeeds if a copy is still available.
     loan_days = current_app.config['LOAN_PERIOD_DAYS']
@@ -175,7 +229,7 @@ def borrow_book(book_id):
     if not updated:
         db.session.rollback()
         flash(f'"{book.title}" is not available for borrowing.', 'warning')
-        return redirect(url_for('member.search', q=book.title))
+        return _back_to_catalogue(book)
 
     borrowing = Borrowing(
         user_id=current_user.id,
@@ -184,8 +238,9 @@ def borrow_book(book_id):
     )
     db.session.add(borrowing)
     db.session.commit()
+    current_user._invalidate_borrow_state()
     flash(f'"{book.title}" borrowed successfully! Due in {loan_days} days.', 'success')
-    return redirect(url_for('member.search', q=book.title))
+    return _back_to_catalogue(book)
 
 
 @bp.route('/reserve/<int:book_id>', methods=['POST'])
@@ -206,10 +261,21 @@ def reserve_book(book_id):
         )
         db.session.add(reservation)
         db.session.commit()
-        flash(f'"{book.title}" reserved! You have {hold_days} days to claim it.', 'success')
+        # The old copy ("You have N days to claim it") started a clock that
+        # hasn't started: nothing is claimable until a copy comes back. Say
+        # where they stand instead, matching the sheet before this and the
+        # reservations page after it.
+        position = reservation.queue_position
+        if position and position > 1:
+            standing = f"You're #{position} in line."
+        else:
+            standing = "You're next in line."
+        flash(f'Reserved "{book.title}". {standing} '
+              f'Once a copy is free it\'s held for you for {hold_days} days.',
+              'success')
     else:
         flash('This book cannot be reserved at the moment.', 'warning')
-    return redirect(url_for('member.search', q=book.title))
+    return _back_to_catalogue(book)
 
 
 _RENEW_REDIRECTS = {
@@ -333,8 +399,27 @@ def reservations():
     ).filter_by(user_id=current_user.id, status='active').order_by(
         Reservation.reservation_date.desc()
     ).all()
+    # A fulfilled hold is the one moment this whole feature exists to produce,
+    # and filtering to status='active' rendered it as *absence*: the member
+    # watched "You're next in line" for days and then got the same pristine
+    # "No active reservations" screen as someone who never reserved anything.
+    ready_reservations = Reservation.query.options(
+        db.joinedload(Reservation.book)
+    ).filter_by(user_id=current_user.id, status='fulfilled').order_by(
+        Reservation.reservation_date.desc()
+    ).limit(10).all()
+    # Lapsed holds stay visible, collapsed, so there is a record that the
+    # request was ever made rather than a card that silently vanished.
+    past_reservations = Reservation.query.options(
+        db.joinedload(Reservation.book)
+    ).filter(
+        Reservation.user_id == current_user.id,
+        Reservation.status.in_(['expired', 'cancelled']),
+    ).order_by(Reservation.reservation_date.desc()).limit(10).all()
     return render_template(
         'member/reservations.html',
+        ready_reservations=ready_reservations,
+        past_reservations=past_reservations,
         reservations=active_reservations,
         now=datetime.utcnow(),
     )

@@ -7,7 +7,7 @@ from flask import Flask, render_template, jsonify, url_for
 from flask_wtf.csrf import CSRFError
 from config import Config, _env_flag
 from extensions import db, login_manager, csrf, migrate
-from models import User, Book, OrganizationSettings
+from models import User, Book, OrganizationSettings, Notification
 from theming import build_theme_css
 from localtime import to_local
 from validation import max_length
@@ -23,15 +23,44 @@ from validation import max_length
 _COVER_HUE_MIN = 184
 _COVER_HUE_SPAN = 66
 
+# Hue alone cannot separate a real category list inside a 66-degree arc. On the
+# seeded collection it put Science at 231, Mathematics at 232, and History and
+# Education at an identical 233 -- a colour column carrying no information,
+# which is the decorative colour-blocking DESIGN.md forbids. Widening the arc
+# is not the fix: it would walk generated colour into coral and apricot, which
+# mean overdue and due-soon.
+#
+# So separation moves to a second axis. The arc is quantised into evenly spaced
+# hue steps, and a tone step (a lightness/saturation shift, applied in CSS via
+# --tone) is derived from a different slice of the same digest. Two categories
+# now collide only if they match on both axes, and when they differ they differ
+# by a visible amount rather than by one degree.
+_COVER_HUE_STEPS = 6
+_COVER_TONE_STEPS = 4
+
 
 def cover_hue(seed):
     """A stable hue derived from a book's ISBN or category (or any string), so
     every book gets a consistent 'cover' colour across requests and process
     restarts -- unlike Python's built-in hash(), which is randomised per
     process and would make covers flicker to a different colour on every
-    server restart. Confined to the brand arc; see _COVER_HUE_MIN above."""
+    server restart. Confined to the brand arc; see _COVER_HUE_MIN above.
+
+    Quantised to _COVER_HUE_STEPS positions across the arc so two different
+    strings either share a hue outright or sit a clearly visible distance
+    apart -- never one indistinguishable degree apart. Pair with cover_tone()
+    for the second axis of separation."""
     digest = hashlib.md5(str(seed or '').encode('utf-8')).hexdigest()
-    return _COVER_HUE_MIN + int(digest, 16) % _COVER_HUE_SPAN
+    step = int(digest[:16], 16) % _COVER_HUE_STEPS
+    return _COVER_HUE_MIN + round(step * _COVER_HUE_SPAN / _COVER_HUE_STEPS)
+
+
+def cover_tone(seed):
+    """The second separation axis: 0, 1 or 2, from a different slice of the
+    same digest than cover_hue() reads, so hue and tone don't move together.
+    CSS turns this into a lightness/saturation offset."""
+    digest = hashlib.md5(str(seed or '').encode('utf-8')).hexdigest()
+    return int(digest[16:], 16) % _COVER_TONE_STEPS
 
 
 def localdate(dt, fmt='%b %d, %Y'):
@@ -57,6 +86,7 @@ def create_app(config_object=Config):
     migrate.init_app(app, db, render_as_batch=True)
 
     app.add_template_filter(cover_hue)
+    app.add_template_filter(cover_tone)
     app.add_template_filter(localdate)
 
     @app.template_global()
@@ -113,6 +143,17 @@ def create_app(config_object=Config):
         # Makes `now` available to every template so due/overdue math and
         # date displays don't depend on each route remembering to pass it.
         return {'now': datetime.utcnow()}
+
+    @app.context_processor
+    def inject_unread_notices():
+        # The toolbar bell is on every member page, so its count has to be
+        # available everywhere rather than passed by each route. One COUNT for
+        # a signed-in member, nothing at all for an admin or a logged-out
+        # visitor -- neither shell renders the bell.
+        from flask_login import current_user
+        if not current_user.is_authenticated or current_user.is_admin:
+            return {'unread_notices': 0}
+        return {'unread_notices': Notification.unread_count(current_user.id)}
 
     @app.context_processor
     def inject_org_branding():

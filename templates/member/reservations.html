@@ -5,14 +5,58 @@
 {% block heading %}Reservations{% endblock %}
 {% block subheading %}
     <p class="toolbar-sub">
-        {{ reservations|length }} active reservation{{ 's' if reservations|length != 1 }}
+        {% if ready_reservations %}
+            {{ ready_reservations|length }} ready to collect ·
+        {% endif %}
+        {{ reservations|length }} in the queue
     </p>
 {% endblock %}
 
 {# Browse lives in the bottom tab bar / sidebar, not in the toolbar. #}
 
 {% block content %}
+{% if ready_reservations %}
+    {#- The payoff the whole queue exists to produce. It used to be rendered as
+        absence: the route filtered to status='active', so the moment a hold was
+        filled the card vanished and the member got the same "No active
+        reservations" screen as someone who never reserved anything. Aqua, not
+        apricot -- this is the good news, and the deadline on it is real. -#}
+    <section class="region">
+        <h2 class="eyebrow">Ready to collect</h2>
+        <div class="slips">
+            {% for r in ready_reservations %}
+            <article class="slip is-ready">
+                <div class="slip-stub">
+                    <span class="slip-stub-label">Collect by</span>
+                    <span class="slip-stub-day">{{ r.expiration_date|localdate('%d') }}</span>
+                    <span class="slip-stub-month">{{ r.expiration_date|localdate('%b') }}</span>
+                </div>
+                <div class="slip-body">
+                    <h3 class="slip-title">{{ r.book.title }}</h3>
+                    <p class="slip-author">{{ r.book.author }}</p>
+                    <div class="slip-meta">
+                        <span class="badge badge-green">{{ icon('check-circle', class='icon-sm') }} A copy is waiting for you</span>
+                        <span class="slip-accession">ISBN {{ r.book.isbn }}</span>
+                    </div>
+                    <p class="small text-secondary" style="margin-top:7px">
+                        Collect it from the desk by {{ r.expiration_date|localdate('%b %d, %Y') }}.
+                        After that it goes to the next member in line.
+                    </p>
+                    <div class="slip-actions">
+                        <a href="{{ url_for('member.reservation_calendar', reservation_id=r.id) }}"
+                           class="btn btn-sm btn-glass"
+                           aria-label="Add the pickup deadline for “{{ r.book.title }}” to your calendar">
+                            {{ icon('calendar', class='icon-sm') }} Add deadline to calendar
+                        </a>
+                    </div>
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+    </section>
+{% endif %}
 {% if reservations %}
+    {% if ready_reservations %}<h2 class="eyebrow">Still in the queue</h2>{% endif %}
     <div class="slips">
         {% for r in reservations %}
         {# The stub never goes coral here. An overdue *loan* is the member's to
@@ -21,7 +65,9 @@
            the last day, neutral before that. #}
         <article class="slip {% if r.days_until_expiry is not none and 0 <= r.days_until_expiry <= 1 %}is-soon{% endif %}">
             <div class="slip-stub">
-                <span class="slip-stub-label">Hold to</span>
+                {#- Not "Hold to": nothing is being held yet for someone still in
+                    line, and the stub is the biggest thing on the card. -#}
+                <span class="slip-stub-label">Lapses</span>
                 <span class="slip-stub-day">{{ r.expiration_date|localdate('%d') }}</span>
                 <span class="slip-stub-month">{{ r.expiration_date|localdate('%b') }}</span>
             </div>
@@ -83,7 +129,7 @@
         </article>
         {% endfor %}
     </div>
-{% else %}
+{% elif not ready_reservations %}
     <div class="panel"><div class="empty">
         {{ icon('calendar-plus', class='icon-xl') }}
         <h3>No active reservations</h3>
@@ -93,5 +139,42 @@
         </p>
         <a href="{{ url_for('member.search') }}" class="btn btn-primary">{{ icon('search') }} Browse Books</a>
     </div></div>
+{% endif %}
+
+{% if past_reservations %}
+    {#- Collapsed by default. A hold that lapsed or was cancelled used to
+        disappear without trace, so there was no way to tell "my request ran
+        out" from "I never made one". -#}
+    <details class="panel region">
+        <summary class="panel-head">
+            <h2>Past reservations</h2>
+            <span class="hint">{{ past_reservations|length }} closed</span>
+        </summary>
+        <div class="panel-body">
+            <ul class="plain-list">
+                {% for r in past_reservations %}
+                <li class="row-item">
+                    <div class="book-cover-sm" style="--hue: {{ r.book.isbn|cover_hue }}; --tone: {{ r.book.isbn|cover_tone }}" aria-hidden="true">{{ r.book.title[0]|upper }}</div>
+                    <div class="row-main">
+                        <div class="row-title">{{ r.book.title }}</div>
+                        <div class="row-sub">
+                            Reserved {{ r.reservation_date|localdate('%b %d, %Y') }} ·
+                            {% if r.status == 'cancelled' %}
+                                you cancelled this
+                            {% else %}
+                                lapsed {{ r.expiration_date|localdate('%b %d, %Y') }} — no copy came free in time
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="row-side">
+                        {% if r.book.can_reserve() %}
+                            <a class="btn btn-sm" href="{{ url_for('member.search', q=r.book.title) }}">Reserve again</a>
+                        {% endif %}
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </details>
 {% endif %}
 {% endblock %}

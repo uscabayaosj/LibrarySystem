@@ -22,7 +22,22 @@
             </div>
 
             <div class="field" style="margin-bottom:18px">
-                <label>Logo</label>
+                <label for="contact_note">Contact line</label>
+                <input type="text" id="contact_note" name="contact_note" maxlength="200"
+                       value="{{ (form_values.contact_note if form_values else org_settings.contact_note) or '' }}"
+                       placeholder="e.g. Circulation desk, 2nd floor · Mon–Fri 8am–5pm · library@example.edu"
+                       aria-describedby="contact-hint">
+                <span class="xs text-secondary" id="contact-hint">
+                    Shown on error pages, which otherwise tell people to
+                    “contact the library desk” without saying how. Leave blank to
+                    keep the generic wording.
+                </span>
+            </div>
+
+            <div class="field" style="margin-bottom:18px">
+                {# `for`, not a bare <label>: without it a screen reader announced
+                   the file input as "button, Choose File" with no field name. #}
+                <label for="logo">Logo</label>
                 <div style="display:flex; align-items:center; gap:14px; margin-top:4px">
                     {% if org_settings.logo_ready %}
                         <img src="{{ org_settings.logo_url }}"
@@ -55,9 +70,13 @@
                            style="width:44px;height:32px;padding:2px;border-radius:var(--r-sm);border:1px solid var(--separator-strong);cursor:pointer"
                            aria-hidden="true" tabindex="-1"
                            onchange="document.getElementById('theme_color').value=this.value">
+                    {# The text field used to render empty while the swatch beside it
+                       showed #292168 -- two halves of one control disagreeing about
+                       whether a value was set. Both now show the colour in force;
+                       clearing the field still means "use the department indigo". #}
                     <input type="text" id="theme_color" name="theme_color" maxlength="7"
                            placeholder="#292168" pattern="^#?[0-9A-Fa-f]{6}$"
-                           value="{{ (form_values.theme_color if form_values else org_settings.theme_color) or '' }}"
+                           value="{{ (form_values.theme_color if form_values else org_settings.theme_color) or '#292168' }}"
                            style="max-width:120px"
                            oninput="if(/^#[0-9A-Fa-f]{6}$/.test(this.value)) document.getElementById('theme_color_picker').value=this.value">
                 </div>
@@ -72,6 +91,29 @@
                 <button type="submit" class="btn btn-primary">{{ icon('check') }} Save Changes</button>
             </div>
         </form>
+    </div>
+</section>
+
+{# The rules this role enforces all day lived only in config.py, so a librarian
+   arguing with a member about a block had to take the thresholds on faith — and
+   on a deployment that re-tuned the env vars, memory would simply be wrong.
+   Read-only here because they are set per deployment, not per session. #}
+<section class="panel region">
+    <div class="panel-head">
+        <h2>Circulation rules</h2>
+        <span class="hint">Set per deployment</span>
+    </div>
+    <div class="panel-body">
+        <dl class="rules-list">
+            <div><dt>Loan period</dt><dd><span class="num">{{ config.LOAN_PERIOD_DAYS }}</span> days from checkout</dd></div>
+            <div><dt>Self-renewals</dt><dd>Up to <span class="num">{{ config.MAX_RENEWALS }}</span> per loan, blocked once another member is waiting</dd></div>
+            <div><dt>Books at once</dt><dd><span class="num">{{ config.MAX_ACTIVE_LOANS }}</span> per member</dd></div>
+            <div><dt>Borrowing blocked at</dt><dd><span class="num">{{ config.MAX_OVERDUE_BEFORE_BLOCK }}</span> overdue books</dd></div>
+            <div><dt>Reservation hold</dt><dd>Kept <span class="num">{{ config.RESERVATION_HOLD_DAYS }}</span> days once a copy is free</dd></div>
+        </dl>
+        <p class="xs text-secondary" style="margin-top:12px">
+            Change these with the matching environment variables on your host, then redeploy.
+        </p>
     </div>
 </section>
 {% endblock %}

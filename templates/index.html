@@ -11,8 +11,25 @@
         <img class="hero-mark-logo" alt=""
              src="{{ url_for('static', filename='brand/seal.png') }}">
     {% endif %}
-    <h1>{{ org_settings.org_name }}</h1>
-    <p>
+    {#- Signed in, this page renders inside the app shell, which already emits the
+        toolbar <h1> -- so the hero dropped to <h2> rather than giving the page two
+        first-level headings. Signed out there is no shell, and this is the page's
+        only heading. -#}
+    {% if current_user.is_authenticated %}
+        <h2 class="hero-title">{{ org_settings.org_name }}</h2>
+    {% else %}
+        <h1>{{ org_settings.org_name }}</h1>
+    {% endif %}
+    {#- The dedication is the most distinctive content in the product and it
+        stays on this page. But it is not a reason to sign up, and it was the
+        only body copy above the CTA -- so a student arriving here learned
+        nothing about what the account does for them. The lede now answers
+        that; the dedication follows it, which is also where it reads better. -#}
+    <p class="hero-lede">
+        Check your due dates, renew without walking to the desk, and watch your
+        place in the queue — from your phone, on campus wifi or off it.
+    </p>
+    <p class="hero-dedication">
         The Ateneo de Davao University Department of Anthropology Library is
         dedicated to the memory of Dr. Leah H. Vidal, the founding
         chairperson of the Department of Anthropology.
@@ -34,22 +51,24 @@
         <div class="feature-icon" style="background:var(--accent-soft);color:var(--accent)">
             {{ icon('books', class='icon-lg') }}
         </div>
-        <h3>Catalogue</h3>
-        <p>Search by title, author, ISBN, or category. Librarians manage the collection with full metadata — publisher, year, and description.</p>
+        <h3>Find it</h3>
+        {#- Was "Librarians manage the collection with full metadata" -- a
+            librarian feature, on the page whose only CTA is a student signup. -#}
+        <p>Search the whole collection by title, author, ISBN, or category, and see at a glance how many copies are on the shelf right now.</p>
     </div>
     <div class="feature">
         <div class="feature-icon" style="background:var(--green-soft);color:var(--green)">
             {{ icon('swap', class='icon-lg') }}
         </div>
-        <h3>Borrowing &amp; Returns</h3>
-        <p>Fourteen-day loans with clear due-date tracking. Overdue items are flagged, and returns are processed in a single click.</p>
+        <h3>Keep it longer</h3>
+        <p>{{ config.LOAN_PERIOD_DAYS }}-day loans, renewable {{ config.MAX_RENEWALS }} times from your phone — no trip to the desk. Add any due date straight to your calendar.</p>
     </div>
     <div class="feature">
         <div class="feature-icon" style="background:var(--orange-soft);color:var(--orange)">
             {{ icon('calendar-plus', class='icon-lg') }}
         </div>
-        <h3>Reservations</h3>
-        <p>When every copy is out, join the queue. Reservations are fulfilled automatically as copies come back to the shelf.</p>
+        <h3>Get in line</h3>
+        <p>When every copy is out, join the queue and watch your position. A returned copy is held for you for {{ config.RESERVATION_HOLD_DAYS }} days, automatically.</p>
     </div>
 </div>
 {% endblock %}

@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from "_icons.html" import icon %}
+{% from "_macros.html" import due_badge %}
 
 {% block title %}Dashboard{% endblock %}
 {% block heading %}Dashboard{% endblock %}
@@ -19,26 +20,30 @@
 
 {% block content %}
 <div class="grid grid-stats" style="margin-bottom:16px">
-    <a class="stat stat-accent" href="{{ url_for('admin.books') }}">
-        <div class="stat-top">{{ icon('books', class='icon-sm') }} Titles</div>
-        <div class="stat-value">{{ total_books }}</div>
-        <div class="stat-note">{{ available_books }} with copies available</div>
+    <a class="stat stat-accent" href="{{ url_for('admin.books') }}"
+       aria-label="Titles: {{ total_books }} catalogued, {{ available_books }} with copies available. Open the catalogue.">
+        <div class="stat-top" aria-hidden="true">{{ icon('books', class='icon-sm') }} Titles</div>
+        <div class="stat-value" aria-hidden="true">{{ total_books }}</div>
+        <div class="stat-note" aria-hidden="true">{{ available_books }} with copies available</div>
     </a>
-    <a class="stat stat-teal" href="{{ url_for('admin.borrowing_history', status='active') }}">
-        <div class="stat-top">{{ icon('swap', class='icon-sm') }} On Loan</div>
-        <div class="stat-value">{{ active_borrowings }}</div>
-        <div class="stat-note">Currently checked out</div>
+    <a class="stat stat-teal" href="{{ url_for('admin.borrowing_history', status='active') }}"
+       aria-label="On loan: {{ active_borrowings }} currently checked out. Open the circulation list.">
+        <div class="stat-top" aria-hidden="true">{{ icon('swap', class='icon-sm') }} On Loan</div>
+        <div class="stat-value" aria-hidden="true">{{ active_borrowings }}</div>
+        <div class="stat-note" aria-hidden="true">Currently checked out</div>
     </a>
     <a class="stat {{ 'stat-red' if overdue_count else '' }}"
-       href="{{ url_for('admin.borrowing_history', status='overdue') }}">
-        <div class="stat-top">{{ icon('warning', class='icon-sm') }} Overdue</div>
-        <div class="stat-value">{{ overdue_count }}</div>
-        <div class="stat-note">{% if overdue_count %}Needs follow-up{% else %}All on time{% endif %}</div>
+       href="{{ url_for('admin.borrowing_history', status='overdue') }}"
+       aria-label="Overdue: {{ overdue_count }}{% if overdue_count %}, needs follow-up{% else %}, all on time{% endif %}. Open the overdue list.">
+        <div class="stat-top" aria-hidden="true">{{ icon('warning', class='icon-sm') }} Overdue</div>
+        <div class="stat-value" aria-hidden="true">{{ overdue_count }}</div>
+        <div class="stat-note" aria-hidden="true">{% if overdue_count %}Needs follow-up{% else %}All on time{% endif %}</div>
     </a>
-    <a class="stat stat-purple" href="{{ url_for('admin.members') }}">
-        <div class="stat-top">{{ icon('people', class='icon-sm') }} Members</div>
-        <div class="stat-value">{{ total_members }}</div>
-        <div class="stat-note">{{ active_reservations }} pending reservation{{ 's' if active_reservations != 1 }}</div>
+    <a class="stat stat-purple" href="{{ url_for('admin.members') }}"
+       aria-label="Members: {{ total_members }} registered, {{ active_reservations }} pending reservation{{ 's' if active_reservations != 1 }}. Open the roster.">
+        <div class="stat-top" aria-hidden="true">{{ icon('people', class='icon-sm') }} Members</div>
+        <div class="stat-value" aria-hidden="true">{{ total_members }}</div>
+        <div class="stat-note" aria-hidden="true">{{ active_reservations }} pending reservation{{ 's' if active_reservations != 1 }}</div>
     </a>
 </div>
 
@@ -71,15 +76,12 @@
                         </td>
                         <td class="num" data-label="Borrowed">{{ b.borrow_date|localdate('%b %d') }}</td>
                         <td class="num" data-label="Due">{{ b.due_date|localdate('%b %d') }}</td>
-                        <td data-label="Status">
-                            {% if b.status == 'returned' %}
-                                <span class="badge badge-green">Returned</span>
-                            {% elif b.due_state == 'overdue' %}
-                                <span class="badge badge-red">{{ b.due_label }}</span>
-                            {% else %}
-                                <span class="badge badge-accent">On loan</span>
-                            {% endif %}
-                        </td>
+                        {# The shared mapping, not a local one. This block used to
+                           have no due-soon tier and no day count, so a loan due
+                           today looked identical to one due in twelve days -- and
+                           the same loan read apricot on the member's phone and flat
+                           blue here. #}
+                        <td data-label="Status">{{ due_badge(b) }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>

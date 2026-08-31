@@ -157,15 +157,71 @@
         var accountBtn = document.getElementById('account-btn');
         var accountMenu = document.getElementById('account-menu');
 
-        function setMenu(open) {
+        function menuItems() {
+            if (!accountMenu) { return []; }
+            return Array.prototype.slice.call(
+                accountMenu.querySelectorAll('.menu-item, a, button')
+            );
+        }
+
+        function setMenu(open, focusFirst) {
             if (!accountMenu) { return; }
             accountMenu.setAttribute('data-open', open ? 'true' : 'false');
+            // inert alongside the CSS visibility flip: belt and braces, because
+            // the closed menu previously stayed keyboard-reachable on every
+            // page and Sign Out sat at the end of every tab order, invisible.
+            if ('inert' in accountMenu) { accountMenu.inert = !open; }
             if (accountBtn) { accountBtn.setAttribute('aria-expanded', open ? 'true' : 'false'); }
+            if (open && focusFirst) {
+                var items = menuItems();
+                if (items.length) { items[0].focus(); }
+            }
         }
+        setMenu(false);
 
         on(accountBtn, 'click', function (e) {
             e.stopPropagation();
             setMenu(accountMenu.getAttribute('data-open') !== 'true');
+        });
+
+        // role="menu" promises a keyboard contract; before this it moved no
+        // focus at all, so the role announced a widget that did not exist.
+        on(accountBtn, 'keydown', function (e) {
+            if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                e.preventDefault();
+                setMenu(true, true);
+                if (e.key === 'ArrowUp') {
+                    var items = menuItems();
+                    if (items.length) { items[items.length - 1].focus(); }
+                }
+            }
+        });
+
+        on(accountMenu, 'keydown', function (e) {
+            var items = menuItems();
+            if (!items.length) { return; }
+            var index = items.indexOf(document.activeElement);
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                items[(index + 1) % items.length].focus();
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                items[(index - 1 + items.length) % items.length].focus();
+            } else if (e.key === 'Home') {
+                e.preventDefault();
+                items[0].focus();
+            } else if (e.key === 'End') {
+                e.preventDefault();
+                items[items.length - 1].focus();
+            } else if (e.key === 'Escape' || e.key === 'Tab') {
+                // Escape returns to the trigger; Tab is allowed to leave, but
+                // the menu closes behind it rather than lingering open.
+                setMenu(false);
+                if (e.key === 'Escape' && accountBtn) {
+                    e.preventDefault();
+                    accountBtn.focus();
+                }
+            }
         });
 
         document.addEventListener('click', function (e) {
@@ -221,9 +277,13 @@
 
             function closeSheet() {
                 backdrop.setAttribute('data-open', 'false');
+                // inert alongside the CSS visibility flip -- a closed dialog
+                // must leave the accessibility tree, not just stop painting.
+                if ('inert' in backdrop) { backdrop.inert = true; }
                 pendingForm = null;
                 if (lastFocus) { lastFocus.focus(); }
             }
+            if ('inert' in backdrop) { backdrop.inert = true; }
 
             function openSheet(form) {
                 pendingForm = form;
@@ -243,6 +303,7 @@
                 // Warning-triangle for destructive actions only; routine ones
                 // (borrow, renew) get a neutral tone rather than an alarm.
                 backdrop.setAttribute('data-kind', isDanger ? 'danger' : 'safe');
+                if ('inert' in backdrop) { backdrop.inert = false; }
                 backdrop.setAttribute('data-open', 'true');
                 sheetCancel.focus();
             }
@@ -322,12 +383,36 @@
             if (!btn || btn.disabled) { return; }
             btn.disabled = true;
             btn.dataset.wasDisabledForSubmit = 'yes';
+            // A greyed-out button is not a pending state: on a restricted
+            // campus network it looked identical to a dead control, so a
+            // member could not tell "sent" from "nothing happened". Say so,
+            // and announce it -- the label change is the only feedback a
+            // screen reader gets between the tap and the next page.
+            btn.dataset.labelBeforeSubmit = btn.innerHTML;
+            btn.setAttribute('aria-busy', 'true');
+            btn.classList.add('is-pending');
+            // An explicit map, not a suffix rule: "Check In" does not become
+            // "Check Ining". Anything unmapped falls back to a neutral phrase.
+            var PENDING = {
+                'borrow': 'Borrowing…', 'renew': 'Renewing…', 'reserve': 'Reserving…',
+                'check in': 'Checking in…', 'return': 'Returning…', 'cancel': 'Cancelling…',
+                'delete': 'Deleting…', 'save': 'Saving…', 'save changes': 'Saving…',
+                'add book': 'Adding…', 'sign in': 'Signing in…', 'create account': 'Creating…'
+            };
+            var verb = (btn.textContent || '').trim().toLowerCase();
+            btn.textContent = PENDING[verb] || 'Working…';
         }
 
         function restoreDisabledSubmits() {
             document.querySelectorAll('[data-was-disabled-for-submit="yes"]').forEach(function (btn) {
                 btn.disabled = false;
                 delete btn.dataset.wasDisabledForSubmit;
+                if (btn.dataset.labelBeforeSubmit !== undefined) {
+                    btn.innerHTML = btn.dataset.labelBeforeSubmit;
+                    delete btn.dataset.labelBeforeSubmit;
+                }
+                btn.removeAttribute('aria-busy');
+                btn.classList.remove('is-pending');
             });
         }
 
@@ -377,10 +462,30 @@
                 var checked = rowChecks.filter(function (c) { return c.checked; });
                 var count = checked.length;
                 if (bulkSubmit) { bulkSubmit.disabled = count === 0; }
-                bulkForm.setAttribute(
-                    'data-confirm',
-                    count + ' book' + (count === 1 ? '' : 's') + ' will be marked returned and put back on the shelf.'
-                );
+                // Name the books, not just how many. This is the one
+                // confirmation where a mis-ticked checkbox is otherwise
+                // invisible -- a bare count can't be checked against intent,
+                // and the design system's own rule is to name the record.
+                var titles = checked.map(function (c) {
+                    var label = c.getAttribute('aria-label') || '';
+                    var match = label.match(/[“"](.+)[”"]/);
+                    return match ? match[1] : null;
+                }).filter(Boolean);
+                var body;
+                if (!count) {
+                    body = 'No loans are selected.';
+                } else if (titles.length && titles.length <= 4) {
+                    body = 'These will be marked returned and put back on the shelf: '
+                        + titles.map(function (t) { return '“' + t + '”'; }).join(', ') + '.';
+                } else if (titles.length) {
+                    body = count + ' books will be marked returned, including '
+                        + titles.slice(0, 3).map(function (t) { return '“' + t + '”'; }).join(', ')
+                        + ', and ' + (count - 3) + ' more.';
+                } else {
+                    body = count + ' book' + (count === 1 ? '' : 's')
+                        + ' will be marked returned and put back on the shelf.';
+                }
+                bulkForm.setAttribute('data-confirm', body);
                 if (selectAll) {
                     selectAll.checked = rowChecks.length > 0 && count === rowChecks.length;
                     selectAll.indeterminate = count > 0 && count < rowChecks.length;
@@ -410,7 +515,17 @@
             var target;
             try { target = document.getElementById(decodeURIComponent(hash.slice(1))); }
             catch (e) { return; }
-            if (target && target.tagName === 'DETAILS') { target.open = true; }
+            if (target && target.tagName === 'DETAILS') {
+                target.open = true;
+                // Land in the form, not on <body>. Opening the panel used to
+                // leave document.activeElement unset, so a keyboard user who
+                // clicked "Add Book" then had to Tab from the top of the
+                // document through the whole rail to reach the field they
+                // just asked for.
+                var firstField = target.querySelector(
+                    'input:not([type="hidden"]), select, textarea');
+                if (firstField) { firstField.focus({ preventScroll: true }); }
+            }
         }
         document.querySelectorAll('a[href^="#"]').forEach(function (link) {
             on(link, 'click', function () { openTargetDetails(link.getAttribute('href')); });
@@ -449,6 +564,28 @@
         /* -----------------------------------------------------------
            Global keys
            ----------------------------------------------------------- */
+        /* Advertise the shortcut in the search field itself, on a fine
+           pointer only -- a phone has no ⌘K and the hint would just eat
+           placeholder width. Appended rather than authored in the template so
+           it can never appear on a page where the binding doesn't work. */
+        (function stampSearchShortcut() {
+            if (!window.matchMedia || !window.matchMedia('(pointer: fine)').matches) { return; }
+            var search = document.querySelector('[data-search-input]');
+            if (!search || search.dataset.shortcutStamped) { return; }
+            var isMac = /Mac|iPhone|iPad/.test(navigator.platform || '');
+            var chord = isMac ? '⌘K' : 'Ctrl K';
+            var hint = document.createElement('kbd');
+            hint.className = 'search-shortcut';
+            hint.setAttribute('aria-hidden', 'true');
+            hint.textContent = chord;
+            var field = search.closest('.searchbar-field') || search.parentNode;
+            if (field) {
+                field.appendChild(hint);
+                field.classList.add('has-shortcut');
+                search.dataset.shortcutStamped = 'yes';
+            }
+        })();
+
         document.addEventListener('keydown', function (e) {
             if (e.key === 'Escape') {
                 setMenu(false);
@@ -457,7 +594,10 @@
             if (e.key === 'Tab' && sidebar && sidebar.getAttribute('data-open') === 'true') {
                 trapFocus(sidebar, e);
             }
-            // Cmd/Ctrl-K focuses search when the page offers one.
+            // Cmd/Ctrl-K focuses search when the page offers one. The pages
+            // that have a search box now say so in the field itself (see the
+            // hint stamped below), because an accelerator nobody is told about
+            // is an accelerator nobody uses.
             if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
                 var search = document.querySelector('[data-search-input]');
                 if (search) { e.preventDefault(); search.focus(); search.select(); }

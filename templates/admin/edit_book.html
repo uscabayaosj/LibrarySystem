@@ -23,9 +23,11 @@
                            {% if field_errors.get('title') %}aria-invalid="true" aria-describedby="title-error"{% endif %}>
                     {% if field_errors.get('title') %}<p class="field-error" id="title-error">{{ icon('warning', class='icon-sm') }} {{ field_errors['title'] }}</p>{% endif %}
                 </div>
-                <div class="field col-4">
+                <div class="field col-4 {{ 'has-error' if field_errors.get('category') }}">
                     <label for="category">Category</label>
-                    <input type="text" id="category" name="category" value="{{ form_values.get('category', book.category or '') if form_values else (book.category or '') }}" maxlength="{{ maxlen('Book', 'category') }}">
+                    <input type="text" id="category" name="category" value="{{ form_values.get('category', book.category or '') if form_values else (book.category or '') }}" maxlength="{{ maxlen('Book', 'category') }}"
+                           {% if field_errors.get('category') %}aria-invalid="true" aria-describedby="category-error"{% endif %}>
+                    {% if field_errors.get('category') %}<p class="field-error" id="category-error">{{ icon('warning', class='icon-sm') }} {{ field_errors['category'] }}</p>{% endif %}
                 </div>
                 <div class="field col-6 {{ 'has-error' if field_errors.get('author') }}">
                     <label for="author">Author <span class="req" aria-hidden="true">*</span></label>
@@ -50,9 +52,11 @@
                     </span>
                     {% if field_errors.get('quantity') %}<p class="field-error" id="quantity-error">{{ icon('warning', class='icon-sm') }} {{ field_errors['quantity'] }}</p>{% endif %}
                 </div>
-                <div class="field col-6">
+                <div class="field col-6 {{ 'has-error' if field_errors.get('publisher') }}">
                     <label for="publisher">Publisher</label>
-                    <input type="text" id="publisher" name="publisher" value="{{ form_values.get('publisher', book.publisher or '') if form_values else (book.publisher or '') }}" maxlength="{{ maxlen('Book', 'publisher') }}">
+                    <input type="text" id="publisher" name="publisher" value="{{ form_values.get('publisher', book.publisher or '') if form_values else (book.publisher or '') }}" maxlength="{{ maxlen('Book', 'publisher') }}"
+                           {% if field_errors.get('publisher') %}aria-invalid="true" aria-describedby="publisher-error"{% endif %}>
+                    {% if field_errors.get('publisher') %}<p class="field-error" id="publisher-error">{{ icon('warning', class='icon-sm') }} {{ field_errors['publisher'] }}</p>{% endif %}
                 </div>
                 <div class="field col-3">
                     <label for="publication_year">Year</label>

@@ -9,6 +9,10 @@
     {{ icon('warning', class='icon-xl') }}
     <h3>Something went wrong</h3>
     <p>An unexpected error occurred and has been logged. Please try again.</p>
+    {%- if org_settings.contact_note %}
+        <p class="text-secondary">{{ org_settings.contact_note }}</p>
+    {%- endif %}
+
     <a href="{{ url_for('index') }}" class="btn btn-primary">Back to Library</a>
 </div></div>
 {% endblock %}

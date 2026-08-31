@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+
+{% block title %}Notices{% endblock %}
+{% block heading %}Notices{% endblock %}
+{% block subheading %}
+    <p class="toolbar-sub">
+        {% set unread = notifications|selectattr('read_at', 'none')|list|length %}
+        {% if unread %}{{ unread }} unread{% else %}Nothing new{% endif %}
+    </p>
+{% endblock %}
+
+{% block toolbar %}
+    {% if notifications|selectattr('read_at', 'none')|list %}
+    <form method="POST" action="{{ url_for('member.mark_notifications_read') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-sm">{{ icon('check', class='icon-sm') }} Mark all read</button>
+    </form>
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+{% if notifications %}
+    <section class="panel">
+        <div class="panel-body flush">
+            <ul class="plain-list">
+                {% for n in notifications %}
+                {# Unread carries a marker rule rather than a filled background:
+                   a list where half the rows are tinted reads as half-broken. #}
+                <li class="notice {{ 'is-unread' if not n.read_at }}">
+                    <span class="notice-icon notice-{{ n.kind }}" aria-hidden="true">
+                        {% if n.kind == 'overdue' %}{{ icon('warning', class='icon-sm') }}
+                        {% elif n.kind == 'due_soon' %}{{ icon('clock', class='icon-sm') }}
+                        {% elif n.kind == 'hold_ready' %}{{ icon('check-circle', class='icon-sm') }}
+                        {% else %}{{ icon('swap', class='icon-sm') }}{% endif %}
+                    </span>
+                    <div class="notice-body">
+                        <p class="notice-title">
+                            {% if not n.read_at %}<span class="visually-hidden">Unread. </span>{% endif %}
+                            {{ n.title }}
+                        </p>
+                        {% if n.body %}<p class="notice-text">{{ n.body }}</p>{% endif %}
+                        <p class="notice-meta">
+                            <span class="num">{{ n.created_at|localdate('%b %d, %Y') }}</span>
+                            {% if n.link_endpoint %}
+                                · <a href="{{ url_for(n.link_endpoint) }}">Open</a>
+                            {% endif %}
+                        </p>
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </section>
+{% else %}
+    <div class="panel"><div class="empty">
+        {{ icon('inbox', class='icon-xl') }}
+        <h3>No notices yet</h3>
+        <p>
+            You'll hear from the library here when a book you reserved is ready
+            to collect, when a loan is nearly due, and when something is overdue.
+        </p>
+        <a href="{{ url_for('member.dashboard') }}" class="btn btn-primary">Back to my loans</a>
+    </div></div>
+{% endif %}
+{% endblock %}

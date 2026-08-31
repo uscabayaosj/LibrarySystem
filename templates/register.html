@@ -14,26 +14,41 @@
 
         <form method="POST" action="{{ url_for('auth.register') }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            {#- Errors render against their own field and carry aria-invalid, so a
+                screen reader hears which input is wrong; focus opens on the first
+                field that failed rather than always on username. -#}
+            {% set errors = field_errors or {} %}
+            {% set first_bad = 'username' if errors.username else ('email' if errors.email else ('password' if errors.password else none)) %}
             <div class="field" style="margin-bottom:12px">
                 <label for="username">Username</label>
                 <input type="text" id="username" name="username" value="{{ username or '' }}"
-                       autocomplete="username" required autofocus maxlength="{{ maxlen('User', 'username') }}"
-                       aria-describedby="username-hint">
+                       autocomplete="username" required maxlength="{{ maxlen('User', 'username') }}"
+                       {% if not errors and not username %}autofocus{% endif %}
+                       {% if first_bad == 'username' %}autofocus{% endif %}
+                       {% if errors.username %}aria-invalid="true"{% endif %}
+                       aria-describedby="username-hint{% if errors.username %} username-error{% endif %}">
+                {% if errors.username %}<span class="field-error" id="username-error">{{ errors.username }}</span>{% endif %}
                 <span class="xs text-secondary" id="username-hint">What you'll sign in with — and what the library sees on your loans.</span>
             </div>
             <div class="field" style="margin-bottom:12px">
                 <label for="email">Email</label>
                 <input type="email" id="email" name="email" value="{{ email or '' }}"
                        autocomplete="email" required maxlength="{{ maxlen('User', 'email') }}"
-                       aria-describedby="email-hint">
-                <span class="xs text-secondary" id="email-hint">For due-date reminders and account recovery.</span>
+                       {% if first_bad == 'email' %}autofocus{% endif %}
+                       {% if errors.email %}aria-invalid="true"{% endif %}
+                       aria-describedby="email-hint{% if errors.email %} email-error{% endif %}">
+                {% if errors.email %}<span class="field-error" id="email-error">{{ errors.email }}</span>{% endif %}
+                <span class="xs text-secondary" id="email-hint">For due-date reminders.</span>
             </div>
             <div class="field" style="margin-bottom:18px">
                 <label for="password">Password</label>
-                <input type="password" id="password" name="password" minlength="6"
+                <input type="password" id="password" name="password" minlength="{{ config.MIN_PASSWORD_LENGTH }}"
                        autocomplete="new-password" required
-                       aria-describedby="pw-hint">
-                <span class="xs text-secondary" id="pw-hint">At least 6 characters.</span>
+                       {% if first_bad == 'password' %}autofocus{% endif %}
+                       {% if errors.password %}aria-invalid="true"{% endif %}
+                       aria-describedby="pw-hint{% if errors.password %} pw-error{% endif %}">
+                {% if errors.password %}<span class="field-error" id="pw-error">{{ errors.password }}</span>{% endif %}
+                <span class="xs text-secondary" id="pw-hint">At least {{ config.MIN_PASSWORD_LENGTH }} characters.</span>
             </div>
             <button type="submit" class="btn btn-primary btn-block btn-lg">Create Account</button>
         </form>

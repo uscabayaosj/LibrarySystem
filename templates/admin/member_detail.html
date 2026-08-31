@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from "_icons.html" import icon %}
+{% from "_macros.html" import due_badge %}
 
 {% block title %}{{ member.username }}{% endblock %}
 {% block heading %}{{ member.username }}{% endblock %}
@@ -44,15 +45,7 @@
                                     {% if b.return_date %}{{ b.return_date|localdate('%b %d, %Y') }}
                                     {% else %}<span class="text-secondary">—</span>{% endif %}
                                 </td>
-                                <td data-label="Status">
-                                    {% if b.status == 'returned' %}
-                                        <span class="badge badge-green">Returned</span>
-                                    {% elif b.due_state == 'overdue' %}
-                                        <span class="badge badge-red">{{ b.due_label }}</span>
-                                    {% else %}
-                                        <span class="badge badge-accent">{{ b.due_label }}</span>
-                                    {% endif %}
-                                </td>
+                                <td data-label="Status">{{ due_badge(b) }}</td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -162,14 +155,18 @@
                 </p>
             </div>
 
+            {# Denominators, not bare counts. "5 / 0 / 0" required the librarian to
+               hold MAX_ACTIVE_LOANS and MAX_OVERDUE_BEFORE_BLOCK in their head to
+               know whether this member is at a limit -- and those are env-tunable,
+               so on a re-configured deployment memory would simply be wrong. #}
             <div class="panel-body" style="border-top:1px solid var(--separator);display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center">
                 <div>
-                    <div class="strong" style="font-size:var(--text-lg)">{{ member.active_borrowings }}</div>
+                    <div class="strong" style="font-size:var(--text-lg)">{{ member.active_borrowings }}<span class="text-secondary xs"> / {{ config.MAX_ACTIVE_LOANS }}</span></div>
                     <div class="xs text-secondary">On loan</div>
                 </div>
                 <div>
                     <div class="strong {{ 'text-red' if member.overdue_borrowings }}" style="font-size:var(--text-lg)">
-                        {{ member.overdue_borrowings }}
+                        {{ member.overdue_borrowings }}<span class="text-secondary xs"> / {{ config.MAX_OVERDUE_BEFORE_BLOCK }}</span>
                     </div>
                     <div class="xs text-secondary">Overdue</div>
                 </div>
@@ -179,9 +176,64 @@
                 </div>
             </div>
 
+            {# The single question a librarian is asked at the desk -- "why can't I
+               borrow?" -- answered here in the same words the member sees on their
+               own catalogue, from the same model property. #}
+            {% set blocked = member.borrow_blocked_reason %}
+            {% if blocked %}
             <div class="panel-body" style="border-top:1px solid var(--separator)">
+                <p class="row-note">{{ icon('warning', class='icon-sm') }}
+                    <strong>Borrowing is blocked.</strong> {{ blocked }}
+                </p>
+            </div>
+            {% endif %}
+
+            {# Straight into the desk flow with this member already chosen -- the
+               librarian is looking at their record precisely because they are
+               standing there. #}
+            <div class="panel-body" style="border-top:1px solid var(--separator)">
+                <a class="btn btn-primary btn-block btn-sm"
+                   href="{{ url_for('admin.checkout', member_id=member.id) }}">
+                    {{ icon('swap', class='icon-sm') }} Check out a book to {{ member.username }}
+                </a>
+            </div>
+
+            {# The library has no mail server by design, so a forgotten password
+               is resolved the way everything else here is: at the desk. The code
+               is shown once and the member chooses their own password with it. #}
+            <div class="panel-body" style="border-top:1px solid var(--separator)">
+                <form action="{{ url_for('admin.issue_password_reset', id=member.id) }}" method="POST"
+                      data-confirm="{{ member.username }} gets a one-time code, shown to you once. Any code you issued earlier stops working."
+                      data-confirm-title="Issue a password reset code?"
+                      data-confirm-label="Issue code"
+                      data-confirm-kind="safe">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-block btn-sm">
+                        {{ icon('shield', class='icon-sm') }} Issue password reset code
+                    </button>
+                </form>
+                <p class="row-note">
+                    {% if member.reset_code_active %}
+                        A code is already active — issuing another replaces it.
+                    {% else %}
+                        For a member who has forgotten their password. They choose
+                        the new one; you never see it.
+                    {% endif %}
+                </p>
+            </div>
+
+            <div class="panel-body" style="border-top:1px solid var(--separator)">
+                {% if member.active_borrowings %}
+                    <button type="button" class="btn btn-block btn-sm" disabled>
+                        {{ icon('trash', class='icon-sm') }} Delete Member
+                    </button>
+                    <p class="row-note">
+                        {{ member.active_borrowings }} book{{ 's' if member.active_borrowings != 1 }} still out —
+                        check {{ 'it' if member.active_borrowings == 1 else 'them' }} in before deleting this account.
+                    </p>
+                {% else %}
                 <form action="{{ url_for('admin.delete_member', id=member.id) }}" method="POST"
-                      data-confirm="{{ member.username }} and their borrowing history will be permanently removed."
+                      data-confirm="{{ member.username }}, {{ pagination.total }} past loan{{ 's' if pagination.total != 1 }} and {{ reservation_total }} reservation{{ 's' if reservation_total != 1 }} will be permanently removed. This can't be undone."
                       data-confirm-title="Delete this member?"
                       data-confirm-label="Delete"
                       data-confirm-kind="danger">
@@ -190,6 +242,7 @@
                         {{ icon('trash', class='icon-sm') }} Delete Member
                     </button>
                 </form>
+                {% endif %}
             </div>
         </section>
     </aside>

@@ -6,7 +6,7 @@
 {% block subheading %}
     <p class="toolbar-sub">
         {% if search_term %}
-            {{ pagination.total }} result{{ 's' if pagination.total != 1 }} for "{{ search_term }}"
+            {{ pagination.total }} result{{ 's' if pagination.total != 1 }} for "{{ search_term|truncate(60) }}"
         {% else %}
             {{ pagination.total }} title{{ 's' if pagination.total != 1 }} in the library
         {% endif %}
@@ -14,6 +14,20 @@
 {% endblock %}
 
 {% block content %}
+{% if borrow_blocked_reason %}
+    {#- Stated once, at the top, rather than repeated under all twenty cards:
+        the rule is about the member, not about any one title. Each card then
+        carries only a short marker where its Borrow button would have been. -#}
+    <div class="alert alert-warning region" role="status">
+        {{ icon('warning', class='icon-sm') }}
+        <div>
+            <strong>Borrowing is paused on your account.</strong>
+            {{ borrow_blocked_reason }}
+            <a href="{{ url_for('member.dashboard') }}">See what you have out</a>.
+            You can still join a queue for anything that's out.
+        </div>
+    </div>
+{% endif %}
 <form method="GET" action="{{ url_for('member.search') }}" class="panel region">
     <div class="panel-body">
         <div class="searchbar searchbar-compact">
@@ -53,7 +67,7 @@
         {% set my_loan = my_loans.get(book.id) %}
         {% set my_res = my_reservations.get(book.id) %}
         <article class="book {% if my_loan %}is-mine{% elif book.available_quantity > 0 %}is-available{% elif my_res %}is-queued{% endif %}">
-            <div class="book-cover" style="--hue: {{ book.isbn|cover_hue }}" aria-hidden="true">{{ book.title[0]|upper }}</div>
+            <div class="book-cover" style="--hue: {{ book.isbn|cover_hue }}; --tone: {{ book.isbn|cover_tone }}" aria-hidden="true">{{ book.title[0]|upper }}</div>
             <div class="book-body">
                 <h2 class="book-title">{{ book.title }}</h2>
                 <p class="book-author">
@@ -61,7 +75,7 @@
                 </p>
                 <div class="book-meta">
                     {% if book.category %}
-                        <span class="badge badge-category" style="--hue: {{ book.category|cover_hue }}" title="{{ book.category }}">{{ book.category }}</span>
+                        <span class="badge badge-category" style="--hue: {{ book.category|cover_hue }}; --tone: {{ book.category|cover_tone }}" title="{{ book.category }}">{{ book.category }}</span>
                     {% else %}
                         <span class="badge">Uncategorised</span>
                     {% endif %}
@@ -75,6 +89,12 @@
                     {% if my_loan %}
                         {{ icon('bookmark', class='icon-sm text-accent') }}
                         <span class="text-accent">You have this — due {{ my_loan.due_date|localdate('%b %d') }}</span>
+                    {% elif my_res and book.available_quantity > 0 %}
+                        {# A copy came back while this member was in the queue. Testing
+                           availability first told them "1 of 2 available" and hid the fact
+                           that one of those copies is being held for them. #}
+                        {{ icon('check-circle', class='icon-sm text-green') }}
+                        <span class="text-green">Your hold is ready — a copy is waiting</span>
                     {% elif book.available_quantity > 0 %}
                         {{ icon('check-circle', class='icon-sm text-green') }}
                         <span class="text-green">{{ book.available_quantity }} of {{ book.quantity }} available</span>
@@ -91,18 +111,34 @@
                 </div>
             </div>
 
+            {#- The list position travels with every action, so borrowing returns
+                the member to the page and query they acted from instead of a
+                single-result page filtered to the book they just took. -#}
+            {% set list_state %}
+                <input type="hidden" name="from_list" value="1">
+                <input type="hidden" name="q" value="{{ search_term }}">
+                <input type="hidden" name="type" value="{{ search_type }}">
+                <input type="hidden" name="page" value="{{ pagination.page }}">
+            {% endset %}
             <div class="book-foot">
                 {% if my_loan %}
                     <span class="badge badge-accent">{{ icon('check', class='icon-sm') }} On loan to you</span>
+                {% elif book.available_quantity > 0 and borrow_blocked_reason %}
+                    {#- The block is known before the page renders, so no Borrow button
+                        is offered at all. The full reason is in the banner above; this
+                        marker just says why the button a member expected is missing. -#}
+                    <span class="badge">{{ icon('warning', class='icon-sm') }} Borrowing paused</span>
+                    <span class="hint">{{ book.available_quantity }} on the shelf</span>
                 {% elif book.available_quantity > 0 %}
                     <form action="{{ url_for('member.borrow_book', book_id=book.id) }}" method="POST"
                           data-confirm="This book will be due back in {{ config.LOAN_PERIOD_DAYS }} days."
                           data-confirm-title="Borrow “{{ book.title }}”?"
                           data-confirm-label="Borrow">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        {{ list_state }}
                         <button type="submit" class="btn btn-primary btn-sm">{{ icon('bookmark', class='icon-sm') }} Borrow</button>
                     </form>
-                    <span class="hint">Due in {{ config.LOAN_PERIOD_DAYS }} days</span>
+                    <span class="hint">{% if my_res %}Your hold — due in {{ config.LOAN_PERIOD_DAYS }} days once you take it{% else %}Due in {{ config.LOAN_PERIOD_DAYS }} days{% endif %}</span>
                 {% elif my_res %}
                     <span class="badge badge-orange">{{ icon('calendar-check', class='icon-sm') }} In your queue</span>
                     <span class="hint">{{ my_res.expiry_label }}</span>
@@ -112,11 +148,17 @@
                           data-confirm-title="Reserve “{{ book.title }}”?"
                           data-confirm-label="Reserve">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        {{ list_state }}
                         <button type="submit" class="btn btn-sm">{{ icon('calendar-plus', class='icon-sm') }} Reserve</button>
                     </form>
                     <span class="hint">{{ config.RESERVATION_HOLD_DAYS }}-day hold once ready</span>
                 {% else %}
-                    <button class="btn btn-sm" disabled>Unavailable</button>
+                    {#- Was a bare `<button disabled>Unavailable</button>`: a dead control
+                        with no reason, the one pattern this design system bans by name. -#}
+                    <p class="row-note">{{ icon('x-circle', class='icon-sm') }}
+                        {% if book.quantity == 0 %}No copies in the collection yet — ask the desk to order one.
+                        {% else %}All {{ book.quantity }} copies are out and the queue is closed for this title.{% endif %}
+                    </p>
                 {% endif %}
             </div>
         </article>
@@ -146,9 +188,20 @@
 {% elif search_term %}
     <div class="panel"><div class="empty">
         {{ icon('search', class='icon-xl') }}
-        <h3>No matches for "{{ search_term }}"</h3>
-        <p>Try a different term, or search across all fields.</p>
-        <a href="{{ url_for('member.search') }}" class="btn">Clear search</a>
+        {#- Truncated: the raw term is echoed straight back, and a pasted paragraph
+            rendered a 412px-tall heading. -#}
+        <h3>No matches for "{{ search_term|truncate(60) }}"</h3>
+        {#- "Try searching across all fields" was a no-op when the scope was
+            already All fields, which is the default. Only offer it when it is
+            actually a different search. -#}
+        {% if search_type != 'all' %}
+            <p>Nothing in {{ search_type }}. The same words might match somewhere else.</p>
+            <a href="{{ url_for('member.search', q=search_term) }}" class="btn btn-primary">Search all fields</a>
+            <a href="{{ url_for('member.search') }}" class="btn">Clear search</a>
+        {% else %}
+            <p>Try fewer words, or a different spelling. The library may not hold this title yet.</p>
+            <a href="{{ url_for('member.search') }}" class="btn">Browse everything</a>
+        {% endif %}
     </div></div>
 {% else %}
     <div class="panel"><div class="empty">

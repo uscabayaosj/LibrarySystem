@@ -9,6 +9,10 @@
     {{ icon('shield', class='icon-xl') }}
     <h3>You don't have access to this page</h3>
     <p>If you think this is a mistake, contact the library desk.</p>
+    {%- if org_settings.contact_note %}
+        <p class="text-secondary">{{ org_settings.contact_note }}</p>
+    {%- endif %}
+
     <a href="{{ url_for('index') }}" class="btn btn-primary">Back to Library</a>
 </div></div>
 {% endblock %}

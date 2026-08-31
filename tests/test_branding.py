@@ -223,7 +223,11 @@ def test_settings_route_updates_org_name_and_theme_color(client, db, admin):
         'theme_color': '#228B22',
     }, follow_redirects=True)
     assert resp.status_code == 200
-    assert b'Branding updated' in resp.data
+    # The confirmation names what changed rather than saying "Branding updated",
+    # so a logo upload that silently didn't attach can't produce the same
+    # message as one that did.
+    assert b'Ateneo de Davao University Library' in resp.data
+    assert b'#228b22' in resp.data
 
     settings = OrganizationSettings.get()
     assert settings.org_name == 'Ateneo de Davao University Library'
@@ -253,7 +257,7 @@ def test_settings_route_uploads_logo(client, db, admin):
     login(client, 'admin', 'adminpass')
     resp = _upload_logo(client)
     assert resp.status_code == 200
-    assert b'Branding updated' in resp.data
+    assert b'ogo replaced' in resp.data
 
     settings = OrganizationSettings.get()
     assert settings.logo_ready is True
