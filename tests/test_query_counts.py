@@ -139,3 +139,32 @@ def test_renewing_invalidates_the_memoized_block_reason(db, member, book):
     # Returning it changes the answer; the cache must not hide that.
     loan.mark_returned()
     assert loan.renew_blocked_reason is None
+
+
+def test_shell_counts_are_one_query(db, member, count_queries):
+    """The four numbers every member page needs for its chrome -- tab-bar
+    badges for loans and holds, the bell's unread count, the home-screen
+    overdue badge -- come from one round trip, not four. On a serverless
+    host every round trip is paid in full, so this is the difference
+    between a snappy tab bar and a laggy one."""
+    member.id   # the fixture's commit expired the row; reload it off the clock
+    count_queries.n = 0
+    member.active_borrowings
+    member.active_reservations_count
+    member.unread_notices
+    member.overdue_borrowings
+    assert count_queries.n == 1, (
+        f'reading the four shell counts issued {count_queries.n} queries; '
+        'they should share a single SELECT'
+    )
+
+
+def test_borrowing_invalidates_shell_counts(db, member, book):
+    from models import Notification
+    assert member.active_borrowings == 0
+    db.session.add(Borrowing(user_id=member.id, book_id=book.id,
+                             due_date=datetime.utcnow() + timedelta(days=7),
+                             status='active'))
+    db.session.commit()
+    member._invalidate_borrow_state()
+    assert member.active_borrowings == 1

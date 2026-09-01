@@ -5,6 +5,7 @@ from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta
 from functools import cached_property
+import sqlalchemy as sa
 from sqlalchemy import event
 from extensions import db
 from localtime import to_local, local_now, local_today_start_utc
@@ -177,26 +178,48 @@ class User(UserMixin, db.Model):
             return False
         return check_password_hash(self.reset_code_hash, code.strip().upper())
 
-    # Read on every page: the member tab bar renders unread-style badges from
-    # these, and the dashboard reads them again for its summary tiles.
+    # Read on every page: the tab bar badges loans and holds, the bell shows
+    # unread notices, and <body> carries the overdue count for the PWA
+    # home-screen badge. Four counts, one round trip -- on a serverless host
+    # each query is a full trip to the database, and the four separate
+    # COUNTs this replaced were most of the delay behind a tapped tab.
     @cached_property
-    def active_borrowings(self):
-        return Borrowing.query.filter_by(user_id=self.id, status='active').count()
-
-    @cached_property
-    def overdue_borrowings(self):
-        # Cut off at local midnight, not utcnow() -- this count drives the PWA
-        # home-screen badge, and against a raw UTC clock it went to 1 while the
-        # loan's own badge still read "Due today". See localtime.py.
-        return Borrowing.query.filter(
-            Borrowing.user_id == self.id,
-            Borrowing.status == 'active',
+    def _shell_counts(self):
+        active = db.session.query(sa.func.count(Borrowing.id)).filter(
+            Borrowing.user_id == self.id, Borrowing.status == 'active'
+        ).scalar_subquery()
+        # Cut off at local midnight, not utcnow() -- this count drives the
+        # PWA home-screen badge, and against a raw UTC clock it went to 1
+        # while the loan's own badge still read "Due today". See localtime.py.
+        overdue = db.session.query(sa.func.count(Borrowing.id)).filter(
+            Borrowing.user_id == self.id, Borrowing.status == 'active',
             Borrowing.due_date < local_today_start_utc()
-        ).count()
+        ).scalar_subquery()
+        holds = db.session.query(sa.func.count(Reservation.id)).filter(
+            Reservation.user_id == self.id, Reservation.status == 'active'
+        ).scalar_subquery()
+        unread = db.session.query(sa.func.count(Notification.id)).filter(
+            Notification.user_id == self.id, Notification.read_at.is_(None)
+        ).scalar_subquery()
+        row = db.session.execute(sa.select(active, overdue, holds, unread)).one()
+        return {'active': row[0], 'overdue': row[1],
+                'holds': row[2], 'unread': row[3]}
 
-    @cached_property
+    @property
+    def active_borrowings(self):
+        return self._shell_counts['active']
+
+    @property
+    def overdue_borrowings(self):
+        return self._shell_counts['overdue']
+
+    @property
     def active_reservations_count(self):
-        return Reservation.query.filter_by(user_id=self.id, status='active').count()
+        return self._shell_counts['holds']
+
+    @property
+    def unread_notices(self):
+        return self._shell_counts['unread']
 
     @cached_property
     def borrow_blocked_reason(self):
@@ -228,8 +251,7 @@ class User(UserMixin, db.Model):
     def _invalidate_borrow_state(self):
         """Drop the memoized loan/overdue counts after a borrow or return, so
         a read following a write inside one request isn't stale."""
-        for key in ('active_borrowings', 'overdue_borrowings',
-                    'active_reservations_count', 'borrow_blocked_reason'):
+        for key in ('_shell_counts', 'borrow_blocked_reason'):
             self.__dict__.pop(key, None)
 
 

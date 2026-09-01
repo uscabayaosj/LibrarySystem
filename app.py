@@ -147,13 +147,14 @@ def create_app(config_object=Config):
     @app.context_processor
     def inject_unread_notices():
         # The toolbar bell is on every member page, so its count has to be
-        # available everywhere rather than passed by each route. One COUNT for
-        # a signed-in member, nothing at all for an admin or a logged-out
-        # visitor -- neither shell renders the bell.
+        # available everywhere rather than passed by each route. It rides the
+        # same single SELECT as the tab-bar badges (User._shell_counts);
+        # nothing at all for an admin or a logged-out visitor -- neither
+        # shell renders the bell.
         from flask_login import current_user
         if not current_user.is_authenticated or current_user.is_admin:
             return {'unread_notices': 0}
-        return {'unread_notices': Notification.unread_count(current_user.id)}
+        return {'unread_notices': current_user.unread_notices}
 
     @app.context_processor
     def inject_org_branding():
