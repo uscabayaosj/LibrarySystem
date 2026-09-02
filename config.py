@@ -73,6 +73,15 @@ class Config:
     # isn't logged out between visits the way a plain session cookie would.
     # Hardened the same way as the session cookie above.
     REMEMBER_COOKIE_DURATION = timedelta(days=30)
+
+    # Web Push. Both keys unset (the default) means push is off and every
+    # push code path is a silent no-op: notices still land in-app. Generate a
+    # pair once per deployment with `python -m push --generate` and set all
+    # three in the host's environment. The subject is what the browser push
+    # services can contact if the sender misbehaves; make it real.
+    VAPID_PUBLIC_KEY = os.environ.get('VAPID_PUBLIC_KEY', '')
+    VAPID_PRIVATE_KEY = os.environ.get('VAPID_PRIVATE_KEY', '')
+    VAPID_SUBJECT = os.environ.get('VAPID_SUBJECT', 'mailto:library@example.com')
     REMEMBER_COOKIE_HTTPONLY = True
     REMEMBER_COOKIE_SAMESITE = 'Lax'
     REMEMBER_COOKIE_SECURE = SESSION_COOKIE_SECURE

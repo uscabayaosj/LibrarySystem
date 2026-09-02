@@ -20,6 +20,7 @@
     <meta name="apple-mobile-web-app-title" content="{{ org_settings.org_name }}">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{% block title %}Library{% endblock %} — {{ org_settings.org_name }}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
     {% if org_theme_css %}
@@ -37,7 +38,9 @@
         })();
     </script>
 </head>
-<body{% if current_user.is_authenticated and not current_user.is_admin %} data-badge-count="{{ current_user.overdue_borrowings }}"{% endif %}>
+{#- Members carry the unread-notice count for the installed app's icon badge and
+    the server's Web Push public key (empty when push is not configured). -#}
+<body{% if current_user.is_authenticated and not current_user.is_admin %} data-badge-count="{{ current_user.unread_notices }}" data-push-key="{{ config.VAPID_PUBLIC_KEY }}"{% endif %}>
 <a class="skip-link" href="#main">Skip to content</a>
 
 {% if current_user.is_authenticated %}

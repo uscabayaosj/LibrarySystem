@@ -23,6 +23,7 @@ psycopg2-binary = "^2.9.9"
 pillow = "^12.3.0"
 flask-migrate = "^4.1.0"
 gunicorn = "^26.0.0"
+pywebpush = "^2.5.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.0.0"
@@ -50,6 +51,7 @@ dependencies = [
     "gunicorn==26.0.0",
     "pillow==12.3.0",
     "psycopg2-binary==2.9.9",
+    "pywebpush==2.5.0",
 ]
 
 # The uv equivalent of Poetry's `package-mode = false` above: this is a

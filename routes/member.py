@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, Response, abort, jsonify
 from flask_login import login_required, current_user
-from models import db, Book, Borrowing, Reservation, Notification
+from models import db, Book, Borrowing, Reservation, Notification, PushSubscription
 from datetime import datetime, timedelta
 from calendar_export import build_ics
 from localtime import to_local
@@ -21,10 +21,45 @@ _WELCOME_REDIRECTS = {
 @login_required
 def badge_count():
     # Drives the PWA home-screen icon badge (navigator.setAppBadge, see
-    # app.js) -- overdue loans are the one thing on the member dashboard
-    # that actually demands action, so that's what the badge counts rather
-    # than every active loan/reservation.
-    return jsonify({'count': current_user.overdue_borrowings})
+    # app.js): the member's unread notices, the same number the bell shows
+    # and the number a push (push.py) sets on the icon. Reading the list
+    # marks nothing; "Mark all read" is what clears it.
+    return jsonify({'count': current_user.unread_notices})
+
+
+def _subscription_payload():
+    data = request.get_json(silent=True) or {}
+    endpoint = data.get('endpoint') or ''
+    keys = data.get('keys') or {}
+    if not endpoint.startswith('https://') or len(endpoint) > 500:
+        abort(400)
+    return endpoint, keys.get('p256dh') or '', keys.get('auth') or ''
+
+
+@bp.route('/push/subscribe', methods=['POST'])
+@login_required
+def push_subscribe():
+    """Register this device for Web Push. Idempotent: the same endpoint
+    re-sent (a fresh sign-in, a resync on launch) updates the row in place
+    and binds it to whoever is signed in now."""
+    if current_user.is_admin:
+        abort(403)
+    endpoint, p256dh, auth = _subscription_payload()
+    if not p256dh or not auth or len(p256dh) > 200 or len(auth) > 100:
+        abort(400)
+    PushSubscription.upsert(current_user.id, endpoint, p256dh, auth)
+    db.session.commit()
+    return '', 204
+
+
+@bp.route('/push/unsubscribe', methods=['POST'])
+@login_required
+def push_unsubscribe():
+    endpoint, _, _ = _subscription_payload()
+    PushSubscription.query.filter_by(
+        user_id=current_user.id, endpoint=endpoint).delete()
+    db.session.commit()
+    return '', 204
 
 
 @bp.route('/notifications')

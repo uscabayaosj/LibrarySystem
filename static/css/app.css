@@ -2371,3 +2371,31 @@ details[open] > summary [data-summary-hint] .when-open { display: inline; }
     .slip-stub { background: #ececec !important; color: #1a1541 !important; }
     body { background: #fff; }
 }
+
+/* --------------------------------------------------------------------------
+   PWA: update prompt and push opt-in
+   -------------------------------------------------------------------------- */
+
+/* Sits above the phone tab bar (z-index 70, ~64px tall) and clear of the
+   safe area; on wider screens it hugs the bottom-right like a system toast. */
+.sw-update {
+    position: fixed;
+    left: 12px; right: 12px;
+    bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+    z-index: 80;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 10px 12px 10px 16px;
+    background: var(--bg-raised);
+    color: var(--fg);
+    border-radius: var(--r-md);
+    box-shadow: var(--shadow-lg);
+    font-size: var(--text-sm);
+}
+@media (min-width: 768px) {
+    .sw-update { left: auto; right: 20px; bottom: 20px; max-width: 360px; }
+}
+
+.push-optin-body { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+.push-optin-title { font-weight: 600; margin: 0 0 2px; }
+.push-optin-text { margin: 0; color: var(--fg-secondary); font-size: var(--text-sm); }
+.push-optin .btn { flex: none; }

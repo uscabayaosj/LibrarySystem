@@ -428,6 +428,30 @@ expire after 90 days. Fine for evaluation; move to a paid instance for real use.
 | Startup logs a `WARNING: running in production on SQLite` banner, or migrations log `Context impl SQLiteImpl` | `DATABASE_URL` isn't set, so the app is writing to a local file that the next deploy destroys | Attach a managed Postgres instance and set `DATABASE_URL`. Any data created in the meantime is lost on the next deploy |
 | Data disappeared after a deploy | Same cause as above — the app was on SQLite, not Postgres | Set `DATABASE_URL` before putting real data in |
 
+### Web Push notifications (optional)
+
+Notices always appear in-app. With Web Push configured they are also sent to
+each member's subscribed devices, and the installed app's icon badge shows
+their unread count. Generate a keypair once per deployment:
+
+```bash
+python -m push --generate
+```
+
+and set the three variables it needs in the host's environment:
+
+| Variable | Value |
+|---|---|
+| `VAPID_PUBLIC_KEY` | printed by the command above |
+| `VAPID_PRIVATE_KEY` | printed by the command above; keep it secret |
+| `VAPID_SUBJECT` | `mailto:` a real address the push services can reach |
+
+Unset, push is off and nothing else changes. Members opt in from **Notices**;
+on iPhone the app has to be added to the Home Screen first (iOS 16.4+).
+
+A deploy also ships a new service worker: an open installed app shows a
+"new version is ready" prompt and reloads when the member taps it.
+
 ### Running tests
 
 ```bash

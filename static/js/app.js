@@ -7,19 +7,80 @@
     'use strict';
 
     /* ---------------------------------------------------------------
-       PWA install plumbing + home-screen badge
-       The badge counts overdue loans (see /badge-count) -- the one thing
-       on the member dashboard that actually needs the member's attention,
-       same signal the "Loans" tab-bar badge already shows. Badging API
-       support is still Chromium/iOS-Safari-16.4+ only, so everything here
-       is feature-detected and a silent no-op elsewhere.
+       PWA plumbing: service worker + update prompt, home-screen badge,
+       Web Push opt-in.
+       The badge counts unread notices -- the same number the bell shows,
+       and the number the server puts in every push (push.py), so the icon,
+       the bell and the phone's notification tray all agree. Badging and
+       push are still Chromium/iOS-Safari-16.4+ only, so everything here is
+       feature-detected and a silent no-op elsewhere.
        --------------------------------------------------------------- */
+    var csrfToken = (function () {
+        var m = document.querySelector('meta[name="csrf-token"]');
+        return m ? m.getAttribute('content') : '';
+    })();
+
+    function postJSON(url, data) {
+        return fetch(url, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+            body: JSON.stringify(data)
+        });
+    }
+
+    var swReady = null;   // Promise<ServiceWorkerRegistration> or null
+
     if ('serviceWorker' in navigator) {
-        window.addEventListener('load', function () {
-            navigator.serviceWorker.register('/sw.js').catch(function () {
-                // Registration failing (e.g. served over plain HTTP in dev)
-                // shouldn't block the rest of the app.
+        swReady = new Promise(function (resolve) {
+            window.addEventListener('load', function () {
+                navigator.serviceWorker.register('/sw.js').then(function (reg) {
+                    watchForUpdate(reg);
+                    resolve(reg);
+                }).catch(function () {
+                    // Registration failing (e.g. served over plain HTTP in dev)
+                    // shouldn't block the rest of the app.
+                    resolve(null);
+                });
             });
+        });
+    }
+
+    /* A new deploy means a byte-different /sw.js. The browser installs it
+       and parks it as `waiting`; nothing switches until the member taps
+       Reload, so a form half-filled at the desk is never yanked away. */
+    function watchForUpdate(reg) {
+        function offer(worker) {
+            if (!navigator.serviceWorker.controller) { return; }   // first install, nothing to update
+            var toast = document.createElement('div');
+            toast.className = 'sw-update';
+            toast.setAttribute('role', 'status');
+            toast.innerHTML = '<span>A new version is ready.</span>' +
+                '<button type="button" class="btn btn-sm btn-primary">Reload</button>';
+            toast.querySelector('button').addEventListener('click', function () {
+                worker.postMessage({ type: 'SKIP_WAITING' });
+            });
+            document.body.appendChild(toast);
+        }
+        if (reg.waiting) { offer(reg.waiting); }
+        reg.addEventListener('updatefound', function () {
+            var worker = reg.installing;
+            if (!worker) { return; }
+            worker.addEventListener('statechange', function () {
+                if (worker.state === 'installed') { offer(worker); }
+            });
+        });
+        var refreshing = false;
+        navigator.serviceWorker.addEventListener('controllerchange', function () {
+            if (refreshing) { return; }
+            refreshing = true;
+            window.location.reload();
+        });
+        // Re-check on every return to the foreground; /sw.js is no-cache,
+        // so this is one small request and the only way an installed app
+        // that is never closed ever learns about a deploy.
+        document.addEventListener('visibilitychange', function () {
+            if (document.visibilityState === 'visible') { reg.update().catch(function () {}); }
         });
     }
 
@@ -48,6 +109,89 @@
             });
         });
     }
+
+    /* Web Push opt-in (Notices page). The server key on <body> is empty
+       when the deployment has no VAPID keys, in which case the panel never
+       appears. On iOS push only exists once the app is on the Home Screen,
+       so the panel says that instead of offering a button that can't work. */
+    document.addEventListener('DOMContentLoaded', function () {
+        var panel = document.querySelector('[data-push-optin]');
+        var key = document.body.getAttribute('data-push-key');
+        if (!panel || !key || !swReady || !('PushManager' in window) || !('Notification' in window)) { return; }
+
+        var toggle = panel.querySelector('[data-push-toggle]');
+        var status = panel.querySelector('[data-push-status]');
+        var isIOS = /iP(hone|ad|od)/.test(navigator.userAgent) ||
+            (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        var standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+
+        function keyBytes(b64) {
+            var pad = '='.repeat((4 - b64.length % 4) % 4);
+            var raw = atob((b64 + pad).replace(/-/g, '+').replace(/_/g, '/'));
+            var out = new Uint8Array(raw.length);
+            for (var i = 0; i < raw.length; i++) { out[i] = raw.charCodeAt(i); }
+            return out;
+        }
+
+        function render(sub) {
+            panel.hidden = false;
+            if (Notification.permission === 'denied') {
+                status.textContent = 'Notifications are blocked for this site in your browser settings.';
+                toggle.hidden = true;
+                return;
+            }
+            toggle.hidden = false;
+            if (sub) {
+                status.textContent = 'On. You\'ll hear about holds, due dates and overdue loans on this device.';
+                toggle.textContent = 'Turn off';
+            } else {
+                status.textContent = 'Get told the moment a hold is ready or a loan is nearly due, even with the app closed.';
+                toggle.textContent = 'Turn on';
+            }
+        }
+
+        swReady.then(function (reg) {
+            if (!reg) { return; }
+            if (isIOS && !standalone) {
+                panel.hidden = false;
+                toggle.hidden = true;
+                status.textContent = 'On iPhone, add this app to your Home Screen first (Share, then "Add to Home Screen"), then turn notifications on from there.';
+                return;
+            }
+            reg.pushManager.getSubscription().then(function (sub) {
+                render(sub);
+                // Keep the server's copy bound to whoever is signed in now:
+                // a shared phone that switched accounts would otherwise keep
+                // delivering the previous member's notices.
+                if (sub) { postJSON('/push/subscribe', sub.toJSON()).catch(function () {}); }
+            });
+
+            toggle.addEventListener('click', function () {
+                toggle.disabled = true;
+                reg.pushManager.getSubscription().then(function (sub) {
+                    if (sub) {
+                        return postJSON('/push/unsubscribe', { endpoint: sub.endpoint })
+                            .then(function () { return sub.unsubscribe(); })
+                            .then(function () { render(null); });
+                    }
+                    return Notification.requestPermission().then(function (perm) {
+                        if (perm !== 'granted') { render(null); return; }
+                        return reg.pushManager.subscribe({
+                            userVisibleOnly: true,
+                            applicationServerKey: keyBytes(key)
+                        }).then(function (fresh) {
+                            return postJSON('/push/subscribe', fresh.toJSON()).then(function (res) {
+                                if (!res.ok) { return fresh.unsubscribe().then(function () { render(null); }); }
+                                render(fresh);
+                            });
+                        });
+                    });
+                }).catch(function () {
+                    status.textContent = 'Couldn\'t change notifications just now. Try again in a moment.';
+                }).then(function () { toggle.disabled = false; });
+            });
+        });
+    });
 
     /* ---------------------------------------------------------------
        Appearance (auto / light / dark), persisted in localStorage

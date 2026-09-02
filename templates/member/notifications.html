@@ -20,6 +20,18 @@
 {% endblock %}
 
 {% block content %}
+{#- Web Push opt-in. Hidden until app.js confirms the browser can do it; on
+    iOS that also means the app is installed to the Home Screen. The button
+    is the user gesture the permission prompt requires. -#}
+<section class="panel push-optin" data-push-optin hidden>
+    <div class="panel-body push-optin-body">
+        <div>
+            <p class="push-optin-title">Notifications on this device</p>
+            <p class="push-optin-text" data-push-status>Get told the moment a hold is ready or a loan is nearly due, even with the app closed.</p>
+        </div>
+        <button type="button" class="btn btn-sm" data-push-toggle>Turn on</button>
+    </div>
+</section>
 {% if notifications %}
     <section class="panel">
         <div class="panel-body flush">

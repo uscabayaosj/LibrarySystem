@@ -72,6 +72,25 @@ def localdate(dt, fmt='%b %d, %Y'):
     return local.strftime(fmt) if local else ''
 
 
+
+def app_version():
+    """A string that changes whenever the deployed code does. Vercel exposes
+    the commit; elsewhere fall back to the newest mtime of the two files a
+    deploy most often touches, which is what local dev needs to see the
+    update flow work at all."""
+    sha = os.environ.get('VERCEL_GIT_COMMIT_SHA')
+    if sha:
+        return sha[:12]
+    here = os.path.dirname(os.path.abspath(__file__))
+    stamps = []
+    for rel in ('static/js/app.js', 'static/css/app.css', 'templates/sw.js'):
+        try:
+            stamps.append(int(os.stat(os.path.join(here, rel)).st_mtime))
+        except OSError:
+            pass
+    return str(max(stamps)) if stamps else '0'
+
+
 def create_app(config_object=Config):
     app = Flask(__name__)
     app.config.from_object(config_object)
@@ -214,8 +233,16 @@ def create_app(config_object=Config):
         # Served from the root path (not /static/js/sw.js) so its default
         # scope covers the whole app ('/') rather than just /static/js/ --
         # a service worker can only control pages under its own scope.
-        response = app.send_static_file('js/sw.js')
-        response.headers['Content-Type'] = 'application/javascript'
+        # Rendered, not static, so the VERSION baked into it changes with
+        # every deploy: a byte-different worker is what makes the browser
+        # install the update and let app.js offer "Reload". No-cache so
+        # that check hits the server rather than a year-old copy.
+        settings = OrganizationSettings.get()
+        body = render_template('sw.js', version=app_version(),
+                               icon_url=settings.icon_url('icon-192'))
+        response = app.response_class(body, mimetype='application/javascript')
+        response.headers['Cache-Control'] = 'no-cache'
+        response.headers['Service-Worker-Allowed'] = '/'
         return response
 
     @app.errorhandler(CSRFError)

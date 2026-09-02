@@ -687,15 +687,17 @@ class Reservation(db.Model):
 class Notification(db.Model):
     """An in-app notice for one member.
 
-    In-app rather than push or email, for the same reason the password reset is
-    desk-issued: web push needs VAPID keys and a third-party push service, and
-    email needs SMTP. Both are external dependencies this deployment
-    deliberately does without (PRODUCT.md principle 4), and a notification
-    channel that silently fails on a restricted network is worse than none --
-    it would let the library believe members had been told.
+    The record is the notice. It lives here, in-app, so a member who opens
+    the app sees it regardless of any other channel -- a channel that fails
+    silently on a restricted network is worse than none, because it lets the
+    library believe members were told.
 
-    So these are records the member reads when they open the app, which is the
-    thing the borrower persona already does daily to check due dates.
+    Web Push (push.py) is layered on top as a best-effort mirror, not a
+    replacement: when a deployment sets VAPID keys, each new notice is also
+    sent to the member's subscribed devices and the installed app's icon
+    badge is set to their unread count. Without keys nothing changes. Email
+    is still not offered; it needs SMTP credentials this deployment does
+    without (PRODUCT.md principle 4).
     """
     __tablename__ = 'notification'
 
@@ -739,6 +741,11 @@ class Notification(db.Model):
         note = cls(user_id=user_id, kind=kind, title=title, body=body,
                    link_endpoint=link_endpoint, dedupe_key=key)
         db.session.add(note)
+        # Remembered so the commit that lands it can mirror it to the
+        # member's devices (see _deliver_new_notices). On `g` rather than a
+        # module global so a rolled-back request leaves nothing queued.
+        if has_app_context():
+            g.setdefault('_new_notices', []).append(note)
         return note
 
     @classmethod
@@ -800,6 +807,39 @@ class Notification(db.Model):
         return created
 
 
+class PushSubscription(db.Model):
+    """One device's Web Push subscription for one member.
+
+    A member may have several (phone, laptop); a device has exactly one
+    endpoint, so the endpoint is the identity: re-subscribing from the same
+    browser after signing in as someone else moves the row to the new user
+    rather than leaving the old one receiving their notices."""
+    __tablename__ = 'push_subscription'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    endpoint = db.Column(db.String(500), nullable=False, unique=True)
+    p256dh = db.Column(db.String(200), nullable=False)
+    auth = db.Column(db.String(100), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    last_seen_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    user = db.relationship('User', backref=db.backref(
+        'push_subscriptions', lazy='dynamic', cascade='all, delete-orphan'))
+
+    @classmethod
+    def upsert(cls, user_id, endpoint, p256dh, auth):
+        row = cls.query.filter_by(endpoint=endpoint).first()
+        if row is None:
+            row = cls(endpoint=endpoint)
+            db.session.add(row)
+        row.user_id = user_id
+        row.p256dh = p256dh
+        row.auth = auth
+        row.last_seen_at = datetime.utcnow()
+        return row
+
+
 @event.listens_for(db.session, 'after_commit')
 def _drop_request_scoped_caches(session):
     """Any commit can change who is waiting for a title, so the batched
@@ -809,6 +849,13 @@ def _drop_request_scoped_caches(session):
     if has_app_context():
         g.pop('_reserved_book_ids', None)
         g.pop('_active_queues', None)
+        notes = g.pop('_new_notices', None)
+        if notes:
+            # After the commit, so a push never announces a notice that the
+            # transaction then rolled back. Best-effort: push.deliver logs
+            # and swallows delivery failures.
+            from push import deliver
+            deliver([(n.user_id, n.title, n.body, n.link_endpoint) for n in notes])
 
 
 def desk_counts():
