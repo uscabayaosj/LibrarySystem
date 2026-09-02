@@ -809,3 +809,35 @@ def _drop_request_scoped_caches(session):
     if has_app_context():
         g.pop('_reserved_book_ids', None)
         g.pop('_active_queues', None)
+
+
+def desk_counts():
+    """The seven numbers on the librarian's dashboard, in one round trip.
+
+    Seven COUNTs over four tables; each used to be its own query, and on a
+    serverless host each query is a full trip to the database. Scalar
+    subqueries let one SELECT return them all. Deliberately *not* cached
+    across requests: the desk checks a book in and expects the tile to move,
+    and a cross-instance TTL would show them a number they know is wrong."""
+    def count(model, *criteria):
+        return db.session.query(sa.func.count(model.id)).filter(*criteria).scalar_subquery()
+
+    today = local_today_start_utc()
+    available_ids = db.session.query(Book.id).filter(Book.available_quantity > 0)
+    row = db.session.execute(sa.select(
+        count(Book),
+        count(User, User.is_admin == False),  # noqa: E712 -- SQL comparison
+        count(Borrowing, Borrowing.status == 'active'),
+        # Local midnight, not utcnow(): the Overdue tile links straight to
+        # the list below it, and against a raw UTC clock the tile said 5
+        # while the list badged 4 -- the fifth was due *today*.
+        count(Borrowing, Borrowing.status == 'active', Borrowing.due_date < today),
+        count(Reservation, Reservation.status == 'active'),
+        count(Book, Book.available_quantity > 0),
+        # Holds waiting on a copy that is already back on the shelf.
+        count(Reservation, Reservation.status == 'active',
+              Reservation.book_id.in_(available_ids)),
+    )).one()
+    keys = ('total_books', 'total_members', 'active_borrowings', 'overdue_count',
+            'active_reservations', 'available_books', 'ready_to_fulfil')
+    return dict(zip(keys, row))

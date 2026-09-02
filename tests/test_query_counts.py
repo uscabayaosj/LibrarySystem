@@ -147,3 +147,28 @@ def test_borrowing_invalidates_shell_counts(db, member, book):
     db.session.commit()
     member._invalidate_borrow_state()
     assert member.active_borrowings == 1
+
+
+def test_desk_counts_are_one_query(db, member, book, count_queries):
+    """The librarian's dashboard tiles: seven COUNTs that used to be seven
+    round trips, now one SELECT. Not cached across requests on purpose --
+    the desk checks a book in and expects the tile to move."""
+    from models import desk_counts
+    stamp = datetime.utcnow()
+    db.session.add(Borrowing(user_id=member.id, book_id=book.id,
+                             due_date=stamp - timedelta(days=2), status='active'))
+    db.session.add(Reservation(user_id=member.id, book_id=book.id,
+                               reservation_date=stamp,
+                               expiration_date=stamp + timedelta(days=3),
+                               status='active'))
+    db.session.commit()
+    count_queries.n = 0
+    counts = desk_counts()
+    assert count_queries.n == 1
+    assert counts['total_books'] == 1
+    assert counts['total_members'] == 1
+    assert counts['active_borrowings'] == 1
+    assert counts['overdue_count'] == 1
+    assert counts['active_reservations'] == 1
+    assert counts['available_books'] == (1 if book.available_quantity > 0 else 0)
+    assert counts['ready_to_fulfil'] == counts['available_books']

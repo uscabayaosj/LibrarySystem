@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, jsonify
 from flask_login import login_required, current_user
-from models import db, Book, User, Borrowing, Reservation, OrganizationSettings, Notification
+from models import db, Book, User, Borrowing, Reservation, OrganizationSettings, Notification, desk_counts
 from datetime import datetime, timedelta
 from theming import normalize_hex, build_theme_css
 from branding_images import validate_and_reencode, LogoValidationError
@@ -113,18 +113,7 @@ def _books_context(page=1, search='', form_values=None, form_errors=None,
 @bp.route('/dashboard')
 def dashboard():
     now = datetime.utcnow()
-    total_books = Book.query.count()
-    total_members = User.query.filter_by(is_admin=False).count()
-    active_borrowings = Borrowing.query.filter_by(status='active').count()
-    # Local midnight, not utcnow(): this tile links straight to the list
-    # below it, and against a raw UTC clock the tile said 5 while the list it
-    # opened badged 4 -- the fifth was due *today*. See localtime.py.
-    overdue_count = Borrowing.query.filter(
-        Borrowing.status == 'active',
-        Borrowing.due_date < local_today_start_utc()
-    ).count()
-    active_reservations = Reservation.query.filter_by(status='active').count()
-    available_books = Book.query.filter(Book.available_quantity > 0).count()
+    counts = desk_counts()
 
     # The lane the librarian's day actually runs on. Worst first, because that
     # is the order a chase list is worked -- the same order the Overdue filter
@@ -150,16 +139,6 @@ def dashboard():
         Borrowing.due_date < soon_cutoff,
     ).order_by(Borrowing.due_date.asc()).limit(6).all()
 
-    # Holds waiting on a copy that is already back on the shelf -- the work
-    # "Process Reservations" exists to do, surfaced so the librarian knows
-    # there is something to process before pressing it.
-    ready_to_fulfil = Reservation.query.filter(
-        Reservation.status == 'active',
-        Reservation.book_id.in_(
-            db.session.query(Book.id).filter(Book.available_quantity > 0)
-        ),
-    ).count()
-
     recent_borrowings = Borrowing.query.options(
         db.joinedload(Borrowing.user),
         db.joinedload(Borrowing.book)
@@ -167,16 +146,10 @@ def dashboard():
 
     return render_template(
         'admin/dashboard.html',
-        total_books=total_books,
-        total_members=total_members,
-        active_borrowings=active_borrowings,
-        overdue_count=overdue_count,
-        active_reservations=active_reservations,
-        available_books=available_books,
         recent_borrowings=recent_borrowings,
         overdue_loans=overdue_loans,
         due_soon_loans=due_soon_loans,
-        ready_to_fulfil=ready_to_fulfil,
+        **counts,
         now=now,
     )
 
