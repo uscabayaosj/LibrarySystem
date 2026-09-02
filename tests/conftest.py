@@ -23,7 +23,9 @@ class TestConfig(Config):
 @pytest.fixture
 def app():
     app = create_app(TestConfig)
-    OrganizationSettings.forget()   # the process cache must not outlive a test's database
+    # Process caches must not outlive a test's database.
+    OrganizationSettings.forget()
+    User.cache.forget()
     with app.app_context():
         _db.create_all()
         yield app

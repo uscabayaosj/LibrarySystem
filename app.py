@@ -136,7 +136,17 @@ def create_app(config_object=Config):
 
     @login_manager.user_loader
     def load_user(user_id):
-        return User.query.get(int(user_id))
+        # Runs before every signed-in request. A cache hit rebuilds the row
+        # from values already in this process (see models.RowCache); a miss
+        # is the one query it always was. Nothing is cached for an unknown
+        # id, so a deleted account stays gone.
+        user_id = int(user_id)
+        user = User.cache.get(user_id)
+        if user is None:
+            user = User.query.get(user_id)
+            if user is not None:
+                User.cache.put(user)
+        return user
 
     @app.context_processor
     def inject_now():

@@ -23,6 +23,54 @@ from localtime import to_local, local_now, local_today_start_utc
 # a read-after-write inside one request still sees the truth.
 
 
+class RowCache:
+    """A process-level cache of one table's rows, as column values.
+
+    Every request reads a couple of rows that almost never change -- the
+    branding singleton and the signed-in user -- and on a serverless host
+    each of those reads is a full round trip to the database before the page
+    can start. Values, not instances, are what is cached: a hit rebuilds a
+    fresh instance and attaches it to the request's session, so per-request
+    memoization (cached_property) starts clean and callers can still edit
+    and commit what they are handed. Any write to a cached row drops it from
+    this process's cache via mapper events; other warm instances converge
+    within the TTL, which is the staleness budget a caller accepts by
+    reading through the cache at all."""
+
+    def __init__(self, model, ttl_seconds=60):
+        self.model = model
+        self.ttl = ttl_seconds
+        self._rows = {}
+
+    def get(self, key):
+        """A session-attached instance for `key`, or None on a miss."""
+        entry = self._rows.get(key)
+        if entry is None or time.monotonic() - entry[1] >= self.ttl:
+            return None
+        instance = self.model(**entry[0])
+        make_transient_to_detached(instance)
+        return db.session.merge(instance, load=False)
+
+    def put(self, instance):
+        values = {attr.key: getattr(instance, attr.key)
+                  for attr in sa.inspect(self.model).column_attrs}
+        self._rows[values['id']] = (values, time.monotonic())
+
+    def forget(self, key=None):
+        if key is None:
+            self._rows.clear()
+        else:
+            self._rows.pop(key, None)
+
+    def watch(self):
+        """Drop a row from the cache whenever the mapper writes it."""
+        def _forget(mapper, connection, target):
+            self.forget(target.id)
+        for name in ('after_insert', 'after_update', 'after_delete'):
+            event.listen(self.model, name, _forget)
+        return self
+
+
 class OrganizationSettings(db.Model):
     """Singleton row (always id=1) holding the per-deployment branding: the
     organization's display name, an optional uploaded logo, and a custom
@@ -56,43 +104,30 @@ class OrganizationSettings(db.Model):
     # to stat().
     logo_updated_at = db.Column(db.DateTime)
 
-    # Process-level cache of the row's column values. Every page reads this
-    # row, and on a serverless host each read is a full trip to the database
-    # -- for a row that changes a handful of times in the life of a
-    # deployment. A hit rebuilds a session-attached instance from the values
-    # without a query, so callers can still edit and commit what get() hands
-    # them. Any write to the row (the mapper events below) drops the cache in
-    # this process; other warm instances pick the change up within the TTL.
-    # Readers that must never lag -- the logo route, whose bytes the browser
-    # caches immutably under a URL versioned by logo_updated_at, and the
-    # admin's own settings form -- pass fresh=True and skip the cache.
-    _cache = {'values': None, 'at': 0.0}
-    CACHE_TTL_SECONDS = 60
+    # Every page reads this row (see RowCache for why it is cached). Readers
+    # that must never lag -- the logo route, whose bytes the browser caches
+    # immutably under a URL versioned by logo_updated_at, and the admin's
+    # own settings form -- pass fresh=True and skip the cache.
+    cache = None   # bound below the class, once it exists
 
     @classmethod
     def get(cls, fresh=False):
         """Fetch the singleton row, creating it with defaults on first use."""
-        values = cls._cache['values']
-        if (not fresh and values is not None
-                and time.monotonic() - cls._cache['at'] < cls.CACHE_TTL_SECONDS):
-            instance = cls(**values)
-            make_transient_to_detached(instance)
-            return db.session.merge(instance, load=False)
+        if not fresh:
+            cached = cls.cache.get(1)
+            if cached is not None:
+                return cached
         settings = cls.query.get(1)
         if settings is None:
             settings = cls(id=1)
             db.session.add(settings)
             db.session.commit()
-        cls._cache['values'] = {
-            attr.key: getattr(settings, attr.key)
-            for attr in sa.inspect(cls).column_attrs
-        }
-        cls._cache['at'] = time.monotonic()
+        cls.cache.put(settings)
         return settings
 
     @classmethod
     def forget(cls):
-        cls._cache['values'] = None
+        cls.cache.forget()
 
     @property
     def logo_ready(self):
@@ -132,11 +167,7 @@ class OrganizationSettings(db.Model):
 
 
 
-@event.listens_for(OrganizationSettings, 'after_insert')
-@event.listens_for(OrganizationSettings, 'after_update')
-@event.listens_for(OrganizationSettings, 'after_delete')
-def _forget_settings(mapper, connection, target):
-    OrganizationSettings.forget()
+OrganizationSettings.cache = RowCache(OrganizationSettings).watch()
 
 
 class User(UserMixin, db.Model):
@@ -292,6 +323,10 @@ class User(UserMixin, db.Model):
         for key in ('_shell_counts', 'borrow_blocked_reason'):
             self.__dict__.pop(key, None)
 
+
+
+# Flask-Login reloads this row on every request; see app.load_user.
+User.cache = RowCache(User).watch()
 
 class Book(db.Model):
     __tablename__ = 'book'
