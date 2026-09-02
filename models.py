@@ -325,8 +325,10 @@ class User(UserMixin, db.Model):
 
 
 
-# Flask-Login reloads this row on every request; see app.load_user.
-User.cache = RowCache(User).watch()
+# Flask-Login reloads this row on every request; see app.load_user. A shorter
+# TTL than the branding row: this is the window in which a deleted account or
+# an old password can still load on a warm instance that did not see the write.
+User.cache = RowCache(User, ttl_seconds=30).watch()
 
 class Book(db.Model):
     __tablename__ = 'book'
