@@ -1,4 +1,5 @@
 import secrets
+import time
 
 from flask import current_app, g, has_app_context, url_for
 from flask_login import UserMixin
@@ -7,6 +8,7 @@ from datetime import datetime, timedelta
 from functools import cached_property
 import sqlalchemy as sa
 from sqlalchemy import event
+from sqlalchemy.orm import make_transient_to_detached
 from extensions import db
 from localtime import to_local, local_now, local_today_start_utc
 
@@ -54,15 +56,43 @@ class OrganizationSettings(db.Model):
     # to stat().
     logo_updated_at = db.Column(db.DateTime)
 
+    # Process-level cache of the row's column values. Every page reads this
+    # row, and on a serverless host each read is a full trip to the database
+    # -- for a row that changes a handful of times in the life of a
+    # deployment. A hit rebuilds a session-attached instance from the values
+    # without a query, so callers can still edit and commit what get() hands
+    # them. Any write to the row (the mapper events below) drops the cache in
+    # this process; other warm instances pick the change up within the TTL.
+    # Readers that must never lag -- the logo route, whose bytes the browser
+    # caches immutably under a URL versioned by logo_updated_at, and the
+    # admin's own settings form -- pass fresh=True and skip the cache.
+    _cache = {'values': None, 'at': 0.0}
+    CACHE_TTL_SECONDS = 60
+
     @classmethod
-    def get(cls):
+    def get(cls, fresh=False):
         """Fetch the singleton row, creating it with defaults on first use."""
+        values = cls._cache['values']
+        if (not fresh and values is not None
+                and time.monotonic() - cls._cache['at'] < cls.CACHE_TTL_SECONDS):
+            instance = cls(**values)
+            make_transient_to_detached(instance)
+            return db.session.merge(instance, load=False)
         settings = cls.query.get(1)
         if settings is None:
             settings = cls(id=1)
             db.session.add(settings)
             db.session.commit()
+        cls._cache['values'] = {
+            attr.key: getattr(settings, attr.key)
+            for attr in sa.inspect(cls).column_attrs
+        }
+        cls._cache['at'] = time.monotonic()
         return settings
+
+    @classmethod
+    def forget(cls):
+        cls._cache['values'] = None
 
     @property
     def logo_ready(self):
@@ -99,6 +129,14 @@ class OrganizationSettings(db.Model):
         if not self.logo_ready:
             return url_for('static', filename='icons/favicon.ico')
         return url_for('branding.favicon', v=self.logo_cache_key)
+
+
+
+@event.listens_for(OrganizationSettings, 'after_insert')
+@event.listens_for(OrganizationSettings, 'after_update')
+@event.listens_for(OrganizationSettings, 'after_delete')
+def _forget_settings(mapper, connection, target):
+    OrganizationSettings.forget()
 
 
 class User(UserMixin, db.Model):

@@ -3,10 +3,12 @@ import pytest
 
 os.environ.setdefault('FLASK_ENV', 'testing')
 
+from sqlalchemy import event
+from sqlalchemy.engine import Engine
 from app import create_app
 from config import Config
 from extensions import db as _db
-from models import User, Book, Borrowing, Reservation
+from models import User, Book, Borrowing, Reservation, OrganizationSettings
 from datetime import datetime, timedelta
 
 
@@ -21,6 +23,7 @@ class TestConfig(Config):
 @pytest.fixture
 def app():
     app = create_app(TestConfig)
+    OrganizationSettings.forget()   # the process cache must not outlive a test's database
     with app.app_context():
         _db.create_all()
         yield app
@@ -68,3 +71,21 @@ def book(db):
 def login(client, username, password):
     return client.post('/login', data={'username': username, 'password': password},
                        follow_redirects=True)
+
+
+@pytest.fixture
+def count_queries():
+    """Count SQL statements issued inside the `with` block."""
+    class Counter:
+        n = 0
+
+    counter = Counter()
+
+    def listener(conn, cursor, statement, parameters, context, executemany):
+        counter.n += 1
+
+    event.listen(Engine, "before_cursor_execute", listener)
+    try:
+        yield counter
+    finally:
+        event.remove(Engine, "before_cursor_execute", listener)

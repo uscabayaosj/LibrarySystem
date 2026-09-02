@@ -10,29 +10,8 @@ property we care about and which a fixed budget wouldn't catch.
 from datetime import datetime, timedelta
 
 import pytest
-from sqlalchemy import event
-from sqlalchemy.engine import Engine
-
 from models import User, Book, Borrowing, Reservation
 from tests.conftest import login
-
-
-@pytest.fixture
-def count_queries():
-    """Count SQL statements issued inside the `with` block."""
-    class Counter:
-        n = 0
-
-    counter = Counter()
-
-    def listener(conn, cursor, statement, parameters, context, executemany):
-        counter.n += 1
-
-    event.listen(Engine, "before_cursor_execute", listener)
-    try:
-        yield counter
-    finally:
-        event.remove(Engine, "before_cursor_execute", listener)
 
 
 def _add_loans(db, member, count):

@@ -362,3 +362,32 @@ def test_branding_logo_response_is_cached_hard(client, db, admin):
     resp = client.get('/branding/logo')
     assert 'max-age=31536000' in resp.headers['Cache-Control']
     assert 'immutable' in resp.headers['Cache-Control']
+
+
+def test_get_serves_repeat_reads_from_the_process_cache(app, db, count_queries):
+    """Every page needs the branding row; on a serverless host each query
+    is a full trip to the database, so repeat reads come from memory."""
+    OrganizationSettings.get()
+    count_queries.n = 0
+    settings = OrganizationSettings.get()
+    assert count_queries.n == 0
+    assert settings.org_name == 'Library System'
+    # Still a live, session-attached row -- the admin form edits it in place.
+    settings.org_name = 'Edited'
+    db.session.commit()
+    assert OrganizationSettings.get(fresh=True).org_name == 'Edited'
+
+
+def test_get_fresh_always_queries(app, db, count_queries):
+    OrganizationSettings.get()
+    count_queries.n = 0
+    OrganizationSettings.get(fresh=True)
+    assert count_queries.n == 1
+
+
+def test_saving_the_row_invalidates_the_cache(app, db):
+    first = OrganizationSettings.get()
+    first.theme_color = '#112233'
+    db.session.commit()
+    db.session.remove()
+    assert OrganizationSettings.get().theme_color == '#112233'

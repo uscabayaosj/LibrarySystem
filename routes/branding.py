@@ -22,7 +22,7 @@ _CACHE_HEADERS = {'Cache-Control': 'public, max-age=31536000, immutable'}
 
 
 def _require_logo():
-    settings = OrganizationSettings.get()
+    settings = OrganizationSettings.get(fresh=True)
     if not settings.logo_ready:
         abort(404)
     return settings

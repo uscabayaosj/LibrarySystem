@@ -711,7 +711,7 @@ def theme_preview():
 
 @bp.route('/settings', methods=['GET', 'POST'])
 def settings():
-    org_settings = OrganizationSettings.get()
+    org_settings = OrganizationSettings.get(fresh=True)
 
     if request.method == 'POST':
         org_name = request.form.get('org_name', '').strip()
