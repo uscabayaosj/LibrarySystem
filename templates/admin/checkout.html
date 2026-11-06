@@ -129,7 +129,7 @@
                             <div class="row-main">
                                 <div class="row-title">{{ b.title }}</div>
                                 <div class="row-sub">
-                                    {{ b.author }} · <span class="slip-accession">ISBN {{ b.isbn }}</span> ·
+                                    {{ b.author }} · {% if b.isbn %}<span class="slip-accession">ISBN {{ b.isbn }}</span> ·{% endif %}
                                     <span class="num">{{ b.available_quantity }}</span> of
                                     <span class="num">{{ b.quantity }}</span> on the shelf
                                 </div>

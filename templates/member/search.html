@@ -79,7 +79,7 @@
                     {% else %}
                         <span class="badge">Uncategorised</span>
                     {% endif %}
-                    <span class="slip-accession">ISBN {{ book.isbn }}</span>
+                    {% if book.isbn %}<span class="slip-accession">ISBN {{ book.isbn }}</span>{% endif %}
                 </div>
                 {% if book.description %}
                     <p class="book-desc">{{ book.description }}</p>

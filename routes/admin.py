@@ -176,7 +176,7 @@ def add_book_form():
 def add_book():
     title = request.form.get('title', '').strip()
     author = request.form.get('author', '').strip()
-    isbn = request.form.get('isbn', '').strip()
+    isbn = request.form.get('isbn', '').strip() or None
     category = request.form.get('category', '').strip()
     publisher = request.form.get('publisher', '').strip()
     pub_year = request.form.get('publication_year', type=int)
@@ -188,8 +188,6 @@ def add_book():
         field_errors['title'] = 'Title is required.'
     if not author:
         field_errors['author'] = 'Author is required.'
-    if not isbn:
-        field_errors['isbn'] = 'ISBN is required.'
     length_values = {
         'title': title, 'author': author, 'isbn': isbn,
         'category': category, 'publisher': publisher,
@@ -239,7 +237,7 @@ def edit_book(id):
     if request.method == 'POST':
         title = request.form.get('title', '').strip()
         author = request.form.get('author', '').strip()
-        isbn = request.form.get('isbn', '').strip()
+        isbn = request.form.get('isbn', '').strip() or None
         category = request.form.get('category', '').strip()
         publisher = request.form.get('publisher', '').strip()
         new_quantity = request.form.get('quantity', book.quantity, type=int)
@@ -249,8 +247,6 @@ def edit_book(id):
             field_errors['title'] = 'Title is required.'
         if not author:
             field_errors['author'] = 'Author is required.'
-        if not isbn:
-            field_errors['isbn'] = 'ISBN is required.'
         length_values = {'title': title, 'author': author, 'isbn': isbn, 'category': category, 'publisher': publisher}
         for field in length_values:
             limit = max_length(Book, field)

@@ -36,8 +36,8 @@
                     {% if field_errors.get('author') %}<p class="field-error" id="author-error">{{ icon('warning', class='icon-sm') }} {{ field_errors['author'] }}</p>{% endif %}
                 </div>
                 <div class="field col-3 {{ 'has-error' if field_errors.get('isbn') }}">
-                    <label for="isbn">ISBN <span class="req" aria-hidden="true">*</span></label>
-                    <input type="text" id="isbn" name="isbn" value="{{ form_values.get('isbn', book.isbn) if form_values else book.isbn }}" required maxlength="{{ maxlen('Book', 'isbn') }}"
+                    <label for="isbn">ISBN (optional)</label>
+                    <input type="text" id="isbn" name="isbn" value="{{ form_values.get('isbn', book.isbn or '') if form_values else (book.isbn or '') }}" maxlength="{{ maxlen('Book', 'isbn') }}"
                            {% if field_errors.get('isbn') %}aria-invalid="true" aria-describedby="isbn-error"{% endif %}>
                     {% if field_errors.get('isbn') %}<p class="field-error" id="isbn-error">{{ icon('warning', class='icon-sm') }} {{ field_errors['isbn'] }}</p>{% endif %}
                 </div>

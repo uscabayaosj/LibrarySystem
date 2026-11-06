@@ -16,7 +16,7 @@ A Flask-based library management system with separate **Librarian (Admin)** and 
 
 ### 👑 For Librarians (Admins)
 - **Dashboard** — Live stats: total books, active loans, overdue items, members
-- **Book Management** — Add, edit, search, and delete books with rich metadata (publisher, year, description)
+- **Book Management** — Add, edit, search, and delete books with rich metadata (publisher, year, description). ISBN is optional; supplied ISBNs must be unique.
 - **Member Management** — View all members, search/filter, see borrowing stats, delete
 - **Member Detail** — Per-member view with full borrowing history and reservations
 - **Returns** — Process returns with a single click

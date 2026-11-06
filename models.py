@@ -336,7 +336,7 @@ class Book(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(200), nullable=False, index=True)
     author = db.Column(db.String(100), nullable=False, index=True)
-    isbn = db.Column(db.String(13), unique=True, nullable=False, index=True)
+    isbn = db.Column(db.String(13), unique=True, nullable=True, index=True)
     category = db.Column(db.String(50), index=True)
     publisher = db.Column(db.String(100))
     publication_year = db.Column(db.Integer)

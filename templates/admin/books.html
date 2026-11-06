@@ -51,8 +51,8 @@
                     {% if field_errors.get('author') %}<p class="field-error" id="author-error">{{ icon('warning', class='icon-sm') }} {{ field_errors['author'] }}</p>{% endif %}
                 </div>
                 <div class="field col-3 {{ 'has-error' if field_errors.get('isbn') }}">
-                    <label for="isbn">ISBN <span class="req" aria-hidden="true">*</span></label>
-                    <input type="text" id="isbn" name="isbn" value="{{ form_values.get('isbn', '') }}" required maxlength="{{ maxlen('Book', 'isbn') }}"
+                    <label for="isbn">ISBN (optional)</label>
+                    <input type="text" id="isbn" name="isbn" value="{{ form_values.get('isbn', '') }}" maxlength="{{ maxlen('Book', 'isbn') }}"
                            {% if field_errors.get('isbn') %}aria-invalid="true" aria-describedby="isbn-error"{% endif %}>
                     {% if field_errors.get('isbn') %}<p class="field-error" id="isbn-error">{{ icon('warning', class='icon-sm') }} {{ field_errors['isbn'] }}</p>{% endif %}
                 </div>
@@ -136,7 +136,7 @@
                             {% endif %}
                         </td>
                         <td data-label="Author">{{ book.author }}</td>
-                        <td data-label="ISBN"><span class="mono">{{ book.isbn }}</span></td>
+                        <td data-label="ISBN"><span class="mono">{{ book.isbn or '—' }}</span></td>
                         <td data-label="Category">
                             {% if book.category %}
                                 <span class="badge badge-category" style="--hue: {{ book.category|cover_hue }}; --tone: {{ book.category|cover_tone }}" title="{{ book.category }}">{{ book.category }}</span>

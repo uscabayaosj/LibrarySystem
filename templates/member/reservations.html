@@ -36,7 +36,7 @@
                     <p class="slip-author">{{ r.book.author }}</p>
                     <div class="slip-meta">
                         <span class="badge badge-green">{{ icon('check-circle', class='icon-sm') }} A copy is waiting for you</span>
-                        <span class="slip-accession">ISBN {{ r.book.isbn }}</span>
+                        {% if r.book.isbn %}<span class="slip-accession">ISBN {{ r.book.isbn }}</span>{% endif %}
                     </div>
                     <p class="small text-secondary" style="margin-top:7px">
                         Collect it from the desk by {{ r.expiration_date|localdate('%b %d, %Y') }}.
@@ -80,7 +80,7 @@
                     {% else %}
                         <span class="badge badge-orange">{{ icon('clock', class='icon-sm') }} {{ r.queue_label }}</span>
                     {% endif %}
-                    <span class="slip-accession">ISBN {{ r.book.isbn }}</span>
+                    {% if r.book.isbn %}<span class="slip-accession">ISBN {{ r.book.isbn }}</span>{% endif %}
                 </div>
                 <div class="small text-secondary" style="margin-top:7px">
                     Reserved {{ r.reservation_date|localdate('%b %d, %Y') }}

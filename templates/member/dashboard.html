@@ -81,7 +81,7 @@
                             <div class="slip-author">{{ b.book.author }}</div>
                             <div class="slip-meta">
                                 {{ due_badge(b) }}
-                                <span class="slip-accession">ISBN {{ b.book.isbn }}</span>
+                                {% if b.book.isbn %}<span class="slip-accession">ISBN {{ b.book.isbn }}</span>{% endif %}
                             </div>
                             <div class="slip-actions">
                                 {% if b.can_renew %}

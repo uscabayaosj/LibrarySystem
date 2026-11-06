@@ -50,6 +50,57 @@ def test_migrations_are_idempotent(tmp_path, monkeypatch):
     assert _current_revision(flask_app) == first
 
 
+def test_optional_isbn_upgrade_preserves_books_and_unique_index(tmp_path, monkeypatch):
+    from flask_migrate import upgrade as migrate_upgrade, downgrade as migrate_downgrade
+    import pytest
+
+    flask_app = _build_app(tmp_path, monkeypatch, 'optional-isbn.db')
+    with flask_app.app_context():
+        migrate_upgrade(revision='e6a3b8c72d15')
+        db.session.add_all([
+            Book(title='Existing', author='A', isbn='1234567890123',
+                 quantity=2, available_quantity=1),
+            Book(title='Legacy blank', author='A', isbn='',
+                 quantity=1, available_quantity=1),
+        ])
+        db.session.commit()
+
+    app_module._apply_migrations()
+
+    with flask_app.app_context():
+        columns = {c['name']: c for c in sa.inspect(db.engine).get_columns('book')}
+        assert columns['isbn']['nullable'] is True
+        existing = Book.query.filter_by(title='Existing').one()
+        assert existing.isbn == '1234567890123'
+        assert (existing.quantity, existing.available_quantity) == (2, 1)
+        assert Book.query.filter_by(title='Legacy blank').one().isbn is None
+        db.session.add_all([
+            Book(title='Missing 1', author='A'), Book(title='Missing 2', author='A'),
+        ])
+        db.session.commit()
+        assert Book.query.filter_by(isbn=None).count() == 3
+
+        db.session.add(Book(title='Duplicate', author='A', isbn=existing.isbn))
+        with pytest.raises(sa.exc.IntegrityError):
+            db.session.commit()
+        db.session.rollback()
+
+        # A rollback cannot silently discard the books that now lack ISBNs.
+        # Flask-Migrate reports RuntimeError through its CLI exit wrapper.
+        with pytest.raises(SystemExit) as error:
+            migrate_downgrade(revision='e6a3b8c72d15')
+        assert error.value.code == 1
+        assert Book.query.count() == 4
+
+        for i, book in enumerate(Book.query.filter_by(isbn=None).all()):
+            book.isbn = f'{i:013d}'
+        db.session.commit()
+        migrate_downgrade(revision='e6a3b8c72d15')
+        columns = {c['name']: c for c in sa.inspect(db.engine).get_columns('book')}
+        assert columns['isbn']['nullable'] is False
+        assert Book.query.count() == 4
+
+
 def test_legacy_create_all_database_is_stamped_not_recreated(tmp_path, monkeypatch):
     """The upgrade must not try to CREATE TABLE over tables that already
     exist, and must leave existing rows alone."""
